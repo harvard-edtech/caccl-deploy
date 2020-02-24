@@ -1,0 +1,12 @@
+build
+config
+deploy
+
+# ignore any/all dotfiles or dirs
+**/.*
+
+# don't include docs
+**/*.md
+
+# don't include node modules
+**/node_modules
