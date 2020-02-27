@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
-import { App } from '@aws-cdk/core';
+import { App, Tag } from '@aws-cdk/core';
 import { CacclAppStack } from './lib/stack';
 
 const deployConfig = require('./config')();
 const appStackName = `${deployConfig.appName}-app`;
 
 const app = new App();
-
-const appStack = new CacclAppStack(app, appStackName, {
+const stack = new CacclAppStack(app, appStackName, {
   cidrBlock: deployConfig.cidrBlock,
   certificateArn: deployConfig.certificateArn,
   appImage: deployConfig.appImage,
@@ -22,5 +21,9 @@ const appStack = new CacclAppStack(app, appStackName, {
   taskMemoryLimit: deployConfig.taskMemoryLimit,
   logRetentionDays: deployConfig.logRetentionDays,
 });
+
+Tag.add(stack, 'Project', 'MH');
+Tag.add(stack, 'OU', 'DE');
+Tag.add(stack, 'CacclAppStack', appStackName);
 
 app.synth();

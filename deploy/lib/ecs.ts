@@ -4,12 +4,14 @@ import { Construct, Stack } from '@aws-cdk/core';
 import { Cluster, FargateService, FargateTaskDefinition, LogDriver, ContainerImage, ContainerDefinition, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
 import { DockerImageAsset } from '@aws-cdk/aws-ecr-assets';
+import { LogGroup, RetentionDays } from '@aws-cdk/aws-logs';
 
 export interface EcsProps {
   readonly vpc: Vpc,
   readonly securityGroup: SecurityGroup,
   readonly taskCpu: number,
   readonly taskMemoryLimit: number,
+  readonly appName: string,
   readonly appImage?: string;
   readonly appBuildPath?: string;
   readonly appEnvironment?: { [key: string]: string },
@@ -30,6 +32,7 @@ export class EcsConstruct extends Construct {
       securityGroup,
       taskCpu,
       taskMemoryLimit,
+      appName,
       appImage,
       appBuildPath,
       appEnvironment = {},
@@ -48,19 +51,10 @@ export class EcsConstruct extends Construct {
       memoryLimitMiB: taskMemoryLimit,
     });
 
-    const service = new FargateService(this, 'FargateService', {
-      cluster,
-      securityGroup,
-      taskDefinition: taskDef,
-      minHealthyPercent: 100,
-      maxHealthyPercent: 200,
-      serviceName: `${Stack.of(this).stackName}-service`,
-    });
-
-    // both containers can use the same logging config
-    const loggingConfig = LogDriver.awsLogs({
-      streamPrefix: `/${Stack.of(this).stackName}`,
-      logRetention: logRetentionDays,
+    // create a log group for the containers
+    const logGroup = new LogGroup(this, 'LogGroup', {
+      logGroupName: `/${Stack.of(this).stackName}-logs`,
+      retention: logRetentionDays,
     });
 
     let appContainerImage: ContainerImage;
@@ -90,8 +84,12 @@ export class EcsConstruct extends Construct {
     const appContainer = new ContainerDefinition(this, 'AppContainer', {
       image: appContainerImage,
       taskDefinition: taskDef,
+      essential: true,
       environment: appEnvironment,
-      logging: loggingConfig,
+      logging: LogDriver.awsLogs({
+        streamPrefix: 'app',
+        logGroup,
+      }),
     });
 
     appContainer.addPortMappings({
@@ -105,14 +103,27 @@ export class EcsConstruct extends Construct {
     const proxyContainer = new ContainerDefinition(this, 'ProxyContainer', {
       image: ContainerImage.fromRegistry(proxyImage),
       environment: proxyEnvironment,
+      essential: true,
       taskDefinition: taskDef,
-      logging: loggingConfig,
+      logging: LogDriver.awsLogs({
+        streamPrefix: 'proxy',
+        logGroup,
+      }),
     });
 
     proxyContainer.addPortMappings({
       containerPort: 443,
       hostPort: 443,
     });
+
+		const service = new FargateService(this, 'FargateService', {
+			cluster,
+			securityGroup,
+			taskDefinition: taskDef,
+			minHealthyPercent: 100,
+			maxHealthyPercent: 200,
+			serviceName: `${Stack.of(this).stackName}-service`,
+		});
 
     // this is the thing that gets handed off to the load balancer
     this.loadBalancerTarget = service.loadBalancerTarget({
