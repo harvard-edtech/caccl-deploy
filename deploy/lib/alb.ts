@@ -1,31 +1,43 @@
-import { Construct } from '@aws-cdk/core';
+import { Construct, Stack, Duration } from '@aws-cdk/core';
 import {
   ApplicationLoadBalancer,
   CfnListener,
   ApplicationProtocol,
   ApplicationListener,
-  ContentType
+  ContentType,
+  ApplicationTargetGroup,
+  TargetType
 } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
+import { IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 
 export interface AlbConstructProps {
   vpc: Vpc,
   securityGroup: SecurityGroup,
   certificateArn: string,
+  loadBalancerTarget: IEcsLoadBalancerTarget,
 };
 
 export class AlbConstruct extends Construct {
+
   readonly loadBalancer: ApplicationLoadBalancer;
   readonly httpsListener: ApplicationListener;
 
   constructor(scope: Construct, id: string, props: AlbConstructProps) {
     super(scope, id);
 
+    const {
+      vpc,
+      securityGroup,
+      certificateArn,
+      loadBalancerTarget,
+    } = props;
+
     this.loadBalancer = new ApplicationLoadBalancer(this,
       'ApplicationLoadBalancer', {
-        vpc: props.vpc,
+        vpc,
+        securityGroup,
         internetFacing: true,
-        securityGroup: props.securityGroup,
       }
     );
 
@@ -48,20 +60,27 @@ export class AlbConstruct extends Construct {
       }
     );
 
-    this.httpsListener = new ApplicationListener(this,
-      'HttpsListener', {
+    const httpsListener = new ApplicationListener(this, 'HttpsListener', {
         loadBalancer: this.loadBalancer,
         certificates: [{
-          certificateArn: props.certificateArn,
+          certificateArn: certificateArn,
         }],
         port: 443,
         protocol: ApplicationProtocol.HTTPS,
       });
 
-    this.httpsListener.addFixedResponse('HttpsDefaultResponse', {
-      statusCode: '200',
-      contentType: ContentType.TEXT_PLAIN,
-      messageBody: 'Hello!',
+    const appTargetGroup = new ApplicationTargetGroup(this, 'TargetGroup', {
+      vpc,
+      port: 443,
+      protocol: ApplicationProtocol.HTTPS,
+      targetGroupName: `${ Stack.of(this).stackName }-proxy`,
+      stickinessCookieDuration: Duration.seconds(300),
+      targetType: TargetType.IP,
+      targets: [loadBalancerTarget],
+    });
+
+    httpsListener.addTargetGroups(`${Stack.of(this).stackName}-tg`, {
+      targetGroups: [appTargetGroup],
     });
   }
 };

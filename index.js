@@ -7,6 +7,7 @@ const path = require('path');
 // Prep command executor
 const exec = (command, options = {}) => {
   options.stdio = 'inherit';
+  console.log(command);
   return execSync(command, options);
 };
 
@@ -47,7 +48,7 @@ module.exports = () => {
   // allow other cdk commands for advanced users
   const cdkCommand = (argv.length)
     ? `cdk ${argv.join(' ')}`
-    : 'cdk deploy'
+    : 'cdk list'; // deploy'
 
   // cdk commands must be exec'd in the caccl-deploy package directory
   const cdkExecPath = path.resolve('./node_modules/caccl-deploy');

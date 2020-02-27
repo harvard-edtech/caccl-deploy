@@ -68,14 +68,6 @@ export class CacclAppStack extends Stack {
       vpc: vpcConstruct.vpc,
     });
 
-    // application load balancer; the app(s) will attach themselves as
-    // "targets" of the https listener
-    const albConstruct = new AlbConstruct(this, 'LoadBalancer', {
-      certificateArn,
-      vpc: vpcConstruct.vpc,
-      securityGroup: vpcConstruct.securityGroup,
-    });
-
     const taskDef = new FargateTaskDefinition(this, 'Task', {
       cpu: taskCpu,
       memoryLimitMiB: taskMemoryLimit,
@@ -104,23 +96,19 @@ export class CacclAppStack extends Stack {
      * here we create a service target that uses a specific container/port
     * without this the load balancer target won't point to the right container
     */
-    const serviceLoadBalancerTarget = fargateService.loadBalancerTarget({
+    const loadBalancerTarget = fargateService.loadBalancerTarget({
       containerName: containersConstruct.proxyContainer.containerName,
       containerPort: 443,
     });
 
-    const appTargetGroup = new ApplicationTargetGroup(this, 'default-group', {
+    // application load balancer; the app(s) will attach themselves as
+    // "targets" of the https listener
+    const albConstruct = new AlbConstruct(this, 'LoadBalancer', {
+      certificateArn,
       vpc: vpcConstruct.vpc,
-      port: 443,
-      protocol: ApplicationProtocol.HTTPS,
-      targetGroupName: `${appName.toLowerCase()}-proxy`,
-      stickinessCookieDuration: Duration.seconds(300),
-      targetType: TargetType.IP,
-      targets: [serviceLoadBalancerTarget],
+      securityGroup: vpcConstruct.securityGroup,
+      loadBalancerTarget,
     });
 
-    albConstruct.httpsListener.addTargetGroups(`${appName}TargetGroup`, {
-      targetGroups: [appTargetGroup],
-    });
   }
 }

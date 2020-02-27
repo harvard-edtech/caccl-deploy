@@ -1,17 +1,15 @@
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
 import { Construct, Stack } from '@aws-cdk/core';
+import { Cluster, FargateService, FargateTaskDefinition, LogDriver, ContainerImage, ContainerDefinition, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
+import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
 import { DockerImageAsset } from '@aws-cdk/aws-ecr-assets';
-import {
-  LogDriver,
-  ContainerImage,
-  ContainerDefinition,
-  FargateTaskDefinition
-} from '@aws-cdk/aws-ecs';
 
-
-export interface ContainersProps {
-  readonly taskDef: FargateTaskDefinition;
+export interface EcsProps {
+  readonly vpc: Vpc,
+  readonly securityGroup: SecurityGroup,
+  readonly taskCpu: number,
+  readonly taskMemoryLimit: number,
   readonly appImage?: string;
   readonly appBuildPath?: string;
   readonly appEnvironment?: { [key: string]: string },
@@ -20,16 +18,18 @@ export interface ContainersProps {
   readonly logRetentionDays: number;
 };
 
-export class ContainersConstruct extends Construct {
+export class EcsConstruct extends Construct {
 
-  readonly appContainer: ContainerDefinition;
-  readonly proxyContainer: ContainerDefinition;
+  readonly loadBalancerTarget: IEcsLoadBalancerTarget;
 
-  constructor(scope: Construct, id: string, props: ContainersProps) {
+  constructor(scope: Construct, id: string, props: EcsProps) {
     super(scope, id);
 
     const {
-      taskDef,
+      vpc,
+      securityGroup,
+      taskCpu,
+      taskMemoryLimit,
       appImage,
       appBuildPath,
       appEnvironment = {},
@@ -37,6 +37,25 @@ export class ContainersConstruct extends Construct {
       proxyEnvironment = {},
       logRetentionDays,
     } = props;
+
+    const cluster = new Cluster(this, 'EcsCluster', {
+      vpc,
+      containerInsights: true,
+    });
+
+    const taskDef = new FargateTaskDefinition(this, 'Task', {
+      cpu: taskCpu,
+      memoryLimitMiB: taskMemoryLimit,
+    });
+
+    const service = new FargateService(this, 'FargateService', {
+      cluster,
+      securityGroup,
+      taskDefinition: taskDef,
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+      serviceName: `${Stack.of(this).stackName}-service`,
+    });
 
     // both containers can use the same logging config
     const loggingConfig = LogDriver.awsLogs({
@@ -68,14 +87,14 @@ export class ContainersConstruct extends Construct {
     appEnvironment.NODE_ENV = 'production';
 
     // this container gets our app
-    this.appContainer = new ContainerDefinition(this, 'AppContainer', {
+    const appContainer = new ContainerDefinition(this, 'AppContainer', {
       image: appContainerImage,
       taskDefinition: taskDef,
       environment: appEnvironment,
       logging: loggingConfig,
     });
 
-    this.appContainer.addPortMappings({
+    appContainer.addPortMappings({
       containerPort: 8080,
       hostPort: 8080,
     });
@@ -83,16 +102,22 @@ export class ContainersConstruct extends Construct {
     proxyEnvironment.APP_PORT = '8080';
 
     // this container is the proxy
-    this.proxyContainer = new ContainerDefinition(this, 'ProxyContainer', {
+    const proxyContainer = new ContainerDefinition(this, 'ProxyContainer', {
       image: ContainerImage.fromRegistry(proxyImage),
       environment: proxyEnvironment,
       taskDefinition: taskDef,
       logging: loggingConfig,
     });
 
-    this.proxyContainer.addPortMappings({
+    proxyContainer.addPortMappings({
       containerPort: 443,
       hostPort: 443,
+    });
+
+    // this is the thing that gets handed off to the load balancer
+    this.loadBalancerTarget = service.loadBalancerTarget({
+      containerName: proxyContainer.containerName,
+      containerPort: 443,
     });
   }
 };
