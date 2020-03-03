@@ -1,4 +1,3 @@
-const promptSync = require('prompt-sync')();
 const { execSync } = require('child_process');
 const path = require('path');
 
@@ -14,32 +13,25 @@ const exec = (command, options = {}) => {
 // Import helpers
 const print = require('./helpers/print');
 const getAppNameFromPackage = require('./helpers/getAppNameFromPackage');
-const aws = require('./helpers/aws');
-const deployConfig = require('./helpers/deployConfig');
-
-const prompt = (title, notRequired) => {
-  const val = promptSync(title);
-  if (val === null || (!notRequired && !val)) {
-    process.exit(0);
-  }
-  return val;
-};
-print.savePrompt(prompt);
+const manageDeployConfig = require('./helpers/manageDeployConfig');
 
 module.exports = () => {
   // take the app's name from package.json
   const appName = getAppNameFromPackage();
-  console.log(appName);
+  console.log(`Using app name: ${appName}`);
+  print.enterToContinue();
 
-  // confirm ~/.aws/config and ~/.aws/credentials exist
+  /**
+   * confirm config/deployConfig.js exists or create it
+   */
+  if (!manageDeployConfig.exists()) {
+    console.log('no deploy config; let\'s generate it!');
+    manageDeployConfig.generate();
 
-  // confirm config/deployConfig.js exists or create it
-  if (!deployConfig.exists()) {
-    console.log('no deploy config!');
   }
 
   // validate the deploy config
-  if (!deployConfig.validate()) {
+  if (!manageDeployConfig.validate()) {
     console.log('deployConfig.js is invalid!');
   }
 
@@ -59,6 +51,8 @@ module.exports = () => {
    */
   const appBaseEnvVar = `export APP_BASE_DIR=${process.cwd()}`;
 
+  console.log(`About to execute ${cdkCommand}`);
+  print.enterToContinue();
   try {
     exec(`${appBaseEnvVar}; ${cdkCommand} `, { cwd: cdkExecPath });
   } catch (err) {

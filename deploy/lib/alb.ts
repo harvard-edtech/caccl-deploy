@@ -1,15 +1,14 @@
 import { Construct, Stack, Duration } from '@aws-cdk/core';
+import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
+import { IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import {
   ApplicationLoadBalancer,
   CfnListener,
   ApplicationProtocol,
   ApplicationListener,
-  ContentType,
   ApplicationTargetGroup,
   TargetType
 } from '@aws-cdk/aws-elasticloadbalancingv2';
-import { SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
-import { IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 
 export interface AlbConstructProps {
   vpc: Vpc,

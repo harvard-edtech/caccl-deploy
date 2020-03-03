@@ -1,10 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Construct, Stack } from '@aws-cdk/core';
-import { Cluster, FargateService, FargateTaskDefinition, LogDriver, ContainerImage, ContainerDefinition, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
 import { DockerImageAsset } from '@aws-cdk/aws-ecr-assets';
-import { LogGroup, RetentionDays } from '@aws-cdk/aws-logs';
+import { LogGroup } from '@aws-cdk/aws-logs';
+import {
+  Cluster,
+  FargateService,
+  FargateTaskDefinition,
+  LogDriver,
+  ContainerImage,
+  ContainerDefinition,
+  IEcsLoadBalancerTarget
+} from '@aws-cdk/aws-ecs';
 
 export interface EcsProps {
   readonly vpc: Vpc,

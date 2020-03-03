@@ -37,6 +37,7 @@
     "@aws-cdk/core": "1.26.0",
     "aws-sdk": "^2.626.0",
     "prompt-sync": "^4.2.0",
-    "source-map-support": "^0.5.16"
+    "source-map-support": "^0.5.16",
+    "untildify": "^4.0.0"
   }
 }
