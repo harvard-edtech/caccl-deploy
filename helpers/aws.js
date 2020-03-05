@@ -4,6 +4,7 @@ const SharedIniFile = require('aws-sdk/lib/shared-ini').iniLoader;
 
 let AWS;
 let awsProfiles;
+let awsCredentials;
 
 try {
   // this fails with an ENOENT error if ~/.aws/credentials doesn't exist
@@ -11,36 +12,52 @@ try {
   AWS = require('aws-sdk');
 
   // if we get here it's ok to try loading the profiles/creds
-  awsProfiles = SharedIniFile.loadFrom();
+  awsCredentials = SharedIniFile.loadFrom();
+  awsProfiles = SharedIniFile.loadFrom({
+    filename: untilidfy('~/.aws/config'),
+  });
 } catch (err) {
   // ingore if error is from failed credentials loading
   if (err.code !== 'ENOENT' || !err.message.includes('.aws/credentials')) {
     throw err;
   }
   awsProfiles = {};
+  awsCredentials = {};
 }
 
 module.exports = {
 
   configured: () => {
     // existence of profiles == credentials have been configured
-    return Object.keys(awsProfiles).length > 0;
+    return Object.keys(awsCredentials).length > 0;
   },
 
   getProfileNames: () => {
-    return Object.keys(awsProfiles);
+    return Object.keys(awsCredentials);
   },
 
   initConfig: (profileName) => {
     const creds = new AWS.SharedIniFileCredentials({profile: profileName});
-    const profileConfig = SharedIniFile.loadFrom({
-      filename: untilidfy('~/.aws/config'),
-    });
+    /**
+     * depending on the user's environment/setup the profile keys can either be
+     * just the profile name or the profile name prefixed with 'profile' :p
+     */
+    const profileConfig = awsProfiles[profileName] || awsProfiles[`profile ${profileName}`];
     AWS.config.update({
       credentials: creds,
-      region: profileConfig[profileName].region,
+      region: profileConfig.region,
     });
     return AWS.config;
   },
-
+  getAccountId: async () => {
+    const sts = new AWS.STS();
+    let identity;
+    try {
+      identity = await sts.getCallerIdentity({}).promise();
+    } catch (err) {
+      console.log(err);
+      return err;
+    }
+    return identity.Account;
+   }
 };

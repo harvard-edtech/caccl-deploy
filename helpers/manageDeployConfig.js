@@ -25,13 +25,13 @@ module.exports = {
   load: () => {
 
   },
-  generate: () => {
+  generate: async () => {
     /**
      * Values to collect:
-     *   - aws account id (this is not usually part of existing ~/.aws/config)
-     *   - aws region (if not configured)
-     *   - aws key id (if not configured)
-     *   - aws secret key (if not configured)
+     *   x aws account id (this is not usually part of existing ~/.aws/config)
+     *   x aws region (if not configured)
+     *   x aws key id (if not configured)
+     *   x aws secret key (if not configured)
      *   - cidr block (can we suggest one?)
      *   - certificate arn
      *   - app hostname?
@@ -84,8 +84,8 @@ module.exports = {
       }
       console.log(`OK we're going to use the ${useProfile} profile!`);
       const awsConfig = aws.initConfig(useProfile);
-
-      print.enterToContinue();
+      const accountId = await aws.getAccountId();
+      console.log(`Account: ${accountId}`);
     }
   },
   validate: () => {

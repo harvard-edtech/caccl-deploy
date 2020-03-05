@@ -15,7 +15,7 @@ const print = require('./helpers/print');
 const getAppNameFromPackage = require('./helpers/getAppNameFromPackage');
 const manageDeployConfig = require('./helpers/manageDeployConfig');
 
-module.exports = () => {
+module.exports = async () => {
   // take the app's name from package.json
   const appName = getAppNameFromPackage();
   console.log(`Using app name: ${appName}`);
@@ -26,8 +26,7 @@ module.exports = () => {
    */
   if (!manageDeployConfig.exists()) {
     console.log('no deploy config; let\'s generate it!');
-    manageDeployConfig.generate();
-
+    await manageDeployConfig.generate();
   }
 
   // validate the deploy config

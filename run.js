@@ -2,4 +2,7 @@
 
 'use strict';
 
-require('./index.js')();
+const result = require('./index.js')();
+result.catch((err) => {
+  console.log(err);
+});
