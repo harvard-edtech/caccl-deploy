@@ -25,6 +25,32 @@ try {
   awsCredentials = {};
 }
 
+async function getTakenCidrBlocks() {
+  const ec2 = new AWS.EC2();
+  const takenBlocks = [];
+  async function fetchBlocks(nextToken) {
+    const params = (nextToken !== undefined)
+      ? { NextToken: nextToken }
+      : {};
+    const vpcResp = await ec2.describeVpcs(params).promise();
+    vpcResp.Vpcs.forEach((vpc) => {
+      vpc.CidrBlockAssociationSet.forEach((cbaSet) => {
+        const truncatedBlock = cbaSet.CidrBlock.slice(
+          0, cbaSet.CidrBlock.lastIndexOf('.')
+        );
+        if (!takenBlocks.includes(truncatedBlock)) {
+          takenBlocks.push(truncatedBlock);
+        }
+      });
+    });
+    if (vpcResp.NextToken !== undefined) {
+      await fetchBlocks(vpcResp.NextToken);
+    }
+  }
+  await fetchBlocks();
+  return takenBlocks;
+}
+
 module.exports = {
 
   configured: () => {
@@ -59,5 +85,22 @@ module.exports = {
       return err;
     }
     return identity.Account;
-   }
+  },
+  suggestCidrBlock: async () => {
+    const takenCidrBlocks = await getTakenCidrBlocks();
+    const possibleCidrBlocks = [...Array(254).keys()].map((i) => {
+      return `10.2.${i}`;
+    });
+    const availableCidrBlocks = possibleCidrBlocks.filter((cb) => {
+      return !takenCidrBlocks.includes(cb);
+    });
+    if (availableCidrBlocks.length) {
+      // return a random pick
+      const randomPick = availableCidrBlocks[
+        Math.floor(Math.random() * availableCidrBlocks.length)
+      ];
+      return `${randomPick}.0/24`;
+    }
+  },
+
 };

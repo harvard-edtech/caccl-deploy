@@ -48,11 +48,11 @@ module.exports = {
     let secretAccessKey;
     let accountId;
     let awsRegion;
-    let cidrBlock;
+    let cidrBlock = '';
 
     if (!aws.configured()) {
       console.log('Looks like you don\'t have the awscli configured...');
-      console.log('You can do this now by visting https://aws.amazon.com/cli/.');
+      console.log('You can do this by visting https://aws.amazon.com/cli/.');
       console.log('Otherwise you may continue by entering your AWS account details manually.');
       print.enterToContinue();
 
@@ -63,13 +63,13 @@ module.exports = {
 
     } else {
 
-      let useProfile;
+      let whichProfile;
       const profiles = aws.getProfileNames();
 
       if (profiles.length === 1) {
-        useProfile = profiles[0];
+        whichProfile = profiles[0];
       } else {
-        while (useProfile === undefined) {
+        while (whichProfile === undefined) {
           console.log('Choose which AWS profile to use:');
           profiles.forEach((profileName, idx) => {
             console.log(`${idx + 1} - ${profileName}`);
@@ -78,14 +78,38 @@ module.exports = {
           if (profiles[profileChoice - 1] === undefined) {
             console.log('Invalid profile choice');
           } else {
-            useProfile = profiles[profileChoice - 1];
+            whichProfile = profiles[profileChoice - 1];
           }
         }
       }
-      console.log(`OK we're going to use the ${useProfile} profile!`);
-      const awsConfig = aws.initConfig(useProfile);
+
+      console.log(`OK we're going to use the ${whichProfile} profile!`);
+      const awsConfig = aws.initConfig(whichProfile);
+
+      console.log('Determining your AWS account id...');
       const accountId = await aws.getAccountId();
-      console.log(`Account: ${accountId}`);
+      console.log(`Looks like your account id is ${accountId}`);
+
+      console.log('The deployment process will create an AWS VPC which needs ');
+      console.log('a network address CIDR block. If you know the CIDR block ');
+      console.log('you would like to use enter it now, otherwise hit Enter ');
+      console.log('and one will be suggested.');
+      cidrBlock = prompt('CIDR Block: ', true);
+
+      while (cidrBlock.trim() === '') {
+        const suggestedCidrBlock = await aws.suggestCidrBlock();
+        if (suggestedCidrBlock === undefined) {
+          console.log('Unable to determine an available cidr block');
+          prompt.enterToContinue();
+          process.exit();
+        }
+        console.log(`It looks like ${suggestedCidrBlock} is available`);
+        const yn = prompt('[y]/n: ', true);
+        if (yn.trim().toLowerCase() !== 'n') {
+          cidrBlock = suggestedCidrBlock;
+        }
+      }
+      console.log(`Great! We'll use ${cidrBlock} for your VPC.`);
     }
   },
   validate: () => {

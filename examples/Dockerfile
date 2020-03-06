@@ -1,7 +1,7 @@
 FROM node:10-alpine3.9
 
 # set this up top; it will persist into the container
-# envorionment *and* prevent dev dependencies from installing
+# environment *and* prevent dev dependencies from installing
 ENV NODE_ENV production
 
 # copy the app code into the /app path

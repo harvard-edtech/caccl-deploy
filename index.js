@@ -16,14 +16,13 @@ const getAppNameFromPackage = require('./helpers/getAppNameFromPackage');
 const manageDeployConfig = require('./helpers/manageDeployConfig');
 
 module.exports = async () => {
+
   // take the app's name from package.json
   const appName = getAppNameFromPackage();
   console.log(`Using app name: ${appName}`);
   print.enterToContinue();
 
-  /**
-   * confirm config/deployConfig.js exists or create it
-   */
+  // confirm config/deployConfig.js exists or create it
   if (!manageDeployConfig.exists()) {
     console.log('no deploy config; let\'s generate it!');
     await manageDeployConfig.generate();
@@ -36,7 +35,8 @@ module.exports = async () => {
 
   const argv = process.argv.slice(2);
 
-  // allow other cdk commands for advanced users
+  // by default we run `cdk deploy` but also allow
+  // other cdk commands for advanced users
   const cdkCommand = (argv.length)
     ? `cdk ${argv.join(' ')}`
     : 'cdk list'; // deploy'
@@ -45,16 +45,15 @@ module.exports = async () => {
   const cdkExecPath = path.resolve('./node_modules/caccl-deploy');
 
   /**
-   * prefix commands with an env var so that caccl-deploy can find the
-   * app's deploy config and potentially run a docker build command
+   * prefix commands with an env var so that caccl-deploy process
+   * can find the app's base directory, and from there the deployConfig.js
+   * The process might also need to run a docker build command
    */
   const appBaseEnvVar = `export APP_BASE_DIR=${process.cwd()}`;
 
   console.log(`About to execute ${cdkCommand}`);
   print.enterToContinue();
-  try {
-    exec(`${appBaseEnvVar}; ${cdkCommand} `, { cwd: cdkExecPath });
-  } catch (err) {
 
-  }
+  // TODO: do we need to try/catch here, or does `run.js` deal with that?
+  exec(`${appBaseEnvVar}; ${cdkCommand} `, { cwd: cdkExecPath });
 }

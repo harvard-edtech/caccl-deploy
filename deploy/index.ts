@@ -22,8 +22,6 @@ const stack = new CacclAppStack(app, appStackName, {
   logRetentionDays: deployConfig.logRetentionDays,
 });
 
-Tag.add(stack, 'Project', 'MH');
-Tag.add(stack, 'OU', 'DE');
 Tag.add(stack, 'CacclAppStack', appStackName);
 
 app.synth();
