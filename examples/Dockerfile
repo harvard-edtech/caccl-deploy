@@ -1,4 +1,4 @@
-FROM node:10-alpine3.9
+FROM node:10-alpine
 
 # set this up top; it will persist into the container
 # environment *and* prevent dev dependencies from installing

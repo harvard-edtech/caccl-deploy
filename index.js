@@ -1,7 +1,8 @@
+/* eslint-disable no-console */
+
 const { execSync } = require('child_process');
 const path = require('path');
-
-/* eslint-disable no-console */
+const argv = require('minimist')(process.argv.slice(2));
 
 // Prep command executor
 const exec = (command, options = {}) => {
@@ -12,48 +13,45 @@ const exec = (command, options = {}) => {
 
 // Import helpers
 const print = require('./helpers/print');
-const getAppNameFromPackage = require('./helpers/getAppNameFromPackage');
-const manageDeployConfig = require('./helpers/manageDeployConfig');
+const DeployConfigManager = require('./helpers/manageDeployConfig');
+
+let { appDir } = argv;
 
 module.exports = async () => {
-
-  // take the app's name from package.json
-  const appName = getAppNameFromPackage();
-  console.log(`Using app name: ${appName}`);
-  print.enterToContinue();
+  if (appDir === undefined) {
+    // IMPORTANT: this assumes that PWD is the root directory of the calling app
+    appDir = process.env.PWD;
+  }
+  const configManager = new DeployConfigManager(appDir);
 
   // confirm config/deployConfig.js exists or create it
-  if (!manageDeployConfig.exists()) {
-    console.log('no deploy config; let\'s generate it!');
-    await manageDeployConfig.generate();
+  if (!configManager.exists()) {
+    console.log(`no deploy config found at ${configManager.deployConfigPath}`);
+    console.log("We can generate one now, but you'll need several bits of information, ");
+    console.log('including AWS and LTI client and consumer credentials, as well as ');
+    console.log('the ARN identifier of an AWS Certificate Manager SSL certificate.');
+    print.enterToContinue();
+    await configManager.generate();
   }
 
   // validate the deploy config
-  if (!manageDeployConfig.validate()) {
+  if (!configManager.validate()) {
     console.log('deployConfig.js is invalid!');
   }
 
-  const argv = process.argv.slice(2);
-
   // by default we run `cdk deploy` but also allow
   // other cdk commands for advanced users
-  const cdkCommand = (argv.length)
-    ? `cdk ${argv.join(' ')}`
-    : 'cdk list'; // deploy'
+  const cdkCommand = argv._.length ? `cdk ${argv._.join(' ')}` : 'cdk list'; // deploy'
 
   // cdk commands must be exec'd in the caccl-deploy package directory
-  const cdkExecPath = path.resolve('./node_modules/caccl-deploy');
-
-  /**
-   * prefix commands with an env var so that caccl-deploy process
-   * can find the app's base directory, and from there the deployConfig.js
-   * The process might also need to run a docker build command
-   */
-  const appBaseEnvVar = `export APP_BASE_DIR=${process.cwd()}`;
+  const cdkExecPath = path.join(appDir, 'node_modules/caccl-deploy');
 
   console.log(`About to execute ${cdkCommand}`);
   print.enterToContinue();
 
+  const envCopy = Object.assign({}, process.env);
+  envCopy.APP_DIR = appDir;
+
   // TODO: do we need to try/catch here, or does `run.js` deal with that?
-  exec(`${appBaseEnvVar}; ${cdkCommand} `, { cwd: cdkExecPath });
-}
+  exec(cdkCommand, { env: envCopy, cwd: cdkExecPath });
+};

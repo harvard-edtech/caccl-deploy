@@ -3,20 +3,16 @@
 const W = process.stdout.columns;
 
 const leftBuffer = (message, padding) => {
-  return (Math.floor(W / 2) - padding - Math.ceil(message.length / 2));
+  return Math.floor(W / 2) - padding - Math.ceil(message.length / 2);
 };
 
 const rightBuffer = (message, padding) => {
-  return (Math.ceil(W / 2) - padding - Math.floor(message.length / 2));
+  return Math.ceil(W / 2) - padding - Math.floor(message.length / 2);
 };
 
 const surroundWithBuffer = (str, border) => {
   return (
-    border
-    + ' '.repeat(leftBuffer(str, border.length))
-    + str
-    + ' '.repeat(rightBuffer(str, border.length))
-    + border
+    border + ' '.repeat(leftBuffer(str, border.length)) + str + ' '.repeat(rightBuffer(str, border.length)) + border
   );
 };
 
@@ -30,13 +26,7 @@ const surroundWithChars = (str, char) => {
   if (str.length === W - 2) {
     return char + str + char;
   }
-  return (
-    char.repeat(leftBuffer(str, 1))
-    + ' '
-    + str
-    + ' '
-    + char.repeat(rightBuffer(str, 1))
-  );
+  return char.repeat(leftBuffer(str, 1)) + ' ' + str + ' ' + char.repeat(rightBuffer(str, 1));
 };
 
 let prompt;
@@ -86,10 +76,7 @@ module.exports = {
     prompt = promptInstance;
   },
   enterToContinue: () => {
-    const res = prompt(
-      surroundWithChars('enter to continue, ctrl+c to quit', '\u257C'),
-      true
-    );
+    const res = prompt(surroundWithChars('enter to continue, ctrl+c to quit', '\u257C'), true);
     if (res === null) {
       process.exit(0);
     }
