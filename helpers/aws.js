@@ -2,6 +2,7 @@
 const untilidfy = require('untildify');
 const SharedIniFile = require('aws-sdk/lib/shared-ini').iniLoader;
 
+// this will be assigned the sdk module if it loads/imports successfully
 let AWS;
 let awsProfiles;
 let awsCredentials;
@@ -29,15 +30,11 @@ async function getTakenCidrBlocks() {
   const ec2 = new AWS.EC2();
   const takenBlocks = [];
   async function fetchBlocks(nextToken) {
-    const params = (nextToken !== undefined)
-      ? { NextToken: nextToken }
-      : {};
+    const params = nextToken !== undefined ? { NextToken: nextToken } : {};
     const vpcResp = await ec2.describeVpcs(params).promise();
     vpcResp.Vpcs.forEach((vpc) => {
       vpc.CidrBlockAssociationSet.forEach((cbaSet) => {
-        const truncatedBlock = cbaSet.CidrBlock.slice(
-          0, cbaSet.CidrBlock.lastIndexOf('.')
-        );
+        const truncatedBlock = cbaSet.CidrBlock.slice(0, cbaSet.CidrBlock.lastIndexOf('.'));
         if (!takenBlocks.includes(truncatedBlock)) {
           takenBlocks.push(truncatedBlock);
         }
@@ -52,7 +49,6 @@ async function getTakenCidrBlocks() {
 }
 
 module.exports = {
-
   configured: () => {
     // existence of profiles == credentials have been configured
     return Object.keys(awsCredentials).length > 0;
@@ -63,7 +59,7 @@ module.exports = {
   },
 
   initConfig: (profileName) => {
-    const creds = new AWS.SharedIniFileCredentials({profile: profileName});
+    const creds = new AWS.SharedIniFileCredentials({ profile: profileName });
     /**
      * depending on the user's environment/setup the profile keys can either be
      * just the profile name or the profile name prefixed with 'profile' :p
@@ -96,11 +92,8 @@ module.exports = {
     });
     if (availableCidrBlocks.length) {
       // return a random pick
-      const randomPick = availableCidrBlocks[
-        Math.floor(Math.random() * availableCidrBlocks.length)
-      ];
+      const randomPick = availableCidrBlocks[Math.floor(Math.random() * availableCidrBlocks.length)];
       return `${randomPick}.0/24`;
     }
   },
-
 };

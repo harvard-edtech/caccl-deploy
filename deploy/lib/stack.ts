@@ -1,66 +1,90 @@
-import { Stack, Construct } from '@aws-cdk/core';
-import { VpcConstruct } from './vpc';
-import { AlbConstruct } from './alb';
-import { EcsConstruct } from './ecs';
+import { Stack, Construct, StackProps } from '@aws-cdk/core';
+import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
+import { Cluster } from '@aws-cdk/aws-ecs';
+import { CacclService } from './service';
+import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
+import { CacclLoadBalancer } from './lb';
+import { CacclDocDb } from './docdb';
 
-export interface CacclAppStackProps {
-  readonly cidrBlock: string;
-  readonly certificateArn: string;
-  readonly appName: string;
-  readonly appHost?: string;
-  readonly appImage?: string;
-  readonly appBuildPath?: string;
-  readonly appEnvironment?: { [key: string]: string; };
-  readonly proxyImage?: string;
-  readonly proxyEnvironment?: { [key: string]: string; };
-  readonly taskCpu?: number;
-  readonly taskMemoryLimit?: number;
-  readonly logRetentionDays?: number;
+export interface CacclDocDbOptions {
+  instanceType: string;
 }
 
-export class CacclAppStack extends Stack {
-  constructor(scope: Construct, id: string, props: CacclAppStackProps) {
-    super(scope, id);
+export interface CacclDeployStackProps extends StackProps {
+  vpcId?: string;
+  cidrBlock?: string;
+  maxAzs?: number;
+  certificateArn: string;
+  ecsClusterName?: string;
+  taskDefProps: CacclTaskDefProps;
+  taskCount: number;
+  docDbOptions?: CacclDocDbOptions;
+}
 
-    const {
-      cidrBlock,
-      certificateArn,
-      appName,
-      appHost,
-      appImage,
-      appBuildPath,
-      appEnvironment,
-      proxyImage,
-      proxyEnvironment,
-      taskCpu = 512,
-      taskMemoryLimit = 1024,
-      logRetentionDays = 90,
-    } = props;
+export class CacclDeployStack extends Stack {
+  constructor(scope: Construct, id: string, props: CacclDeployStackProps) {
+    super(scope, id, props as StackProps);
 
-    // network stuff
-    const vpcConstruct = new VpcConstruct(this, 'Vpc', { cidrBlock });
+    let vpc;
+    let cluster;
 
-    const ecsConstruct = new EcsConstruct(this, 'Ecs', {
-      vpc: vpcConstruct.vpc,
-      securityGroup: vpcConstruct.securityGroup,
-      appName,
-      appImage,
-      appBuildPath,
-      appEnvironment,
-      proxyImage,
-      proxyEnvironment,
-      taskCpu,
-      taskMemoryLimit,
-      logRetentionDays,
-    })
+    if (props.vpcId !== undefined) {
+      vpc = Vpc.fromLookup(this, 'Vpc', {
+        vpcId: props.vpcId,
+      }) as Vpc;
+    } else if (props.cidrBlock !== undefined) {
+      vpc = new Vpc(this, 'Vpc', {
+        cidr: props.cidrBlock,
+        maxAzs: props.maxAzs || 2,
+      });
+    } else {
+      throw new Error('deployConfig must define either cidrBlock or vpcId');
+    }
 
-    // application load balancer; the app(s) will attach themselves as
-    // "targets" of the https listener
-    const albConstruct = new AlbConstruct(this, 'LoadBalancer', {
-      certificateArn,
-      vpc: vpcConstruct.vpc,
-      securityGroup: vpcConstruct.securityGroup,
-      loadBalancerTarget: ecsConstruct.loadBalancerTarget,
+    if (props.ecsClusterName !== undefined) {
+      cluster = Cluster.fromClusterAttributes(this, 'Cluster', {
+        vpc,
+        clusterName: props.ecsClusterName,
+        securityGroups: [],
+      }) as Cluster;
+    } else {
+      cluster = new Cluster(this, 'Cluster', {
+        clusterName: props.stackName,
+        containerInsights: true,
+        vpc,
+      });
+    }
+
+    const sg = new SecurityGroup(this, 'SecurityGroup', {
+      allowAllOutbound: true,
+      vpc,
     });
+
+		const taskDef = new CacclTaskDef(this, 'TaskDef', props.taskDefProps);
+
+    const service = new CacclService(this, 'EcsService', {
+      sg,
+      cluster,
+      taskDef: taskDef,
+      taskCount: props.taskCount,
+    });
+
+    new CacclLoadBalancer(this, 'LoadBalancer', {
+      certificateArn: props.certificateArn,
+      loadBalancerTarget: service.loadBalancerTarget,
+      vpc,
+      sg,
+    });
+
+    if (props.docDbOptions !== undefined) {
+      const {
+        instanceType,
+      } = props.docDbOptions;
+
+      new CacclDocDb(this, 'DocDb', {
+        instanceType,
+        vpc,
+      });
+    }
   }
 }
