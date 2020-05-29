@@ -60,7 +60,10 @@ export class CacclDeployStack extends Stack {
       vpc,
     });
 
-		const taskDef = new CacclTaskDef(this, 'TaskDef', props.taskDefProps);
+		const taskDef = new CacclTaskDef(this, 'TaskDef', {
+      vpcCidrBlock: vpc.vpcCidrBlock,
+      ...props.taskDefProps,
+    });
 
     const service = new CacclService(this, 'EcsService', {
       sg,

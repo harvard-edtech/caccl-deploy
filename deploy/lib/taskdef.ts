@@ -8,6 +8,7 @@ const DEFAULT_PROXY_REPO_NAME = 'hdce/nginx-ssl-proxy';
 export interface CacclTaskDefProps {
   appImage: CacclContainerImageOptions,
   proxyImage?: CacclContainerImageOptions,
+  vpcCidrBlock?: string,
   appEnvironment?: { [key: string]: string };
   taskCpu?: number;
   taskMemoryLimit?: number;
@@ -72,7 +73,10 @@ export class CacclTaskDef extends Construct {
     // this container is the proxy
     this.proxyContainer = new ContainerDefinition(this, 'ProxyContainer', {
       image: proxyContainerImage.image,
-      environment: { APP_PORT: '8080' },
+      environment: {
+        APP_PORT: '8080',
+        VPC_CIDR: props.vpcCidrBlock,
+      },
       essential: true,
       taskDefinition: this.taskDef,
       logging: LogDriver.awsLogs({
