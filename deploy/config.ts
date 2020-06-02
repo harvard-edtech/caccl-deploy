@@ -1,7 +1,6 @@
 import * as path from 'path';
 
 module.exports = () => {
-
   /**
    * this should be set by `index.js` when the calling app execs a deploy command.
    * it identifies the root directory of of the calling app and is needed
@@ -11,7 +10,7 @@ module.exports = () => {
   const appDir = process.env.APP_DIR;
 
   // allow alternative deploy config path
-  let deployConfigPath = process.env.CACCL_DEPLOY_CONFIG
+  let deployConfigPath = process.env.CACCL_DEPLOY_CONFIG;
 
   if (deployConfigPath === undefined) {
     if (appDir === undefined) {

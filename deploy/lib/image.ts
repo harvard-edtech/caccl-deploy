@@ -11,17 +11,12 @@ export interface CacclContainerImageOptions {
 }
 
 export class CacclContainerImage extends Construct {
-
   image: ContainerImage;
 
   constructor(scope: Construct, id: string, props: CacclContainerImageOptions) {
     super(scope, id);
 
-    const {
-      repoName,
-      repoType,
-      buildPath = process.env.APP_DIR,
-    } = props;
+    const { repoName, repoType, buildPath = process.env.APP_DIR } = props;
 
     if (repoName !== undefined) {
       if (repoType === 'ecr') {
@@ -31,18 +26,18 @@ export class CacclContainerImage extends Construct {
         this.image = ContainerImage.fromRegistry(repoName);
       }
     } else if (buildPath !== undefined) {
-			if (!fs.existsSync(path.join(buildPath, 'Dockerfile'))) {
-				console.error(`No Dockerfile found at ${buildPath}`);
-				process.exit(1);
-			}
-			this.image = ContainerImage.fromAsset(buildPath);
+      if (!fs.existsSync(path.join(buildPath, 'Dockerfile'))) {
+        console.error(`No Dockerfile found at ${buildPath}`);
+        process.exit(1);
+      }
+      this.image = ContainerImage.fromAsset(buildPath);
     } else {
       console.error('Missing configuration options for building the app image');
       console.error('At least one of the following must be defined:');
       console.error(' * deployConfig.appImage.repoName');
       console.error(' * deployConfig.appImage.buildPath');
       console.error(' * the $APP_DIR environment variable');
-			process.exit(1);
-		}
+      process.exit(1);
+    }
   }
 }

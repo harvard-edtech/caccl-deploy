@@ -16,12 +16,7 @@ export class CacclService extends Construct {
   constructor(scope: Construct, id: string, props: CacclServiceProps) {
     super(scope, id);
 
-    const {
-      sg,
-      cluster,
-      taskDef,
-      taskCount,
-     } = props;
+    const { sg, cluster, taskDef, taskCount } = props;
 
     const service = new FargateService(this, 'FargateService', {
       cluster,

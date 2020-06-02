@@ -60,7 +60,7 @@ export class CacclDeployStack extends Stack {
       vpc,
     });
 
-		const taskDef = new CacclTaskDef(this, 'TaskDef', {
+    const taskDef = new CacclTaskDef(this, 'TaskDef', {
       vpcCidrBlock: vpc.vpcCidrBlock,
       ...props.taskDefProps,
     });
@@ -80,9 +80,7 @@ export class CacclDeployStack extends Stack {
     });
 
     if (props.docDbOptions !== undefined) {
-      const {
-        instanceType,
-      } = props.docDbOptions;
+      const { instanceType } = props.docDbOptions;
 
       new CacclDocDb(this, 'DocDb', {
         instanceType,
