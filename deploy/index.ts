@@ -24,7 +24,10 @@ const stackProps: CacclDeployStackProps = {
     gitRepoVolume: deployConfig.gitRepoVolume,
   },
   taskCount: deployConfig.taskCount || 1,
-  tags: deployConfig.tags,
+  tags: {
+    caccl_deploy_stack_name: stackName,
+    ...deployConfig.tags,
+  },
   env: {
     account: deployConfig.awsAccountId,
     region: deployConfig.awsRegion,
