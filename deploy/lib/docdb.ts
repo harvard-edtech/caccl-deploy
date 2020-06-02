@@ -12,16 +12,15 @@ export class CacclDocDb extends Construct {
     super(scope, id);
 
     const { vpc } = props;
-    const sg = new SecurityGroup(this, 'DocDbSecurityGroup', { vpc });
+    const bastionSg = new SecurityGroup(this, 'BastionSecurityGroup', { vpc });
+    bastionSg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
 
-    const sshBastion = new BastionHostLinux(this, 'SshBastionHost', {
+    new BastionHostLinux(this, 'SshBastionHost', {
       vpc,
       subnetSelection: { subnetType: SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
-      securityGroup: sg,
+      securityGroup: bastionSg,
     });
-    sg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
-    sg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(27017));
 
     const dbCluster = new DatabaseCluster(this, 'DocDbCluster', {
       masterUser: {
@@ -30,18 +29,11 @@ export class CacclDocDb extends Construct {
       instanceProps: {
         vpc,
         instanceType: new InstanceType(props.instanceType),
-        securityGroup: sg,
         vpcSubnets: {
           subnetType: SubnetType.PRIVATE,
         },
       },
     });
-
-    // this should ensure the cluster is deleted prior to the security group;
-    // otherwise cloudformation will try to delete the security group frist and
-    // end up throwing a dependent resource error
-    dbCluster.node.addDependency(sg);
-    sshBastion.node.addDependency(sg);
 
     new CfnOutput(this, 'DocDbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
