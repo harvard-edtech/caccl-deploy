@@ -1,6 +1,7 @@
 import { Construct, Stack, CfnOutput } from '@aws-cdk/core';
 import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
+import { Secret } from '@aws-cdk/aws-secretsmanager';
 
 export interface CacclDocDbProps {
   instanceType: string;
@@ -8,6 +9,9 @@ export interface CacclDocDbProps {
 }
 
 export class CacclDocDb extends Construct {
+  host: string;
+  passwordSecret: Secret;
+
   constructor(scope: Construct, id: string, props: CacclDocDbProps) {
     super(scope, id);
 
@@ -15,7 +19,7 @@ export class CacclDocDb extends Construct {
     const bastionSg = new SecurityGroup(this, 'BastionSecurityGroup', { vpc });
     bastionSg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
 
-    new BastionHostLinux(this, 'SshBastionHost', {
+    const bastionHost = new BastionHostLinux(this, 'SshBastionHost', {
       vpc,
       subnetSelection: { subnetType: SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
@@ -34,17 +38,22 @@ export class CacclDocDb extends Construct {
         },
       },
     });
+    this.host = `${dbCluster.clusterEndpoint.hostname}:${dbCluster.clusterEndpoint.portAsString()}`;
+    this.passwordSecret = dbCluster.secret as Secret;
 
     new CfnOutput(this, 'DocDbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
-      value: dbCluster.clusterEndpoint.hostname,
+      value: this.host,
     });
 
-    if (dbCluster.secret !== undefined) {
-      new CfnOutput(this, 'DocDbPasswordSecretArn', {
-        exportName: `${Stack.of(this).stackName}-docdb-password-secret-arn`,
-        value: dbCluster.secret.secretArn,
-      });
-    }
+    new CfnOutput(this, 'DocDbPasswordSecretArn', {
+      exportName: `${Stack.of(this).stackName}-docdb-password-secret-arn`,
+      value: this.passwordSecret.secretArn,
+    });
+
+    new CfnOutput(this, 'DocDbBastionHostIp', {
+      exportName: `${Stack.of(this).stackName}-docdb-bastion-host-ip`,
+      value: bastionHost.instancePublicIp,
+    });
   }
 }

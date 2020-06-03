@@ -1,6 +1,6 @@
 import { Construct, Stack, RemovalPolicy } from '@aws-cdk/core';
 import { LogGroup } from '@aws-cdk/aws-logs';
-import { FargateTaskDefinition, LogDriver, ContainerDefinition } from '@aws-cdk/aws-ecs';
+import { FargateTaskDefinition, LogDriver, ContainerDefinition, Secret } from '@aws-cdk/aws-ecs';
 import { CacclContainerImageOptions, CacclContainerImage } from './image';
 import { CacclGitRepoVolumeContainer } from './volumeContainer';
 
@@ -10,7 +10,8 @@ export interface CacclTaskDefProps {
   appImage: CacclContainerImageOptions;
   proxyImage?: CacclContainerImageOptions;
   vpcCidrBlock?: string;
-  appEnvironment?: { [key: string]: string };
+  appEnvironment: { [key: string]: string };
+  appSecrets: { [key: string]: Secret };
   taskCpu?: number;
   taskMemoryLimit?: number;
   logRetentionDays?: number;
@@ -29,7 +30,8 @@ export class CacclTaskDef extends Construct {
     const {
       appImage,
       proxyImage = { repoName: DEFAULT_PROXY_REPO_NAME },
-      appEnvironment = {},
+      appEnvironment,
+      appSecrets,
       taskCpu = 256,
       taskMemoryLimit = 512,
       logRetentionDays = 90,
@@ -58,6 +60,7 @@ export class CacclTaskDef extends Construct {
       taskDefinition: this.taskDef,
       essential: true,
       environment: appEnvironment,
+      secrets: appSecrets,
       logging: LogDriver.awsLogs({
         streamPrefix: 'app',
         logGroup,

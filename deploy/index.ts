@@ -17,7 +17,8 @@ const stackProps: CacclDeployStackProps = {
   taskDefProps: {
     appImage: deployConfig.appImage || {},
     proxyImage: deployConfig.proxyImage,
-    appEnvironment: deployConfig.appEnvironment,
+    appEnvironment: deployConfig.appEnvironment || {},
+    appSecrets: deployConfig.appSecrets || {},
     taskCpu: deployConfig.taskCpu,
     taskMemoryLimit: deployConfig.taskMemoryLimit,
     logRetentionDays: deployConfig.logRetentionDays,

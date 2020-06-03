@@ -1,6 +1,6 @@
 import { Stack, Construct, StackProps } from '@aws-cdk/core';
 import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
-import { Cluster } from '@aws-cdk/aws-ecs';
+import { Cluster, Secret } from '@aws-cdk/aws-ecs';
 import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 import { CacclLoadBalancer } from './lb';
@@ -41,6 +41,21 @@ export class CacclDeployStack extends Stack {
       throw new Error('deployConfig must define either cidrBlock or vpcId');
     }
 
+    /**
+     * create the docdb if needed so we can add it's endpoint url
+     * to the app container's env
+     */
+    if (props.docDbOptions !== undefined) {
+      const { instanceType } = props.docDbOptions;
+      const docdb = new CacclDocDb(this, 'DocDb', {
+        instanceType,
+        vpc,
+      });
+      props.taskDefProps.appEnvironment.MONGO_USER = 'root';
+      props.taskDefProps.appEnvironment.MONGO_HOST = docdb.host;
+      props.taskDefProps.appSecrets.MONGO_PASS = Secret.fromSecretsManager(docdb.passwordSecret);
+    }
+
     if (props.ecsClusterName !== undefined) {
       cluster = Cluster.fromClusterAttributes(this, 'Cluster', {
         vpc,
@@ -78,14 +93,5 @@ export class CacclDeployStack extends Stack {
       vpc,
       sg,
     });
-
-    if (props.docDbOptions !== undefined) {
-      const { instanceType } = props.docDbOptions;
-
-      new CacclDocDb(this, 'DocDb', {
-        instanceType,
-        vpc,
-      });
-    }
   }
 }
