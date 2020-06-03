@@ -33,8 +33,8 @@ export class CacclGitRepoVolumeContainer extends Construct {
 
     this.container = new ContainerDefinition(this, 'GitRepoVolumeContainer', {
       image: ContainerImage.fromRegistry('alpine/git'),
-      entryPoint: ['git clone --branch master $GIT_REPO_URL /var/gitrepo'],
-      command: ['sh', '-c'],
+      command: ['git clone --branch master $GIT_REPO_URL /var/gitrepo'],
+      entryPoint: ['sh', '-c'],
       essential: false,
       taskDefinition: cacclTaskDef.taskDef,
       secrets: {
