@@ -10,7 +10,7 @@ export interface CacclDocDbProps {
 
 export class CacclDocDb extends Construct {
   host: string;
-  passwordSecret: Secret;
+  secret: Secret;
 
   constructor(scope: Construct, id: string, props: CacclDocDbProps) {
     super(scope, id);
@@ -39,16 +39,16 @@ export class CacclDocDb extends Construct {
       },
     });
     this.host = `${dbCluster.clusterEndpoint.hostname}:${dbCluster.clusterEndpoint.portAsString()}`;
-    this.passwordSecret = dbCluster.secret as Secret;
+    this.secret = dbCluster.secret as Secret;
 
     new CfnOutput(this, 'DocDbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
       value: this.host,
     });
 
-    new CfnOutput(this, 'DocDbPasswordSecretArn', {
+    new CfnOutput(this, 'DocDbSecretArn', {
       exportName: `${Stack.of(this).stackName}-docdb-password-secret-arn`,
-      value: this.passwordSecret.secretArn,
+      value: this.secret.secretArn,
     });
 
     new CfnOutput(this, 'DocDbBastionHostIp', {

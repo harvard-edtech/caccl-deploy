@@ -1,6 +1,7 @@
 *.js
 !index.js
 !run.js
+!secrets.js
 !.eslint.js
 !.prettierrc.js
 !jest.config.js

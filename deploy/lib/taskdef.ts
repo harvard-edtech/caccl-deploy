@@ -1,8 +1,9 @@
 import { Construct, Stack, RemovalPolicy } from '@aws-cdk/core';
 import { LogGroup } from '@aws-cdk/aws-logs';
-import { FargateTaskDefinition, LogDriver, ContainerDefinition, Secret } from '@aws-cdk/aws-ecs';
+import { FargateTaskDefinition, LogDriver, ContainerDefinition } from '@aws-cdk/aws-ecs';
 import { CacclContainerImageOptions, CacclContainerImage } from './image';
 import { CacclGitRepoVolumeContainer } from './volumeContainer';
+import { CacclAppEnvironment } from './appEnvironment';
 
 const DEFAULT_PROXY_REPO_NAME = 'hdce/nginx-ssl-proxy';
 
@@ -10,8 +11,7 @@ export interface CacclTaskDefProps {
   appImage: CacclContainerImageOptions;
   proxyImage?: CacclContainerImageOptions;
   vpcCidrBlock?: string;
-  appEnvironment: { [key: string]: string };
-  appSecrets: { [key: string]: Secret };
+  appEnvironment?: CacclAppEnvironment;
   taskCpu?: number;
   taskMemoryLimit?: number;
   logRetentionDays?: number;
@@ -31,7 +31,6 @@ export class CacclTaskDef extends Construct {
       appImage,
       proxyImage = { repoName: DEFAULT_PROXY_REPO_NAME },
       appEnvironment,
-      appSecrets,
       taskCpu = 256,
       taskMemoryLimit = 512,
       logRetentionDays = 90,
@@ -51,16 +50,13 @@ export class CacclTaskDef extends Construct {
 
     const appContainerImage = new CacclContainerImage(this, 'AppImage', appImage);
 
-    appEnvironment.PORT = '8080';
-    appEnvironment.NODE_ENV = 'production';
-
     // this container gets our app
     this.appContainer = new ContainerDefinition(this, 'AppContainer', {
       image: appContainerImage.image,
       taskDefinition: this.taskDef,
       essential: true,
-      environment: appEnvironment,
-      secrets: appSecrets,
+      environment: appEnvironment?.env,
+      secrets: appEnvironment?.secrets,
       logging: LogDriver.awsLogs({
         streamPrefix: 'app',
         logGroup,

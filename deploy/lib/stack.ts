@@ -5,6 +5,7 @@ import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 import { CacclLoadBalancer } from './lb';
 import { CacclDocDb } from './docdb';
+import { CacclAppEnvironment } from './appEnvironment';
 
 export interface CacclDocDbOptions {
   instanceType: string;
@@ -16,6 +17,7 @@ export interface CacclDeployStackProps extends StackProps {
   maxAzs?: number;
   certificateArn: string;
   ecsClusterName?: string;
+  appEnvironment: { [key: string]: string };
   taskDefProps: CacclTaskDefProps;
   taskCount: number;
   docDbOptions?: CacclDocDbOptions;
@@ -41,6 +43,10 @@ export class CacclDeployStack extends Stack {
       throw new Error('deployConfig must define either cidrBlock or vpcId');
     }
 
+    const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
+      envVars: props.appEnvironment,
+    });
+
     /**
      * create the docdb if needed so we can add it's endpoint url
      * to the app container's env
@@ -51,9 +57,9 @@ export class CacclDeployStack extends Stack {
         instanceType,
         vpc,
       });
-      props.taskDefProps.appEnvironment.MONGO_USER = 'root';
-      props.taskDefProps.appEnvironment.MONGO_HOST = docdb.host;
-      props.taskDefProps.appSecrets.MONGO_PASS = Secret.fromSecretsManager(docdb.passwordSecret);
+      appEnv.addEnvironmentVar('MONGO_USER', 'root');
+      appEnv.addEnvironmentVar('MONGO_HOST', docdb.host);
+      appEnv.addSecret('MONGO_PASS', Secret.fromSecretsManager(docdb.secret, 'password'));
     }
 
     if (props.ecsClusterName !== undefined) {
@@ -77,6 +83,7 @@ export class CacclDeployStack extends Stack {
 
     const taskDef = new CacclTaskDef(this, 'TaskDef', {
       vpcCidrBlock: vpc.vpcCidrBlock,
+      appEnvironment: appEnv,
       ...props.taskDefProps,
     });
 

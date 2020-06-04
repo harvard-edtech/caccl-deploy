@@ -14,11 +14,10 @@ const stackProps: CacclDeployStackProps = {
   maxAzs: deployConfig.maxAzs,
   certificateArn: deployConfig.certificateArn,
   ecsClusterName: deployConfig.ecsClusterName,
+  appEnvironment: deployConfig.appEnvironment || {},
   taskDefProps: {
     appImage: deployConfig.appImage || {},
     proxyImage: deployConfig.proxyImage,
-    appEnvironment: deployConfig.appEnvironment || {},
-    appSecrets: deployConfig.appSecrets || {},
     taskCpu: deployConfig.taskCpu,
     taskMemoryLimit: deployConfig.taskMemoryLimit,
     logRetentionDays: deployConfig.logRetentionDays,
