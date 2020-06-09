@@ -59,6 +59,7 @@ export class CacclDeployStack extends Stack {
       });
       appEnv.addEnvironmentVar('MONGO_USER', 'root');
       appEnv.addEnvironmentVar('MONGO_HOST', docdb.host);
+      appEnv.addEnvironmentVar('MONGO_OPTIONS', 'tls=true&tlsAllowInvalidCertificates=true');
       appEnv.addSecret('MONGO_PASS', Secret.fromSecretsManager(docdb.dbPasswordSecret));
     }
 
