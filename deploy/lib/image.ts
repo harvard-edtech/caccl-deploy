@@ -20,7 +20,12 @@ export class CacclContainerImage extends Construct {
 
     if (repoName !== undefined) {
       if (repoType === 'ecr') {
-        const repo = Repository.fromRepositoryName(this, 'ProxyRepo', repoName);
+        let repo;
+        if (repoName.toLowerCase().startsWith('arn:aws')) {
+          repo = Repository.fromRepositoryArn(this, 'ContainerImageRepo', repoName);
+        } else {
+          repo = Repository.fromRepositoryName(this, 'ContainerImageRepo', repoName);
+        }
         this.image = ContainerImage.fromEcrRepository(repo);
       } else {
         this.image = ContainerImage.fromRegistry(repoName);

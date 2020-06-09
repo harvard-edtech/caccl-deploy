@@ -1,4 +1,4 @@
-import { Construct, Stack, CfnOutput } from '@aws-cdk/core';
+import { Construct, Stack, CfnOutput, SecretValue } from '@aws-cdk/core';
 import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
@@ -10,7 +10,7 @@ export interface CacclDocDbProps {
 
 export class CacclDocDb extends Construct {
   host: string;
-  secret: Secret;
+  dbPasswordSecret: Secret;
 
   constructor(scope: Construct, id: string, props: CacclDocDbProps) {
     super(scope, id);
@@ -26,9 +26,17 @@ export class CacclDocDb extends Construct {
       securityGroup: bastionSg,
     });
 
+    this.dbPasswordSecret = new Secret(this, 'DbPasswordSecret', {
+      description: `docdb master user password for ${Stack.of(this).stackName}`,
+      generateSecretString: {
+        passwordLength: 16,
+        excludePunctuation: true,
+      },
+    });
     const dbCluster = new DatabaseCluster(this, 'DocDbCluster', {
       masterUser: {
         username: 'root',
+        password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
       },
       instanceProps: {
         vpc,
@@ -39,7 +47,6 @@ export class CacclDocDb extends Construct {
       },
     });
     this.host = `${dbCluster.clusterEndpoint.hostname}:${dbCluster.clusterEndpoint.portAsString()}`;
-    this.secret = dbCluster.secret as Secret;
 
     new CfnOutput(this, 'DocDbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
@@ -48,7 +55,7 @@ export class CacclDocDb extends Construct {
 
     new CfnOutput(this, 'DocDbSecretArn', {
       exportName: `${Stack.of(this).stackName}-docdb-password-secret-arn`,
-      value: this.secret.secretArn,
+      value: this.dbPasswordSecret.secretArn,
     });
 
     new CfnOutput(this, 'DocDbBastionHostIp', {
