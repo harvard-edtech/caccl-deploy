@@ -15,10 +15,12 @@ const prompt = (title, notRequired) => {
 };
 print.savePrompt(prompt);
 
-class DeployConfigManager {
-  constructor(appDir) {
-    this.appDir = appDir;
-    this.deployConfigPath = path.join(appDir, 'config/deployConfig.js');
+class ConfigManager {
+  constructor() {
+    this.deployConfigPath =
+      process.env.CACCL_DEPLOY_CONFIG !== undefined
+        ? process.env.CACCL_DEPLOY_CONFIG
+        : path.join(process.env.PWD, 'config/deployConfig.js');
   }
 
   getAppNameFromPackage() {
@@ -175,4 +177,4 @@ class DeployConfigManager {
   }
 }
 
-module.exports = DeployConfigManager;
+module.exports = ConfigManager;

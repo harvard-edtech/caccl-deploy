@@ -13,16 +13,10 @@ const exec = (command, options = {}) => {
 
 // Import helpers
 const print = require('./helpers/print');
-const DeployConfigManager = require('./helpers/manageDeployConfig');
-
-let { appDir } = argv;
+const ConfigManager = require('./helpers/configManager');
 
 module.exports = async () => {
-  if (appDir === undefined) {
-    // IMPORTANT: this assumes that PWD is the root directory of the calling app
-    appDir = process.env.PWD;
-  }
-  const configManager = new DeployConfigManager(appDir);
+  const configManager = new ConfigManager();
 
   // confirm config/deployConfig.js exists or create it
   if (!configManager.exists()) {
@@ -44,13 +38,15 @@ module.exports = async () => {
   const cdkCommand = argv._.length ? `cdk ${argv._.join(' ')}` : 'cdk list'; // deploy'
 
   // cdk commands must be exec'd in the caccl-deploy package directory
-  const cdkExecPath = path.join(appDir, 'node_modules/caccl-deploy');
+  // use of $PWD should be a safe assumption so long as we're being called via `npm run ...`
+  const cdkExecPath = path.join(process.env.PWD, 'node_modules/caccl-deploy');
 
   console.log(`About to execute ${cdkCommand}`);
   print.enterToContinue();
 
+  // tell the cdk exec environment where our calling app lives
   const envCopy = Object.assign({}, process.env);
-  envCopy.APP_DIR = appDir;
+  envCopy.APP_DIR = process.env.PWD;
 
   // TODO: do we need to try/catch here, or does `run.js` deal with that?
   exec(cdkCommand, { env: envCopy, cwd: cdkExecPath });

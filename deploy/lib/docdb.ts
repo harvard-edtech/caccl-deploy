@@ -33,6 +33,7 @@ export class CacclDocDb extends Construct {
         excludePunctuation: true,
       },
     });
+
     const dbCluster = new DatabaseCluster(this, 'DocDbCluster', {
       masterUser: {
         username: 'root',

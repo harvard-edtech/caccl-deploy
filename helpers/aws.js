@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 const untilidfy = require('untildify');
-const SharedIniFile = require('aws-sdk/lib/shared-ini').iniLoader;
 
 // this will be assigned the sdk module if it loads/imports successfully
 let AWS;
+let SharedIniFile;
 let awsProfiles;
 let awsCredentials;
 
@@ -11,6 +11,7 @@ try {
   // this fails with an ENOENT error if ~/.aws/credentials doesn't exist
   // also it needs to be loaded prior to the profile loading below
   AWS = require('aws-sdk');
+  SharedIniFile = require('aws-sdk/lib/shared-ini').iniLoader;
 
   // if we get here it's ok to try loading the profiles/creds
   awsCredentials = SharedIniFile.loadFrom();
@@ -95,5 +96,51 @@ module.exports = {
       const randomPick = availableCidrBlocks[Math.floor(Math.random() * availableCidrBlocks.length)];
       return `${randomPick}.0/24`;
     }
+  },
+  createSecret: async (secretName, secretValue, secretDescription, tags) => {
+    const sm = new AWS.SecretsManager();
+    const params = {
+      Name: secretName,
+      SecretString: secretValue,
+    };
+
+    if (secretDescription !== undefined) {
+      params.Description = secretDescription;
+    }
+
+    if (tags !== undefined) {
+      params.Tags = Object.entries(tags).map(([k, v]) => {
+        return { Key: k, Value: v };
+      });
+    }
+
+    let resp;
+    try {
+      resp = await sm.createSecret(params).promise();
+    } catch (err) {
+      console.error(err);
+      return err;
+    }
+    return resp;
+  },
+  updateSecret: async (secretArn, secretValue, secretDescription) => {
+    const sm = new AWS.SecretsManager();
+    const params = {
+      SecretId: secretArn,
+      SecretString: secretValue,
+    };
+
+    if (secretDescription !== undefined) {
+      params.Description = secretDescription;
+    }
+
+    let resp;
+    try {
+      resp = await sm.createSecret(params).promise();
+    } catch (err) {
+      console.error(err);
+      return err;
+    }
+    return resp;
   },
 };
