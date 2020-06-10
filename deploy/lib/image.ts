@@ -25,7 +25,8 @@ export class CacclContainerImage extends Construct {
         let repoArn;
 
         const splitArn = repoName.split(':');
-        if (splitArn.length === 7) { // tag is appended to arn
+        if (splitArn.length === 7) {
+          // tag is appended to arn
           repoArn = splitArn.slice(0, 6).join(':');
           repoTag = splitArn.slice(-1).join();
         } else {

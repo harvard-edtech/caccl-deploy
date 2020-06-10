@@ -14,12 +14,12 @@ export class CacclAppEnvironment extends Construct {
 
     this.env = {
       PORT: '8080',
-      NODE_ENV: 'production'
+      NODE_ENV: 'production',
     };
 
     this.secrets = {};
     Object.entries(props.envVars).forEach(([name, value]) => {
-      if (name.toLowerCase().startsWith('arn:aws:secretsmanager')) {
+      if (value.toLowerCase().startsWith('arn:aws:secretsmanager')) {
         const varSecret = Secret.fromSecretArn(this, `${name}SecretArn`, value) as Secret;
         this.secrets[name] = EcsSecret.fromSecretsManager(varSecret);
       } else {
