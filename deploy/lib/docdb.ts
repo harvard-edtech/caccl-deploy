@@ -49,6 +49,10 @@ export class CacclDocDb extends Construct {
     });
     this.host = `${dbCluster.clusterEndpoint.hostname}:${dbCluster.clusterEndpoint.portAsString()}`;
 
+    // add an ingress rule to the db security group
+    const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', dbCluster.securityGroupId)
+    dbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(27017));
+
     new CfnOutput(this, 'DocDbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
       value: this.host,
