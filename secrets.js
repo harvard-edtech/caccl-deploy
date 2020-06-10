@@ -36,8 +36,10 @@ Object.entries(config.appEnvironment || {}).forEach(async ([key, valueOrArn]) =>
     if (update.trim().toLowerCase() === 'y') {
       const newValue = prompt('Enter new value: ');
       const secret = await aws.updateSecret(valueOrArn, newValue);
-      console.log(`SecretsManager entry for ${key} created with id ${secret.ARN}`);
+      console.log(`SecretsManager entry ${secret.ARN} updated`);
       updatedEnv[key] = secret.ARN;
+    } else {
+      updatedEnv[key] = valueOrArn;
     }
     // value exists
   } else if (valueOrArn.length > 0) {
@@ -46,7 +48,7 @@ Object.entries(config.appEnvironment || {}).forEach(async ([key, valueOrArn]) =>
       const secretName = `${secretNamePrefix}/${key}`;
       const description = `${key} value for ${config.appName}`;
       const secret = await aws.createSecret(secretName, valueOrArn, description, config.tags);
-      console.log(`SecretsManager entry ${secret.ARN} updated`);
+      console.log(`SecretsManager entry for ${key} created with id ${secret.ARN}`);
       updatedEnv[key] = secret.ARN;
     }
     // no value
