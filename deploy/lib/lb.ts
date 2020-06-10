@@ -64,6 +64,7 @@ export class CacclLoadBalancer extends Construct {
       protocol: ApplicationProtocol.HTTPS,
       // setting this duration value enables the lb stickiness; 1 day is the default
       stickinessCookieDuration: Duration.seconds(86400),
+      deregistrationDelay: Duration.seconds(30),
       targetType: TargetType.IP,
       targets: [loadBalancerTarget],
     });
