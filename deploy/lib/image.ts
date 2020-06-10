@@ -20,8 +20,20 @@ export class CacclContainerImage extends Construct {
 
     if (repoName !== undefined) {
       if (repoType === 'ecr') {
-        const repo = Repository.fromRepositoryName(this, 'ContainerImageRepo', repoName);
-        this.image = ContainerImage.fromEcrRepository(repo);
+        // need to split any tag off the end of the arn
+        let repoTag = 'latest';
+        let repoArn;
+
+        const splitArn = repoName.split(':');
+        if (splitArn.length === 7) { // tag is appended to arn
+          repoArn = splitArn.slice(0, 6).join(':');
+          repoTag = splitArn.slice(-1).join();
+        } else {
+          repoArn = repoName;
+        }
+
+        const repo = Repository.fromRepositoryArn(this, 'ContainerImageRepo', repoArn);
+        this.image = ContainerImage.fromEcrRepository(repo, repoTag);
       } else {
         this.image = ContainerImage.fromRegistry(repoName);
       }
