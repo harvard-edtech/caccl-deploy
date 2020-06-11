@@ -136,7 +136,7 @@ module.exports = {
 
     let resp;
     try {
-      resp = await sm.createSecret(params).promise();
+      resp = await sm.updateSecret(params).promise();
     } catch (err) {
       console.error(err);
       return err;
