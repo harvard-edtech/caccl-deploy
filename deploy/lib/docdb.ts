@@ -5,6 +5,7 @@ import { Secret } from '@aws-cdk/aws-secretsmanager';
 
 export interface CacclDocDbProps {
   instanceType: string;
+  instanceCount: number;
   vpc: Vpc;
 }
 
@@ -39,6 +40,7 @@ export class CacclDocDb extends Construct {
         username: 'root',
         password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
       },
+      instances: props.instanceCount,
       instanceProps: {
         vpc,
         instanceType: new InstanceType(props.instanceType),

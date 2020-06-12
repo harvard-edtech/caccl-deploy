@@ -9,6 +9,7 @@ import { CacclAppEnvironment } from './appEnvironment';
 
 export interface CacclDocDbOptions {
   instanceType: string;
+  instanceCount: number;
 }
 
 export interface CacclDeployStackProps extends StackProps {
@@ -52,9 +53,8 @@ export class CacclDeployStack extends Stack {
      * to the app container's env
      */
     if (props.docDbOptions !== undefined) {
-      const { instanceType } = props.docDbOptions;
       const docdb = new CacclDocDb(this, 'DocDb', {
-        instanceType,
+        ...props.docDbOptions,
         vpc,
       });
       appEnv.addEnvironmentVar('MONGO_USER', 'root');
