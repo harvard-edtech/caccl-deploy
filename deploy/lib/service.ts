@@ -12,13 +12,14 @@ export interface CacclServiceProps {
 
 export class CacclService extends Construct {
   loadBalancerTarget: IEcsLoadBalancerTarget;
+  ecsService: FargateService;
 
   constructor(scope: Construct, id: string, props: CacclServiceProps) {
     super(scope, id);
 
     const { sg, cluster, taskDef, taskCount } = props;
 
-    const service = new FargateService(this, 'FargateService', {
+    this.ecsService = new FargateService(this, 'FargateService', {
       cluster,
       securityGroup: sg,
       taskDefinition: taskDef.taskDef,
@@ -29,7 +30,7 @@ export class CacclService extends Construct {
     });
 
     // this is the thing that gets handed off to the load balancer
-    this.loadBalancerTarget = service.loadBalancerTarget({
+    this.loadBalancerTarget = this.ecsService.loadBalancerTarget({
       containerName: taskDef.proxyContainer.containerName,
       containerPort: 443,
     });

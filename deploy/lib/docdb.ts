@@ -12,6 +12,7 @@ export interface CacclDocDbProps {
 export class CacclDocDb extends Construct {
   host: string;
   dbPasswordSecret: Secret;
+  dbCluster: DatabaseCluster;
 
   constructor(scope: Construct, id: string, props: CacclDocDbProps) {
     super(scope, id);
@@ -35,7 +36,7 @@ export class CacclDocDb extends Construct {
       },
     });
 
-    const dbCluster = new DatabaseCluster(this, 'DocDbCluster', {
+    this.dbCluster = new DatabaseCluster(this, 'DocDbCluster', {
       masterUser: {
         username: 'root',
         password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
@@ -49,10 +50,10 @@ export class CacclDocDb extends Construct {
         },
       },
     });
-    this.host = `${dbCluster.clusterEndpoint.hostname}:${dbCluster.clusterEndpoint.portAsString()}`;
+    this.host = `${this.dbCluster.clusterEndpoint.hostname}:${this.dbCluster.clusterEndpoint.portAsString()}`;
 
     // add an ingress rule to the db security group
-    const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', dbCluster.securityGroupId);
+    const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', this.dbCluster.securityGroupId);
     dbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(27017));
 
     new CfnOutput(this, 'DocDbClusterEndpoint', {

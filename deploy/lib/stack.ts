@@ -6,6 +6,7 @@ import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 import { CacclLoadBalancer } from './lb';
 import { CacclDocDb } from './docdb';
 import { CacclAppEnvironment } from './appEnvironment';
+import { CacclMonitoring } from './dashboard';
 
 export interface CacclDocDbOptions {
   instanceType: string;
@@ -52,8 +53,9 @@ export class CacclDeployStack extends Stack {
      * create the docdb if needed so we can add it's endpoint url
      * to the app container's env
      */
+    let docdb = null;
     if (props.docDbOptions !== undefined) {
-      const docdb = new CacclDocDb(this, 'DocDb', {
+      docdb = new CacclDocDb(this, 'DocDb', {
         ...props.docDbOptions,
         vpc,
       });
@@ -95,11 +97,20 @@ export class CacclDeployStack extends Stack {
       taskCount: props.taskCount,
     });
 
-    new CacclLoadBalancer(this, 'LoadBalancer', {
+    const loadBalancer = new CacclLoadBalancer(this, 'LoadBalancer', {
       certificateArn: props.certificateArn,
       loadBalancerTarget: service.loadBalancerTarget,
       vpc,
       sg,
     });
+
+    const dashboard = new CacclMonitoring(this, 'Dashboard', {
+      loadBalancer: loadBalancer.loadBalancer,
+      service: service.ecsService,
+    });
+
+    if (docdb !== null) {
+      dashboard.addDocDbSection(docdb.dbCluster);
+    }
   }
 }
