@@ -16,16 +16,18 @@ export class CacclMonitoring extends Construct {
     super(scope, id);
 
     const stackName = Stack.of(this).stackName;
+    const region = Stack.of(this).region;
+
     const dashboardName = `${stackName}-metrics`;
     this.dashboard = new Dashboard(this, 'Dashboard', { dashboardName });
 
-    const dashboardLink = `https://console.aws.amazon.com/cloudwatch/home?region=${this.dashboard.stack.region}#dashboards:name=${dashboardName}`;
+    const dashboardLink = `https://console.aws.amazon.com/cloudwatch/home?region=${region}#dashboards:name=${dashboardName}`;
 
     new CfnOutput(this, 'DashboardLink', {
       value: dashboardLink,
     });
 
-    const lbLink = `https://console.aws.amazon.com/ec2/v2/home?region=${this.dashboard.stack.region}#LoadBalancers:tag:caccl_deploy_stack_name=${stackName}`;
+    const lbLink = `https://console.aws.amazon.com/ec2/v2/home?region=${region}#LoadBalancers:tag:caccl_deploy_stack_name=${stackName}`;
 
     this.dashboard.addWidgets(
       new TextWidget({
@@ -60,7 +62,7 @@ export class CacclMonitoring extends Construct {
     });
     this.dashboard.addWidgets(...httpCodeWidgets);
 
-    const serviceLink = `https://console.aws.amazon.com/ecs/home?region=${this.dashboard.stack.region}#/clusters/${props.service.cluster.clusterName}/services/${props.service.serviceName}/details`;
+    const serviceLink = `https://console.aws.amazon.com/ecs/home?region=${region}#/clusters/${props.service.cluster.clusterName}/services/${props.service.serviceName}/details`;
 
     this.dashboard.addWidgets(
       new TextWidget({
@@ -117,10 +119,24 @@ export class CacclMonitoring extends Construct {
         height: 6,
       }),
     );
+
+    const makeLogLink = (logGroup: string) => {
+      const escapedLg = logGroup.split('/').join('$252F');
+      return `* [${logGroup}](https://console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${escapedLg})`;
+    };
+
+    this.dashboard.addWidgets(
+      new TextWidget({
+        markdown: ['### Logs\n', makeLogLink(`/${stackName}/app`), makeLogLink(`/${stackName}/proxy`)].join('\n'),
+        width: 24,
+        height: 6,
+      }),
+    );
   }
 
   addDocDbSection(docdb: DatabaseCluster): void {
-    const dbLink = `https://console.aws.amazon.com/docdb/home?region=${this.dashboard.stack.stackName}#cluster-details/${docdb.clusterIdentifier}`;
+    const region = Stack.of(this).region;
+    const dbLink = `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${docdb.clusterIdentifier}`;
     this.dashboard.addWidgets(
       new TextWidget({
         markdown: `### DocDB Cluster: [${docdb.clusterIdentifier}](${dbLink})`,
