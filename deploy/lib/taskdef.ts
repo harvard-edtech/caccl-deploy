@@ -41,13 +41,6 @@ export class CacclTaskDef extends Construct {
       memoryLimitMiB: taskMemoryLimit,
     });
 
-    // create a log group for the containers
-    const logGroup = new LogGroup(this, 'LogGroup', {
-      logGroupName: `/${Stack.of(this).stackName}-logs`,
-      removalPolicy: RemovalPolicy.DESTROY,
-      retention: logRetentionDays,
-    });
-
     const appContainerImage = new CacclContainerImage(this, 'AppImage', appImage);
 
     // this container gets our app
@@ -59,7 +52,11 @@ export class CacclTaskDef extends Construct {
       secrets: appEnvironment?.secrets,
       logging: LogDriver.awsLogs({
         streamPrefix: 'app',
-        logGroup,
+        logGroup: new LogGroup(this, 'AppLogGroup', {
+          logGroupName: `/${Stack.of(this).stackName}/app`,
+          removalPolicy: RemovalPolicy.DESTROY,
+          retention: logRetentionDays,
+        }),
       }),
     });
 
@@ -94,7 +91,11 @@ export class CacclTaskDef extends Construct {
       taskDefinition: this.taskDef,
       logging: LogDriver.awsLogs({
         streamPrefix: 'proxy',
-        logGroup,
+        logGroup: new LogGroup(this, 'ProxyLogGroup', {
+          logGroupName: `/${Stack.of(this).stackName}/proxy`,
+          removalPolicy: RemovalPolicy.DESTROY,
+          retention: logRetentionDays,
+        }),
       }),
     });
 
@@ -130,6 +131,5 @@ export class CacclTaskDef extends Construct {
         cacclTaskDef: this,
       });
     }
-    this.logGroup = logGroup;
   }
 }
