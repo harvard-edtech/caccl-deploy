@@ -15,6 +15,7 @@ const stackProps: CacclDeployStackProps = {
   certificateArn: deployConfig.certificateArn,
   ecsClusterName: deployConfig.ecsClusterName,
   appEnvironment: deployConfig.appEnvironment || {},
+  notifications: deployConfig.notifications || {},
   taskDefProps: {
     appImage: deployConfig.appImage || {},
     proxyImage: deployConfig.proxyImage,

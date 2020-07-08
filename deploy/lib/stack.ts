@@ -6,6 +6,7 @@ import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 import { CacclLoadBalancer } from './lb';
 import { CacclDocDb } from './docdb';
 import { CacclAppEnvironment } from './appEnvironment';
+import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclMonitoring } from './dashboard';
 
 export interface CacclDocDbOptions {
@@ -23,6 +24,7 @@ export interface CacclDeployStackProps extends StackProps {
   taskDefProps: CacclTaskDefProps;
   taskCount: number;
   docDbOptions?: CacclDocDbOptions;
+  notifications: CacclNotificationsProps;
 }
 
 export class CacclDeployStack extends Stack {
@@ -103,6 +105,8 @@ export class CacclDeployStack extends Stack {
       vpc,
       sg,
     });
+
+    new CacclNotifications(this, 'Notifications', props.notifications);
 
     const dashboard = new CacclMonitoring(this, 'Dashboard', {
       loadBalancer: loadBalancer.loadBalancer,
