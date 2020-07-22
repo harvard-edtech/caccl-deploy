@@ -1,6 +1,6 @@
-import { Construct } from '@aws-cdk/core';
 import { Secret as EcsSecret } from '@aws-cdk/aws-ecs';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
+import { Construct } from '@aws-cdk/core';
 
 export interface CacclAppEnvioronmentProps {
   envVars: { [key: string]: string };
@@ -8,7 +8,9 @@ export interface CacclAppEnvioronmentProps {
 
 export class CacclAppEnvironment extends Construct {
   env: { [key: string]: string };
+
   secrets: { [key: string]: EcsSecret };
+
   constructor(scope: Construct, id: string, props: CacclAppEnvioronmentProps) {
     super(scope, id);
 

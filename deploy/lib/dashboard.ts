@@ -1,8 +1,8 @@
-import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
 import { Dashboard, GraphWidget, TextWidget, Metric, Unit } from '@aws-cdk/aws-cloudwatch';
-import { ApplicationLoadBalancer, HttpCodeTarget } from '@aws-cdk/aws-elasticloadbalancingv2';
-import { FargateService } from '@aws-cdk/aws-ecs';
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
+import { FargateService } from '@aws-cdk/aws-ecs';
+import { HttpCodeTarget, ApplicationLoadBalancer } from '@aws-cdk/aws-elasticloadbalancingv2';
+import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
 
 export interface CacclMonitoringProps {
   loadBalancer: ApplicationLoadBalancer;
@@ -15,8 +15,8 @@ export class CacclMonitoring extends Construct {
   constructor(scope: Construct, id: string, props: CacclMonitoringProps) {
     super(scope, id);
 
-    const stackName = Stack.of(this).stackName;
-    const region = Stack.of(this).region;
+    const { stackName } = Stack.of(this);
+    const { region } = Stack.of(this);
 
     const dashboardName = `${stackName}-metrics`;
     this.dashboard = new Dashboard(this, 'Dashboard', { dashboardName });
@@ -135,7 +135,7 @@ export class CacclMonitoring extends Construct {
   }
 
   addDocDbSection(docdb: DatabaseCluster): void {
-    const region = Stack.of(this).region;
+    const { region } = Stack.of(this);
     const dbLink = `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${docdb.clusterIdentifier}`;
     this.dashboard.addWidgets(
       new TextWidget({

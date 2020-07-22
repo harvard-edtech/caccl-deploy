@@ -1,9 +1,9 @@
-import { Construct, Stack, RemovalPolicy } from '@aws-cdk/core';
-import { LogGroup } from '@aws-cdk/aws-logs';
 import { FargateTaskDefinition, LogDriver, ContainerDefinition } from '@aws-cdk/aws-ecs';
+import { LogGroup } from '@aws-cdk/aws-logs';
+import { Construct, Stack, RemovalPolicy } from '@aws-cdk/core';
+import { CacclAppEnvironment } from './appEnvironment';
 import { CacclContainerImageOptions, CacclContainerImage } from './image';
 import { CacclGitRepoVolumeContainer } from './volumeContainer';
-import { CacclAppEnvironment } from './appEnvironment';
 
 const DEFAULT_PROXY_REPO_NAME = 'hdce/nginx-ssl-proxy';
 
@@ -20,8 +20,11 @@ export interface CacclTaskDefProps {
 
 export class CacclTaskDef extends Construct {
   taskDef: FargateTaskDefinition;
+
   proxyContainer: ContainerDefinition;
+
   appContainer: ContainerDefinition;
+
   logGroup: LogGroup;
 
   constructor(scope: Construct, id: string, props: CacclTaskDefProps) {

@@ -21,7 +21,7 @@ module.exports = () => {
   }
 
   try {
-    return require(deployConfigPath);
+    return require(deployConfigPath); // eslint-disable-line import/no-dynamic-require, global-require
   } catch (err) {
     console.log(`Failed loading deploy config from ${deployConfigPath}: ${err.message}`);
     process.exit(1);

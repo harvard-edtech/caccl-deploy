@@ -5,6 +5,7 @@ import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const deployConfig = require('./config')();
+
 const stackName = `CacclDeploy-${deployConfig.appName}`;
 
 const stackProps: CacclDeployStackProps = {

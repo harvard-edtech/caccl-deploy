@@ -1,7 +1,7 @@
-import { Construct, Stack, CfnOutput, SecretValue } from '@aws-cdk/core';
-import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
+import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
+import { Construct, Stack, CfnOutput, SecretValue } from '@aws-cdk/core';
 
 export interface CacclDocDbProps {
   instanceType: string;
@@ -11,7 +11,9 @@ export interface CacclDocDbProps {
 
 export class CacclDocDb extends Construct {
   host: string;
+
   dbPasswordSecret: Secret;
+
   dbCluster: DatabaseCluster;
 
   constructor(scope: Construct, id: string, props: CacclDocDbProps) {

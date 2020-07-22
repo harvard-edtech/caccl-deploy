@@ -1,4 +1,3 @@
-import { Construct } from '@aws-cdk/core';
 import {
   ContainerDefinition,
   ContainerImage,
@@ -6,6 +5,7 @@ import {
   ContainerDependencyCondition,
 } from '@aws-cdk/aws-ecs';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
+import { Construct } from '@aws-cdk/core';
 import { CacclTaskDef } from './taskdef';
 
 const VOLUME_NAME = 'gitrepovolume';

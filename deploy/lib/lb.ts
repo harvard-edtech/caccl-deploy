@@ -1,4 +1,3 @@
-import { Construct, Duration } from '@aws-cdk/core';
 import { SecurityGroup, Vpc, Peer, Port } from '@aws-cdk/aws-ec2';
 import { IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import {
@@ -9,6 +8,7 @@ import {
   ApplicationTargetGroup,
   TargetType,
 } from '@aws-cdk/aws-elasticloadbalancingv2';
+import { Construct, Duration } from '@aws-cdk/core';
 
 export interface CacclLoadBalancerProps {
   sg: SecurityGroup;
@@ -19,6 +19,7 @@ export interface CacclLoadBalancerProps {
 
 export class CacclLoadBalancer extends Construct {
   loadBalancer: ApplicationLoadBalancer;
+
   httpsListener: ApplicationListener;
 
   constructor(scope: Construct, id: string, props: CacclLoadBalancerProps) {

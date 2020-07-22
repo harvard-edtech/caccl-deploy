@@ -1,8 +1,8 @@
-import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+import * as path from 'path';
+import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
 import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
 import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
-import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
-import path = require('path');
+import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
 
 export interface CacclNotificationsProps {
   email?: [string];
@@ -11,7 +11,9 @@ export interface CacclNotificationsProps {
 
 export class CacclNotifications extends Construct {
   topic: Topic;
+
   subscriptions: Subscription[];
+
   constructor(scope: Construct, id: string, props: CacclNotificationsProps) {
     super(scope, id);
 
@@ -21,11 +23,11 @@ export class CacclNotifications extends Construct {
       displayName: `${Stack.of(this).stackName}-notifications`,
     });
 
-    email.forEach((email, idx) => {
+    email.forEach((emailAddr, idx) => {
       new Subscription(this, `email-subscription-${idx}`, {
         topic: this.topic,
         protocol: SubscriptionProtocol.EMAIL,
-        endpoint: email,
+        endpoint: emailAddr,
       });
     });
 

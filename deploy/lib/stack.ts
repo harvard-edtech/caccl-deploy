@@ -1,13 +1,13 @@
-import { Stack, Construct, StackProps } from '@aws-cdk/core';
 import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
 import { Cluster, Secret } from '@aws-cdk/aws-ecs';
+import { Stack, Construct, StackProps } from '@aws-cdk/core';
+import { CacclAppEnvironment } from './appEnvironment';
+import { CacclMonitoring } from './dashboard';
+import { CacclDocDb } from './docdb';
+import { CacclLoadBalancer } from './lb';
+import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
-import { CacclLoadBalancer } from './lb';
-import { CacclDocDb } from './docdb';
-import { CacclAppEnvironment } from './appEnvironment';
-import { CacclNotifications, CacclNotificationsProps } from './notify';
-import { CacclMonitoring } from './dashboard';
 
 export interface CacclDocDbOptions {
   instanceType: string;
@@ -95,7 +95,7 @@ export class CacclDeployStack extends Stack {
     const service = new CacclService(this, 'EcsService', {
       sg,
       cluster,
-      taskDef: taskDef,
+      taskDef,
       taskCount: props.taskCount,
     });
 

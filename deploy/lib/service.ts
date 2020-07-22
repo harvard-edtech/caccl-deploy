@@ -1,6 +1,6 @@
-import { Construct, Stack } from '@aws-cdk/core';
 import { SecurityGroup } from '@aws-cdk/aws-ec2';
 import { Cluster, FargateService, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
+import { Construct, Stack } from '@aws-cdk/core';
 import { CacclTaskDef } from './taskdef';
 
 export interface CacclServiceProps {
@@ -12,6 +12,7 @@ export interface CacclServiceProps {
 
 export class CacclService extends Construct {
   loadBalancerTarget: IEcsLoadBalancerTarget;
+
   ecsService: FargateService;
 
   constructor(scope: Construct, id: string, props: CacclServiceProps) {

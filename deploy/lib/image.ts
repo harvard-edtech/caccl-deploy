@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Construct } from '@aws-cdk/core';
-import { ContainerImage } from '@aws-cdk/aws-ecs';
 import { Repository } from '@aws-cdk/aws-ecr';
+import { ContainerImage } from '@aws-cdk/aws-ecs';
+import { Construct } from '@aws-cdk/core';
 
 export interface CacclContainerImageOptions {
   repoName?: string;
