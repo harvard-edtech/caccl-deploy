@@ -4,7 +4,6 @@
 !secrets.js
 !.eslint.js
 !.prettierrc.js
-!jest.config.js
 !helpers/*.js
 *.d.ts
 node_modules
