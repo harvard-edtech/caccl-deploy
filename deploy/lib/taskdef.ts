@@ -131,7 +131,8 @@ export class CacclTaskDef extends Construct {
       new CacclGitRepoVolumeContainer(this, 'VolumeContainer', {
         repoUrlSecretArn,
         appContainerPath,
-        cacclTaskDef: this,
+        taskDefinition: this.taskDef,
+        appContainer: this.appContainer,
       });
     }
   }

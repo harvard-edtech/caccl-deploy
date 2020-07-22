@@ -71,9 +71,6 @@ module.exports = {
 
     'import/extensions': ['warn', "never"],
 
-    // adding this temporarily until i can deal with a circular dep
-    'import/no-cycle': 0,
-
     // Cannot import from the same module twice
     'no-duplicate-imports': ['error'],
 
