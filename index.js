@@ -2,7 +2,10 @@
 
 const { execSync } = require('child_process');
 const path = require('path');
-const argv = require('minimist')(process.argv.slice(2));
+const minimist = require('minimist');
+const print = require('./helpers/print');
+const ConfigManager = require('./helpers/configManager');
+const aws = require('./helpers/aws');
 
 // Prep command executor
 const exec = (command, options = {}) => {
@@ -11,42 +14,72 @@ const exec = (command, options = {}) => {
   return execSync(command, options);
 };
 
-// Import helpers
-const print = require('./helpers/print');
-const ConfigManager = require('./helpers/configManager');
-
 module.exports = async () => {
-  const configManager = new ConfigManager();
 
-  // confirm config/deployConfig.js exists or create it
-  if (!configManager.exists()) {
-    console.log(`no deploy config found at ${configManager.deployConfigPath}`);
-    console.log("We can generate one now, but you'll need several bits of information, ");
-    console.log('including AWS and LTI client and consumer credentials, as well as ');
-    console.log('the ARN identifier of an AWS Certificate Manager SSL certificate.');
-    print.enterToContinue();
-    await configManager.generate();
+  const args = minimist(process.argv.slice(2), {
+    // allow use of config in an alternate location
+    string: [ 'config' ],
+    alias: { c: 'config' },
+  });
+
+  let configManager;
+  let cdkExecPath;
+
+  // First see if we were provided an explicit config path.
+  // This is most likely when using as a stand-alone tool
+  if (args.config !== undefined) {
+    configManager = new ConfigManager(args.config);
+    if (!configManager.exists()) {
+      throw new Error(`No config file at '${args.config}'`);
+    }
+    cdkExecPath = process.env.PWD;
+  } else {
+    // Otherwise assume we're running as an installed package
+    // in the context of an app to deploy
+    configPath = path.join(process.env.PWD, 'config/deployConfig.js')
+    configManager = new ConfigManager(configPath);
+
+    // confirm config/deployConfig.js exists or create it
+    if (!configManager.exists()) {
+      console.log(`no deploy config found at ${configPath}`);
+      console.log("We can generate one now, but you'll need several bits of information, ");
+      console.log('including AWS and LTI client and consumer credentials, as well as ');
+      console.log('the ARN identifier of an AWS Certificate Manager SSL certificate.');
+      print.enterToContinue();
+      await configManager.generate();
+    }
+    // exec cdk in the caccl-deploy directory; $PWD is safe so long as we're called via `npm run ...`
+    cdkExecPath = path.join(process.env.PWD, 'node_modules/caccl-deploy');
+
   }
 
   // validate the deploy config
   if (!configManager.validate()) {
-    console.log('deployConfig.js is invalid!');
+    throw new Error('deployConfig.js is invalid!');
   }
 
-  // by default we run `cdk deploy` but also allow
-  // other cdk commands for advanced users
-  const cdkCommand = argv._.length ? `cdk ${argv._.join(' ')}` : 'cdk list'; // deploy'
+  // by default run `cdk deploy` but also allow other cdk commands for advanced users
+  const cdkCommand = args._.length ? `cdk ${args._.join(' ')}` : 'cdk list'; // deploy'
 
-  // cdk commands must be exec'd in the caccl-deploy package directory
-  // use of $PWD should be a safe assumption so long as we're being called via `npm run ...`
-  const cdkExecPath = path.join(process.env.PWD, 'node_modules/caccl-deploy');
+  // for adding some environment variables
+  const envCopy = Object.assign({}, process.env);
+
+  // tell the cdk app where our config is
+  envCopy.CACCL_DEPLOY_CONFIG = configManager.configPath;
+
+  // tell the cdk exec environment where our calling app lives
+  envCopy.APP_DIR = process.env.PWD;
+
+  // set a default for the aws account id. This value comes from an AWS STS API call to get the
+  // caller identity. It will not override an `awsAccountId` setting in the `deployConfig.js`
+  envCopy.AWS_ACCOUNT_ID = await aws.getAccountId();
+
+  if (envCopy.AWS_REGION === undefined) {
+    envCopy.AWS_REGION = 'us-east-1';
+  }
 
   console.log(`About to execute ${cdkCommand}`);
   print.enterToContinue();
-
-  // tell the cdk exec environment where our calling app lives
-  const envCopy = Object.assign({}, process.env);
-  envCopy.APP_DIR = process.env.PWD;
 
   // TODO: do we need to try/catch here, or does `run.js` deal with that?
   exec(cdkCommand, { env: envCopy, cwd: cdkExecPath });

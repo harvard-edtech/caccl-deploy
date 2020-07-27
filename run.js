@@ -2,7 +2,7 @@
 
 'use strict';
 
-const result = require('./index.js')(...process.argv.slice(2));
+const result = require('./index.js')();
 result.catch((err) => {
   console.log(err);
 });

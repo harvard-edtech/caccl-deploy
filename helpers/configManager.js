@@ -16,11 +16,8 @@ const prompt = (title, notRequired) => {
 print.savePrompt(prompt);
 
 class ConfigManager {
-  constructor() {
-    this.deployConfigPath =
-      process.env.CACCL_DEPLOY_CONFIG !== undefined
-        ? process.env.CACCL_DEPLOY_CONFIG
-        : path.join(process.env.PWD, 'config/deployConfig.js');
+  constructor(configPath) {
+    this.configPath = configPath;
   }
 
   getAppNameFromPackage() {
@@ -34,15 +31,15 @@ class ConfigManager {
   }
 
   exists() {
-    return fs.existsSync(this.deployConfigPath);
+    return fs.existsSync(this.configPath);
   }
 
   load() {
-    return require(this.deployConfigPath);
+    return require(this.configPath);
   }
 
   save(config) {
-    fs.writeFileSync(this.deployConfigPath, JSON.stringify(config, null, 2));
+    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
   }
 
   validate() {
@@ -169,7 +166,7 @@ class ConfigManager {
         },
       };
 
-      console.log(`About to write your deploy configuration to ${this.deployConfigPath}`);
+      console.log(`About to write your deploy configuration to ${this.configPath}`);
       console.log(JSON.stringify(config, null, 2));
       print.enterToContinue();
       this.save(config);

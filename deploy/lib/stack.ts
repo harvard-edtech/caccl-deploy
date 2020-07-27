@@ -17,7 +17,7 @@ export interface CacclDocDbOptions {
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
   cidrBlock?: string;
-  maxAzs?: number;
+  maxAzs: number;
   certificateArn: string;
   ecsClusterName?: string;
   appEnvironment: { [key: string]: string };
@@ -41,7 +41,7 @@ export class CacclDeployStack extends Stack {
     } else if (props.cidrBlock !== undefined) {
       vpc = new Vpc(this, 'Vpc', {
         cidr: props.cidrBlock,
-        maxAzs: props.maxAzs || 2,
+        maxAzs: props.maxAzs,
       });
     } else {
       throw new Error('deployConfig must define either cidrBlock or vpcId');

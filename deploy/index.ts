@@ -12,7 +12,7 @@ const stackProps: CacclDeployStackProps = {
   stackName,
   vpcId: deployConfig.vpcId,
   cidrBlock: deployConfig.cidrBlock,
-  maxAzs: deployConfig.maxAzs,
+  maxAzs: deployConfig.maxAzs || 2,
   certificateArn: deployConfig.certificateArn,
   ecsClusterName: deployConfig.ecsClusterName,
   appEnvironment: deployConfig.appEnvironment || {},
@@ -31,8 +31,8 @@ const stackProps: CacclDeployStackProps = {
     ...deployConfig.tags,
   },
   env: {
-    account: deployConfig.awsAccountId,
-    region: deployConfig.awsRegion,
+    account: deployConfig.awsAccountId || process.env.AWS_ACCOUNT_ID,
+    region: deployConfig.awsRegion || process.env.AWS_REGION,
   },
 };
 
