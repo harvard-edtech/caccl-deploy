@@ -1,7 +1,7 @@
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
 import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
-import { Construct, Stack, CfnOutput, SecretValue } from '@aws-cdk/core';
+import { Construct, Stack, CfnOutput, SecretValue, Duration } from '@aws-cdk/core';
 
 export interface CacclDocDbProps {
   instanceType: string;
@@ -50,6 +50,9 @@ export class CacclDocDb extends Construct {
         vpcSubnets: {
           subnetType: SubnetType.PRIVATE,
         },
+      },
+      backup: {
+        retention: Duration.days(14),
       },
     });
     this.host = `${this.dbCluster.clusterEndpoint.hostname}:${this.dbCluster.clusterEndpoint.portAsString()}`;
