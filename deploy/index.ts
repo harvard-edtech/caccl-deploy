@@ -17,6 +17,7 @@ const stackProps: CacclDeployStackProps = {
   ecsClusterName: deployConfig.ecsClusterName,
   appEnvironment: deployConfig.appEnvironment || {},
   notifications: deployConfig.notifications || {},
+  loadBalancerLogBucket: deployConfig.loadBalancerLogBucket,
   taskDefProps: {
     appImage: deployConfig.appImage || {},
     proxyImage: deployConfig.proxyImage,

@@ -8,13 +8,15 @@ import {
   ApplicationTargetGroup,
   TargetType,
 } from '@aws-cdk/aws-elasticloadbalancingv2';
-import { Construct, Duration } from '@aws-cdk/core';
+import { Bucket } from '@aws-cdk/aws-s3';
+import { Construct, Duration, Stack } from '@aws-cdk/core';
 
 export interface CacclLoadBalancerProps {
   sg: SecurityGroup;
   vpc: Vpc;
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
+  loadBalancerLogBucket?: string;
 }
 
 export class CacclLoadBalancer extends Construct {
@@ -25,13 +27,19 @@ export class CacclLoadBalancer extends Construct {
   constructor(scope: Construct, id: string, props: CacclLoadBalancerProps) {
     super(scope, id);
 
-    const { sg, vpc, certificateArn, loadBalancerTarget } = props;
+    const { sg, vpc, certificateArn, loadBalancerTarget, loadBalancerLogBucket } = props;
 
     this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
       securityGroup: sg,
       internetFacing: true,
     });
+
+    if (loadBalancerLogBucket !== undefined) {
+      const bucket = Bucket.fromBucketName(this, 'AlbLogBucket', loadBalancerLogBucket);
+      const objPrefix = Stack.of(this).stackName;
+      this.loadBalancer.logAccessLogs(bucket, objPrefix);
+    }
 
     new CfnListener(this, 'HttpRedirect', {
       loadBalancerArn: this.loadBalancer.loadBalancerArn,
