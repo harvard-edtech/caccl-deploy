@@ -3,8 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const promptSync = require('prompt-sync')();
-const aws = require('./aws');
 const print = require('./print');
+const aws = require('./aws');
 
 const prompt = (title, notRequired) => {
   const val = promptSync(title);

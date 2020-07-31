@@ -4,8 +4,8 @@ const { execSync } = require('child_process');
 const path = require('path');
 const minimist = require('minimist');
 const print = require('./helpers/print');
-const ConfigManager = require('./helpers/configManager');
 const aws = require('./helpers/aws');
+const ConfigManager = require('./helpers/configManager');
 
 // Prep command executor
 const exec = (command, options = {}) => {
@@ -18,12 +18,19 @@ module.exports = async () => {
 
   const args = minimist(process.argv.slice(2), {
     // allow use of config in an alternate location
-    string: [ 'config' ],
-    alias: { c: 'config' },
+    string: [ 'config', 'profile' ],
+    alias: { c: 'config', p: 'profile' },
   });
 
   let configManager;
   let cdkExecPath;
+  let cdkProfileOption = '';
+
+  // set the AWS api module to use a specified profile
+  if (args.profile !== undefined) {
+    aws.initProfile(args.profile);
+    cdkProfileOption = `--profile ${args.profile}`;
+  }
 
   // First see if we were provided an explicit config path.
   // This is most likely when using as a stand-alone tool
@@ -59,7 +66,9 @@ module.exports = async () => {
   }
 
   // by default run `cdk deploy` but also allow other cdk commands for advanced users
-  const cdkCommand = args._.length ? `cdk ${args._.join(' ')}` : 'cdk list'; // deploy'
+  const cdkCommand = args._.length
+    ? `cdk ${args._.join(' ')} ${cdkProfileOption}`
+    : `cdk list ${cdkProfileOption}`; // deploy'
 
   // for adding some environment variables
   const envCopy = Object.assign({}, process.env);

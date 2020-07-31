@@ -1,52 +1,24 @@
 /* eslint-disable no-console */
 const untilidfy = require('untildify');
+const AWS = require('aws-sdk');
+const SharedIniFile = require('aws-sdk/lib/shared-ini').iniLoader;
 
-// this will be assigned the sdk module if it loads/imports successfully
-let AWS;
-let SharedIniFile;
 let awsProfiles;
 let awsCredentials;
 
 try {
-  // this fails with an ENOENT error if ~/.aws/credentials doesn't exist
-  // also it needs to be loaded prior to the profile loading below
-  AWS = require('aws-sdk');
-  SharedIniFile = require('aws-sdk/lib/shared-ini').iniLoader;
-
-  // if we get here it's ok to try loading the profiles/creds
+  // try loading the profiles/creds
   awsCredentials = SharedIniFile.loadFrom();
   awsProfiles = SharedIniFile.loadFrom({
     filename: untilidfy('~/.aws/config'),
   });
 } catch (err) {
-  // ingore if error is from failed credentials loading
+  // ingore if error is due to missing credentials;
   if (err.code !== 'ENOENT' || !err.message.includes('.aws/credentials')) {
     throw err;
   }
   awsProfiles = {};
   awsCredentials = {};
-}
-
-async function getTakenCidrBlocks() {
-  const ec2 = new AWS.EC2();
-  const takenBlocks = [];
-  async function fetchBlocks(nextToken) {
-    const params = nextToken !== undefined ? { NextToken: nextToken } : {};
-    const vpcResp = await ec2.describeVpcs(params).promise();
-    vpcResp.Vpcs.forEach((vpc) => {
-      vpc.CidrBlockAssociationSet.forEach((cbaSet) => {
-        const truncatedBlock = cbaSet.CidrBlock.slice(0, cbaSet.CidrBlock.lastIndexOf('.'));
-        if (!takenBlocks.includes(truncatedBlock)) {
-          takenBlocks.push(truncatedBlock);
-        }
-      });
-    });
-    if (vpcResp.NextToken !== undefined) {
-      await fetchBlocks(vpcResp.NextToken);
-    }
-  }
-  await fetchBlocks();
-  return takenBlocks;
 }
 
 module.exports = {
@@ -59,19 +31,35 @@ module.exports = {
     return Object.keys(awsCredentials);
   },
 
-  initConfig: (profileName) => {
-    const creds = new AWS.SharedIniFileCredentials({ profile: profileName });
+  initProfile: (profileName) => {
+    if (awsCredentials[profileName] === undefined) {
+      throw new Error(`Tried to init a non-existent profile: ${profileName}`);
+    }
+
+    const profileCreds = awsCredentials[profileName];
+
+    const awsConfig = {
+      credentials: new AWS.Credentials({
+        accessKeyId: profileCreds.aws_access_key_id,
+        secretAccessKey: profileCreds.aws_secret_access_key,
+      }),
+      // set a default in case the profile region isn't configured
+      region: process.env. AWS_REGION || 'us-east-1',
+    };
+
     /**
      * depending on the user's environment/setup the profile keys can either be
      * just the profile name or the profile name prefixed with 'profile' :p
      */
     const profileConfig = awsProfiles[profileName] || awsProfiles[`profile ${profileName}`];
-    AWS.config.update({
-      credentials: creds,
-      region: profileConfig.region,
-    });
-    return AWS.config;
+
+    if (profileConfig !== undefined && profileConfig.region !== undefined) {
+      awsConfig.region = profileConfig.region;
+    };
+
+    AWS.config.update(awsConfig);
   },
+
   getAccountId: async () => {
     const sts = new AWS.STS();
     let identity;
@@ -83,6 +71,7 @@ module.exports = {
     }
     return identity.Account;
   },
+
   suggestCidrBlock: async () => {
     const takenCidrBlocks = await getTakenCidrBlocks();
     const possibleCidrBlocks = [...Array(254).keys()].map((i) => {
@@ -97,6 +86,7 @@ module.exports = {
       return `${randomPick}.0/24`;
     }
   },
+
   createSecret: async (secretName, secretValue, secretDescription, tags) => {
     const sm = new AWS.SecretsManager();
     const params = {
@@ -123,6 +113,7 @@ module.exports = {
     }
     return resp;
   },
+
   updateSecret: async (secretArn, secretValue, secretDescription) => {
     const sm = new AWS.SecretsManager();
     const params = {
@@ -144,3 +135,25 @@ module.exports = {
     return resp;
   },
 };
+
+async function getTakenCidrBlocks() {
+	const ec2 = new AWS.EC2();
+	const takenBlocks = [];
+	async function fetchBlocks(nextToken) {
+		const params = nextToken !== undefined ? { NextToken: nextToken } : {};
+		const vpcResp = await ec2.describeVpcs(params).promise();
+		vpcResp.Vpcs.forEach((vpc) => {
+			vpc.CidrBlockAssociationSet.forEach((cbaSet) => {
+				const truncatedBlock = cbaSet.CidrBlock.slice(0, cbaSet.CidrBlock.lastIndexOf('.'));
+				if (!takenBlocks.includes(truncatedBlock)) {
+					takenBlocks.push(truncatedBlock);
+				}
+			});
+		});
+		if (vpcResp.NextToken !== undefined) {
+			await fetchBlocks(vpcResp.NextToken);
+		}
+	}
+	await fetchBlocks();
+	return takenBlocks;
+}
