@@ -31,7 +31,10 @@ export class CacclMonitoring extends Construct {
 
     this.dashboard.addWidgets(
       new TextWidget({
-        markdown: `### Load Balancer: [${props.loadBalancer.loadBalancerName}](${lbLink})`,
+        markdown: [
+          `### Load Balancer: [${props.loadBalancer.loadBalancerName}](${lbLink})`,
+          '[Explanation of Metrics](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html)',
+        ].join(' | '),
         width: 24,
         height: 1,
       }),
@@ -47,6 +50,21 @@ export class CacclMonitoring extends Construct {
       new GraphWidget({
         title: 'TargetResponseTime',
         left: [props.loadBalancer.metricTargetResponseTime()],
+        width: 12,
+        height: 6,
+      }),
+    );
+
+    this.dashboard.addWidgets(
+      new GraphWidget({
+        title: 'NewConnectionCount',
+        left: [props.loadBalancer.metricNewConnectionCount()],
+        width: 12,
+        height: 6,
+      }),
+      new GraphWidget({
+        title: 'ActiveConnectionCount',
+        left: [props.loadBalancer.metricActiveConnectionCount()],
         width: 12,
         height: 6,
       }),
@@ -151,8 +169,8 @@ export class CacclMonitoring extends Construct {
         namespace: 'AWS/DocDB',
         dimensions: {
           DBClusterIdentifier: docdb.clusterIdentifier,
-          ...extraProps,
         },
+        ...extraProps,
       });
       metric.attachTo(docdb);
       return metric;
