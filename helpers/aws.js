@@ -87,6 +87,27 @@ module.exports = {
     }
   },
 
+  secretExists: async (secretName) => {
+    const sm = new AWS.SecretsManager();
+    const params = {
+      Filters: [
+        {
+          Key: 'name',
+          Values: [secretName]
+        }
+      ]
+    };
+
+		let resp;
+		try {
+			resp = await sm.listSecrets(params).promise();
+		} catch (err) {
+			console.error(err);
+			return err;
+    }
+    return resp.SecretList.length > 0;
+  },
+
   createSecret: async (secretName, secretValue, secretDescription, tags) => {
     const sm = new AWS.SecretsManager();
     const params = {
@@ -114,10 +135,10 @@ module.exports = {
     return resp;
   },
 
-  updateSecret: async (secretArn, secretValue, secretDescription) => {
+  updateSecret: async (secretName, secretValue, secretDescription) => {
     const sm = new AWS.SecretsManager();
     const params = {
-      SecretId: secretArn,
+      SecretId: secretName,
       SecretString: secretValue,
     };
 
@@ -137,23 +158,23 @@ module.exports = {
 };
 
 async function getTakenCidrBlocks() {
-	const ec2 = new AWS.EC2();
-	const takenBlocks = [];
-	async function fetchBlocks(nextToken) {
-		const params = nextToken !== undefined ? { NextToken: nextToken } : {};
-		const vpcResp = await ec2.describeVpcs(params).promise();
-		vpcResp.Vpcs.forEach((vpc) => {
-			vpc.CidrBlockAssociationSet.forEach((cbaSet) => {
-				const truncatedBlock = cbaSet.CidrBlock.slice(0, cbaSet.CidrBlock.lastIndexOf('.'));
-				if (!takenBlocks.includes(truncatedBlock)) {
-					takenBlocks.push(truncatedBlock);
-				}
-			});
-		});
-		if (vpcResp.NextToken !== undefined) {
-			await fetchBlocks(vpcResp.NextToken);
-		}
-	}
-	await fetchBlocks();
-	return takenBlocks;
+  const ec2 = new AWS.EC2();
+  const takenBlocks = [];
+  async function fetchBlocks(nextToken) {
+    const params = nextToken !== undefined ? { NextToken: nextToken } : {};
+    const vpcResp = await ec2.describeVpcs(params).promise();
+    vpcResp.Vpcs.forEach((vpc) => {
+      vpc.CidrBlockAssociationSet.forEach((cbaSet) => {
+        const truncatedBlock = cbaSet.CidrBlock.slice(0, cbaSet.CidrBlock.lastIndexOf('.'));
+        if (!takenBlocks.includes(truncatedBlock)) {
+          takenBlocks.push(truncatedBlock);
+        }
+      });
+    });
+    if (vpcResp.NextToken !== undefined) {
+      await fetchBlocks(vpcResp.NextToken);
+    }
+  }
+  await fetchBlocks();
+  return takenBlocks;
 }

@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 
-const { execSync } = require('child_process');
 const path = require('path');
 const minimist = require('minimist');
 const print = require('./helpers/print');
@@ -8,6 +7,7 @@ const aws = require('./helpers/aws');
 const ConfigManager = require('./helpers/configManager');
 
 // Prep command executor
+const { execSync } = require('child_process');
 const exec = (command, options = {}) => {
   options.stdio = 'inherit';
   console.log(command);
