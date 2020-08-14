@@ -44,8 +44,6 @@ if (deployConfig.docDb) {
   };
 }
 
-console.log(stackProps);
-
 const app = new App();
 new CacclDeployStack(app, stackName, stackProps);
 
