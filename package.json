@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "cdk": "cdk"
+    "deploy": "node run.js",
+    "secrets": "node secrets.js"
   },
   "devDependencies": {
     "@types/node": "14.0.27",

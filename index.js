@@ -19,7 +19,8 @@ module.exports = async () => {
   const args = minimist(process.argv.slice(2), {
     // allow use of config in an alternate location
     string: [ 'config', 'profile' ],
-    alias: { c: 'config', p: 'profile' },
+    boolean: [ 'yes' ],
+    alias: { c: 'config', p: 'profile', y: 'yes' },
   });
 
   let configManager;
@@ -66,9 +67,13 @@ module.exports = async () => {
   }
 
   // by default run `cdk deploy` but also allow other cdk commands for advanced users
-  const cdkCommand = args._.length
+  let cdkCommand = args._.length
     ? `cdk ${args._.join(' ')} ${cdkProfileOption}`
     : `cdk list ${cdkProfileOption}`; // deploy'
+
+  if (cdkCommand.includes('cdk deploy') && args.yes) {
+    cdkCommand = `${cdkCommand} --require-approval=never`
+  }
 
   // for adding some environment variables
   const envCopy = Object.assign({}, process.env);
@@ -88,7 +93,7 @@ module.exports = async () => {
   }
 
   console.log(`About to execute ${cdkCommand}`);
-  print.enterToContinue();
+  if (! args.yes) print.enterToContinue();
 
   // TODO: do we need to try/catch here, or does `run.js` deal with that?
   exec(cdkCommand, { env: envCopy, cwd: cdkExecPath });
