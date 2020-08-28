@@ -1,6 +1,6 @@
 import { FargateTaskDefinition, LogDriver, ContainerDefinition } from '@aws-cdk/aws-ecs';
 import { LogGroup } from '@aws-cdk/aws-logs';
-import { Construct, Stack, RemovalPolicy } from '@aws-cdk/core';
+import { Construct, Stack, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
 import { CacclAppEnvironment } from './appEnvironment';
 import { CacclContainerImageOptions, CacclContainerImage } from './image';
 import { CacclGitRepoVolumeContainer } from './volumeContainer';
@@ -105,6 +105,12 @@ export class CacclTaskDef extends Construct {
     this.proxyContainer.addPortMappings({
       containerPort: 443,
       hostPort: 443,
+    });
+
+    new CfnOutput(this, 'TaskDefinitionArn', {
+      exportName: `${Stack.of(this).stackName}-task-def-name`,
+      // "family" is synonymous with "name", or at least aws frequently treats it that way
+      value: this.taskDef.family,
     });
 
     /**
