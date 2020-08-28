@@ -4,6 +4,7 @@ const path = require('path');
 const minimist = require('minimist');
 const print = require('./helpers/print');
 const aws = require('./helpers/aws');
+const version = require('./helpers/version');
 const ConfigManager = require('./helpers/configManager');
 
 // Prep command executor
@@ -77,6 +78,9 @@ module.exports = async () => {
 
   // for adding some environment variables
   const envCopy = Object.assign({}, process.env);
+
+  // tell the cdk app what version it's being built with
+  envCopy.CACCL_DEPLOY_VERSION = version();
 
   // tell the cdk app where our config is
   envCopy.CACCL_DEPLOY_CONFIG = configManager.configPath;

@@ -1,11 +1,12 @@
-#!/usr/bin/env node
+/* eslint-disable @typescript-eslint/no-var-requires */
+
 import 'source-map-support/register';
-import { App } from '@aws-cdk/core';
+import { App, CfnOutput } from '@aws-cdk/core';
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const deployConfig = require('./config')();
 
+const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION || '';
 const stackName = `CacclDeploy-${deployConfig.appName}`;
 
 const stackProps: CacclDeployStackProps = {
@@ -28,6 +29,7 @@ const stackProps: CacclDeployStackProps = {
   },
   taskCount: deployConfig.taskCount || 1,
   tags: {
+    caccl_deploy_version: cacclDeployVersion,
     caccl_deploy_stack_name: stackName,
     ...deployConfig.tags,
   },
@@ -45,6 +47,11 @@ if (deployConfig.docDb) {
 }
 
 const app = new App();
-new CacclDeployStack(app, stackName, stackProps);
+const stack = new CacclDeployStack(app, stackName, stackProps);
+
+new CfnOutput(stack, 'CacclDeployVersion', {
+  exportName: `${stackName}-caccl-deploy-version`,
+  value: cacclDeployVersion,
+});
 
 app.synth();
