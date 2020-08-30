@@ -108,11 +108,15 @@ export class CacclDeployStack extends Stack {
       sg,
     });
 
-    new CacclNotifications(this, 'Notifications', props.notifications);
-
     const dashboard = new CacclMonitoring(this, 'Dashboard', {
-      loadBalancer: loadBalancer.loadBalancer,
-      service: service.ecsService,
+      cacclLoadBalancer: loadBalancer,
+      cacclService: service,
+    });
+
+    new CacclNotifications(this, 'Notifications', {
+      ...props.notifications,
+      service,
+      loadBalancer,
     });
 
     if (docdb !== null) {

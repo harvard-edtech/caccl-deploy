@@ -1,12 +1,13 @@
-import { Dashboard, GraphWidget, TextWidget, Metric, Unit } from '@aws-cdk/aws-cloudwatch';
+import { Dashboard, GraphWidget, TextWidget, Metric, Unit, AlarmStatusWidget } from '@aws-cdk/aws-cloudwatch';
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
-import { FargateService } from '@aws-cdk/aws-ecs';
-import { HttpCodeTarget, ApplicationLoadBalancer } from '@aws-cdk/aws-elasticloadbalancingv2';
+import { HttpCodeTarget } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+import { CacclLoadBalancer } from './lb';
+import { CacclService } from './service';
 
 export interface CacclMonitoringProps {
-  loadBalancer: ApplicationLoadBalancer;
-  service: FargateService;
+  cacclLoadBalancer: CacclLoadBalancer;
+  cacclService: CacclService;
 }
 
 export class CacclMonitoring extends Construct {
@@ -17,6 +18,10 @@ export class CacclMonitoring extends Construct {
 
     const { stackName } = Stack.of(this);
     const { region } = Stack.of(this);
+
+    const { cacclLoadBalancer, cacclService } = props;
+    const { loadBalancer } = cacclLoadBalancer;
+    const { ecsService } = cacclService;
 
     const dashboardName = `${stackName}-metrics`;
     this.dashboard = new Dashboard(this, 'Dashboard', { dashboardName });
@@ -32,7 +37,7 @@ export class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       new TextWidget({
         markdown: [
-          `### Load Balancer: [${props.loadBalancer.loadBalancerName}](${lbLink})`,
+          `### Load Balancer: [${loadBalancer.loadBalancerName}](${lbLink})`,
           '[Explanation of Metrics](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html)',
         ].join(' | '),
         width: 24,
@@ -43,29 +48,35 @@ export class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       new GraphWidget({
         title: 'RequestCount',
-        left: [props.loadBalancer.metricRequestCount()],
+        left: [loadBalancer.metricRequestCount()],
         width: 12,
         height: 6,
       }),
       new GraphWidget({
         title: 'TargetResponseTime',
-        left: [props.loadBalancer.metricTargetResponseTime()],
+        left: [loadBalancer.metricTargetResponseTime()],
         width: 12,
         height: 6,
       }),
     );
 
     this.dashboard.addWidgets(
+      new AlarmStatusWidget({
+        alarms: cacclLoadBalancer.alarms,
+        height: 6,
+        width: 8,
+        title: 'Load Balancer Alarm States',
+      }),
       new GraphWidget({
         title: 'NewConnectionCount',
-        left: [props.loadBalancer.metricNewConnectionCount()],
-        width: 12,
+        left: [loadBalancer.metricNewConnectionCount()],
+        width: 8,
         height: 6,
       }),
       new GraphWidget({
         title: 'ActiveConnectionCount',
-        left: [props.loadBalancer.metricActiveConnectionCount()],
-        width: 12,
+        left: [loadBalancer.metricActiveConnectionCount()],
+        width: 8,
         height: 6,
       }),
     );
@@ -75,16 +86,16 @@ export class CacclMonitoring extends Construct {
       const httpCode = `TARGET_${i}XX_COUNT` as keyof typeof HttpCodeTarget;
       return new GraphWidget({
         title: metricName,
-        left: [props.loadBalancer.metricHttpCodeTarget(HttpCodeTarget[httpCode])],
+        left: [loadBalancer.metricHttpCodeTarget(HttpCodeTarget[httpCode])],
       });
     });
     this.dashboard.addWidgets(...httpCodeWidgets);
 
-    const serviceLink = `https://console.aws.amazon.com/ecs/home?region=${region}#/clusters/${props.service.cluster.clusterName}/services/${props.service.serviceName}/details`;
+    const serviceLink = `https://console.aws.amazon.com/ecs/home?region=${region}#/clusters/${ecsService.cluster.clusterName}/services/${ecsService.serviceName}/details`;
 
     this.dashboard.addWidgets(
       new TextWidget({
-        markdown: `### ECS Service: [${props.service.serviceName}](${serviceLink})`,
+        markdown: `### ECS Service: [${ecsService.serviceName}](${serviceLink})`,
         width: 24,
         height: 1,
       }),
@@ -95,12 +106,12 @@ export class CacclMonitoring extends Construct {
         metricName,
         namespace: 'ECS/ContainerInsights',
         dimensions: {
-          ClusterName: props.service.cluster.clusterName,
-          ServiceName: props.service.serviceName,
+          ClusterName: ecsService.cluster.clusterName,
+          ServiceName: ecsService.serviceName,
         },
         ...extraProps,
       });
-      metric.attachTo(props.service);
+      metric.attachTo(ecsService);
       return metric;
     };
 
@@ -121,19 +132,26 @@ export class CacclMonitoring extends Construct {
         height: 6,
       }),
     );
+
     this.dashboard.addWidgets(
+      new AlarmStatusWidget({
+        alarms: cacclService.alarms,
+        width: 8,
+        height: 6,
+        title: 'ECS Service Alarm States',
+      }),
       new GraphWidget({
         title: 'Storage Read/Write Bytes',
         left: [makeCIMetric('StorageReadBytes')],
         right: [makeCIMetric('StorageWriteBytes')],
-        width: 12,
+        width: 8,
         height: 6,
       }),
       new GraphWidget({
         title: 'Tasks & Deployments',
         left: [makeCIMetric('DesiredTaskCount'), makeCIMetric('PendingTaskCount'), makeCIMetric('RunningTaskCount')],
-        right: [props.service.metric('DeploymentCount')],
-        width: 12,
+        right: [ecsService.metric('DeploymentCount')],
+        width: 8,
         height: 6,
       }),
     );
