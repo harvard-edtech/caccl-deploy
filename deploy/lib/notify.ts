@@ -1,12 +1,18 @@
 import * as path from 'path';
+import { SnsAction } from '@aws-cdk/aws-cloudwatch-actions';
+import { ServicePrincipal } from '@aws-cdk/aws-iam';
 import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
 import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
 import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+import { CacclLoadBalancer } from './lb';
+import { CacclService } from './service';
 
 export interface CacclNotificationsProps {
   email?: [string];
   slack?: string;
+  service: CacclService;
+  loadBalancer: CacclLoadBalancer;
 }
 
 export class CacclNotifications extends Construct {
@@ -17,10 +23,14 @@ export class CacclNotifications extends Construct {
   constructor(scope: Construct, id: string, props: CacclNotificationsProps) {
     super(scope, id);
 
-    const { email = [], slack } = props;
+    const { email = [], slack, service, loadBalancer } = props;
 
     this.topic = new Topic(this, 'NotificationTopic', {
       displayName: `${Stack.of(this).stackName}-notifications`,
+    });
+
+    this.topic.grantPublish({
+      grantPrincipal: new ServicePrincipal('cloudwatch.amazonaws.com'),
     });
 
     email.forEach((emailAddr, idx) => {
@@ -44,6 +54,14 @@ export class CacclNotifications extends Construct {
 
       this.topic.addSubscription(new LambdaSubscription(slackFunction));
     }
+
+    loadBalancer.alarms.forEach((alarm) => {
+      alarm.addAlarmAction(new SnsAction(this.topic));
+    });
+
+    service.alarms.forEach((alarm) => {
+      alarm.addAlarmAction(new SnsAction(this.topic));
+    });
 
     new CfnOutput(this, 'TopicName', {
       exportName: `${Stack.of(this).stackName}-sns-topic-name`,
