@@ -48,6 +48,8 @@ export class CacclDeployStack extends Stack {
       throw new Error('deployConfig must define either cidrBlock or vpcId');
     }
 
+    const notifier = new CacclNotifications(this, 'Notifications', props.notifications);
+
     const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
       envVars: props.appEnvironment,
     });
@@ -97,6 +99,7 @@ export class CacclDeployStack extends Stack {
       sg,
       cluster,
       taskDef,
+      notifier,
       taskCount: props.taskCount,
     });
 
@@ -104,11 +107,10 @@ export class CacclDeployStack extends Stack {
       certificateArn: props.certificateArn,
       loadBalancerTarget: service.loadBalancerTarget,
       loadBalancerLogBucket: props.loadBalancerLogBucket,
+      notifier,
       vpc,
       sg,
     });
-
-    new CacclNotifications(this, 'Notifications', props.notifications);
 
     const dashboard = new CacclMonitoring(this, 'Dashboard', {
       loadBalancer: loadBalancer.loadBalancer,

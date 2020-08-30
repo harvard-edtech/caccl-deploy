@@ -1,4 +1,6 @@
 import * as path from 'path';
+import { Rule, EventPattern } from '@aws-cdk/aws-events';
+import { SnsTopic, SnsTopicProps } from '@aws-cdk/aws-events-targets';
 import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
 import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
 import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
@@ -53,6 +55,16 @@ export class CacclNotifications extends Construct {
     new CfnOutput(this, 'TopicArn', {
       exportName: `${Stack.of(this).stackName}-sns-topic-arn`,
       value: this.topic.topicArn,
+    });
+  }
+
+  addNotificationRule(ruleName: string, eventPattern: EventPattern, message?: SnsTopicProps): Rule {
+    const target = new SnsTopic(this.topic, message);
+    return new Rule(this, ruleName, {
+      enabled: true,
+      ruleName,
+      eventPattern,
+      targets: [target],
     });
   }
 }

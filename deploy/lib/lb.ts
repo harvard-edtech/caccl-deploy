@@ -10,10 +10,12 @@ import {
 } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Bucket } from '@aws-cdk/aws-s3';
 import { Construct, Duration, Stack } from '@aws-cdk/core';
+import { CacclNotifications } from './notify';
 
 export interface CacclLoadBalancerProps {
   sg: SecurityGroup;
   vpc: Vpc;
+  notifier: CacclNotifications;
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
   loadBalancerLogBucket?: string;
@@ -27,7 +29,7 @@ export class CacclLoadBalancer extends Construct {
   constructor(scope: Construct, id: string, props: CacclLoadBalancerProps) {
     super(scope, id);
 
-    const { sg, vpc, certificateArn, loadBalancerTarget, loadBalancerLogBucket } = props;
+    const { sg, vpc, notifier, certificateArn, loadBalancerTarget, loadBalancerLogBucket } = props;
 
     this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,

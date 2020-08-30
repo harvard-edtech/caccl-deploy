@@ -31,6 +31,8 @@
     "@aws-cdk/aws-ecs": "^1.61.1",
     "@aws-cdk/aws-ecs-patterns": "^1.61.1",
     "@aws-cdk/aws-elasticloadbalancingv2": "^1.61.1",
+    "@aws-cdk/aws-events": "^1.61.1",
+    "@aws-cdk/aws-events-targets": "^1.61.1",
     "@aws-cdk/aws-iam": "^1.61.1",
     "@aws-cdk/aws-lambda": "^1.61.1",
     "@aws-cdk/aws-logs": "^1.61.1",
