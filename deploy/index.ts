@@ -29,7 +29,6 @@ const stackProps: CacclDeployStackProps = {
   },
   taskCount: deployConfig.taskCount || 1,
   tags: {
-    caccl_deploy_version: cacclDeployVersion,
     caccl_deploy_stack_name: stackName,
     ...deployConfig.tags,
   },
