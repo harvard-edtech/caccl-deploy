@@ -12,12 +12,12 @@ module.exports = () => {
   // are we on a git tag?
   try {
     const gitTag = execSync(
-      'git describe --tags --abbrev=0',
+      'git describe --exact-match --abbrev=0',
       { stdio: 'pipe' },
     ).toString().trim();
     version.push(`tag=${gitTag}`);
   } catch (err) {
-    if (!err.message.includes('No tags can describe')) {
+    if (!err.message.includes('no tag exactly matches')) {
       console.log(err);
     }
   }
