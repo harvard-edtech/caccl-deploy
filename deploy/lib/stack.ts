@@ -120,7 +120,7 @@ export class CacclDeployStack extends Stack {
     });
 
     if (docdb !== null) {
-      dashboard.addDocDbSection(docdb.dbCluster);
+      dashboard.addDocDbSection(docdb);
     }
   }
 }

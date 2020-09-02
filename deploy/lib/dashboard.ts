@@ -1,7 +1,7 @@
 import { Dashboard, GraphWidget, TextWidget, Metric, Unit, AlarmStatusWidget } from '@aws-cdk/aws-cloudwatch';
-import { DatabaseCluster } from '@aws-cdk/aws-docdb';
 import { HttpCodeTarget } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+import { CacclDocDb } from './docdb';
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
 
@@ -48,13 +48,13 @@ export class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       new GraphWidget({
         title: 'RequestCount',
-        left: [loadBalancer.metricRequestCount()],
+        left: [cacclLoadBalancer.metrics.RequestCount],
         width: 12,
         height: 6,
       }),
       new GraphWidget({
         title: 'TargetResponseTime',
-        left: [loadBalancer.metricTargetResponseTime()],
+        left: [cacclLoadBalancer.metrics.TargetResponseTime],
         width: 12,
         height: 6,
       }),
@@ -69,13 +69,13 @@ export class CacclMonitoring extends Construct {
       }),
       new GraphWidget({
         title: 'NewConnectionCount',
-        left: [loadBalancer.metricNewConnectionCount()],
+        left: [cacclLoadBalancer.metrics.NewConnectionCount],
         width: 8,
         height: 6,
       }),
       new GraphWidget({
         title: 'ActiveConnectionCount',
-        left: [loadBalancer.metricActiveConnectionCount()],
+        left: [cacclLoadBalancer.metrics.ActiveConnectionCount],
         width: 8,
         height: 6,
       }),
@@ -170,60 +170,64 @@ export class CacclMonitoring extends Construct {
     );
   }
 
-  addDocDbSection(docdb: DatabaseCluster): void {
+  addDocDbSection(cacclDocDb: CacclDocDb): void {
     const { region } = Stack.of(this);
-    const dbLink = `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${docdb.clusterIdentifier}`;
+    const { dbCluster } = cacclDocDb;
+
+    const dbLink = `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${dbCluster.clusterIdentifier}`;
+
     this.dashboard.addWidgets(
       new TextWidget({
-        markdown: `### DocDB Cluster: [${docdb.clusterIdentifier}](${dbLink})`,
+        markdown: `### DocDB Cluster: [${dbCluster.clusterIdentifier}](${dbLink})`,
         width: 24,
         height: 1,
       }),
     );
 
-    const makeDocDbMetric = (metricName: string, extraProps = {}) => {
-      const metric = new Metric({
-        metricName,
-        namespace: 'AWS/DocDB',
-        dimensions: {
-          DBClusterIdentifier: docdb.clusterIdentifier,
-        },
-        ...extraProps,
-      });
-      metric.attachTo(docdb);
-      return metric;
-    };
-
     this.dashboard.addWidgets(
       new GraphWidget({
         title: 'Read/Write IOPS',
-        left: [makeDocDbMetric('ReadIOPS')],
-        right: [makeDocDbMetric('WriteIOPS')],
-        width: 12,
+        left: [cacclDocDb.metrics.ReadIOPS],
+        right: [cacclDocDb.metrics.WriteIOPS],
+        width: 8,
         height: 6,
       }),
       new GraphWidget({
         title: 'CPU & Memory',
-        left: [makeDocDbMetric('CPUUtilization', { unit: Unit.PERCENT })],
-        right: [makeDocDbMetric('FreeableMemory')],
-        width: 12,
+        left: [cacclDocDb.metrics.CPUUtilization],
+        right: [cacclDocDb.metrics.FreeableMemory],
+        width: 8,
+        height: 6,
+      }),
+      new GraphWidget({
+        title: 'CursorsTimedOut',
+        left: [cacclDocDb.metrics.DatabaseCursorsTimedOut],
+        width: 8,
         height: 6,
       }),
     );
     this.dashboard.addWidgets(
+      new AlarmStatusWidget({
+        alarms: cacclDocDb.alarms,
+        width: 24,
+        height: 6,
+        title: 'DocDb Alarm States',
+      }),
+    );
+    this.dashboard.addWidgets(
       new GraphWidget({
-        left: [makeDocDbMetric('BufferCacheHitRatio', { unit: Unit.PERCENT })],
+        left: [cacclDocDb.metrics.BufferCacheHitRatio],
       }),
       new GraphWidget({
-        left: [makeDocDbMetric('DatabaseConnections')],
+        left: [cacclDocDb.metrics.DatabaseConnections],
       }),
       new GraphWidget({
-        left: [makeDocDbMetric('DiskQueueDepth')],
+        left: [cacclDocDb.metrics.DiskQueueDepth],
       }),
       new GraphWidget({
         title: 'Read/Write Latency',
-        left: [makeDocDbMetric('ReadLatency')],
-        right: [makeDocDbMetric('WriteLatency')],
+        left: [cacclDocDb.metrics.ReadLatency],
+        right: [cacclDocDb.metrics.WriteLatency],
       }),
     );
   }
