@@ -7,12 +7,14 @@ import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
+import { CacclDocDb } from './docdb';
 
 export interface CacclNotificationsProps {
   email?: [string];
   slack?: string;
   service: CacclService;
   loadBalancer: CacclLoadBalancer;
+  docdb?: CacclDocDb;
 }
 
 export class CacclNotifications extends Construct {

@@ -1,3 +1,4 @@
+import { Alarm, Metric, Unit, ComparisonOperator, TreatMissingData } from '@aws-cdk/aws-cloudwatch';
 import { DatabaseCluster } from '@aws-cdk/aws-docdb';
 import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
@@ -15,6 +16,10 @@ export class CacclDocDb extends Construct {
   dbPasswordSecret: Secret;
 
   dbCluster: DatabaseCluster;
+
+  metrics: { [key: string]: Metric };
+
+  alarms: Alarm[];
 
   constructor(scope: Construct, id: string, props: CacclDocDbProps) {
     super(scope, id);
@@ -61,6 +66,62 @@ export class CacclDocDb extends Construct {
     const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', this.dbCluster.securityGroupId);
     dbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(27017));
 
+    this.metrics = {
+      ReadIOPS: this.makeClusterMetric('ReadIOPS'),
+      WriteIOPS: this.makeClusterMetric('WriteIOPS'),
+      CPUUtilization: this.makeClusterMetric('CPUUtilization', { unit: Unit.PERCENT }),
+      FreeableMemory: this.makeClusterMetric('FreeableMemory'),
+      BufferCacheHitRatio: this.makeClusterMetric('BufferCacheHitRatio', { unit: Unit.PERCENT }),
+      DatabaseConnections: this.makeClusterMetric('DatabaseConnections'),
+      DiskQueueDepth: this.makeClusterMetric('DiskQueueDepth'),
+      ReadLatency: this.makeClusterMetric('ReadLatency', { unit: Unit.MILLISECONDS }),
+      WriteLatency: this.makeClusterMetric('WriteLatency', { unit: Unit.MILLISECONDS }),
+      DatabaseCursorsTimedOut: this.makeClusterMetric('DatabaseCursorsTimedOut', { statistic: 'sum' }),
+    };
+
+    this.alarms = [
+      new Alarm(this, 'CPUUtilizationAlarm', {
+        metric: this.metrics.CPUUtilization,
+        threshold: 50,
+        period: Duration.minutes(5),
+        evaluationPeriods: 3,
+        alarmDescription: `${Stack.of(this).stackName} docdb cpu utilization alarm`,
+      }),
+      new Alarm(this, 'BufferCacheHitRatioAlarm', {
+        metric: this.metrics.BufferCacheHitRatio,
+        threshold: 90,
+        evaluationPeriods: 3,
+        comparisonOperator: ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
+        alarmDescription: `${Stack.of(this).stackName} docdb buffer cache hit ratio alarm`,
+      }),
+      new Alarm(this, 'DiskQueueDepth', {
+        metric: this.metrics.DiskQueueDepth,
+        threshold: 1,
+        evaluationPeriods: 3,
+        alarmDescription: `${Stack.of(this).stackName} docdb disk queue depth`,
+      }),
+      new Alarm(this, 'ReadLatency', {
+        metric: this.metrics.ReadLatency,
+        threshold: 20,
+        evaluationPeriods: 3,
+        treatMissingData: TreatMissingData.IGNORE,
+        alarmDescription: `${Stack.of(this).stackName} docdb read latency alarm`,
+      }),
+      new Alarm(this, 'WriteLatency', {
+        metric: this.metrics.WriteLatency,
+        threshold: 100,
+        evaluationPeriods: 3,
+        treatMissingData: TreatMissingData.IGNORE,
+        alarmDescription: `${Stack.of(this).stackName} docdb write latency alarm`,
+      }),
+      new Alarm(this, 'DatabaseCursorsTimedOutAlarm', {
+        metric: this.metrics.DatabaseCursorsTimedOut,
+        threshold: 1,
+        evaluationPeriods: 1,
+        alarmDescription: `${Stack.of(this).stackName} docdb cursors timed out alarm`,
+      }),
+    ];
+
     new CfnOutput(this, 'DocDbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
       value: this.host,
@@ -80,5 +141,19 @@ export class CacclDocDb extends Construct {
       exportName: `${Stack.of(this).stackName}-docdb-bastion-host-id`,
       value: bastionHost.instanceId,
     });
+  }
+
+  makeClusterMetric(metricName: string, extraProps = {}): Metric {
+    const metric = new Metric({
+      metricName,
+      namespace: 'AWS/DocDB',
+      period: Duration.minutes(1),
+      dimensions: {
+        DBClusterIdentifier: this.dbCluster.clusterIdentifier,
+      },
+      ...extraProps,
+    });
+    metric.attachTo(this.dbCluster);
+    return metric;
   }
 }
