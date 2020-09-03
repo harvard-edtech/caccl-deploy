@@ -39,7 +39,8 @@ module.exports = async () => {
   if (args.config !== undefined) {
     configManager = new ConfigManager(args.config);
     if (!configManager.exists()) {
-      throw new Error(`No config file at '${args.config}'`);
+      console.error(`No config file at '${args.config}'`);
+      process.exit(1);
     }
     cdkExecPath = process.env.PWD;
   } else {
