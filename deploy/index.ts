@@ -42,6 +42,7 @@ if (deployConfig.docDb) {
   stackProps.docDbOptions = {
     instanceType: deployConfig.docDbInstanceType || 'r5.large',
     instanceCount: deployConfig.docDbInstanceCount || 1,
+    profiler: deployConfig.docDbProfiler || false,
   };
 }
 

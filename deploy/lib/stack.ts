@@ -12,6 +12,7 @@ import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 export interface CacclDocDbOptions {
   instanceType: string;
   instanceCount: number;
+  profiler: boolean;
 }
 
 export interface CacclDeployStackProps extends StackProps {
