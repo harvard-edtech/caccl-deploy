@@ -141,6 +141,11 @@ export class CacclDocDb extends Construct {
       exportName: `${Stack.of(this).stackName}-docdb-bastion-host-id`,
       value: bastionHost.instanceId,
     });
+
+    new CfnOutput(this, 'DocDbBastionHostAZ', {
+      exportName: `${Stack.of(this).stackName}-docdb-bastion-host-az`,
+      value: bastionHost.instanceAvailabilityZone,
+    });
   }
 
   makeClusterMetric(metricName: string, extraProps = {}): Metric {
