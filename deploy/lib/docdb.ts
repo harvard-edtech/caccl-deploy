@@ -1,5 +1,5 @@
 import { Alarm, Metric, Unit, ComparisonOperator, TreatMissingData } from '@aws-cdk/aws-cloudwatch';
-import { DatabaseCluster } from '@aws-cdk/aws-docdb';
+import { DatabaseCluster, ClusterParameterGroup } from '@aws-cdk/aws-docdb';
 import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { Construct, Stack, CfnOutput, SecretValue, Duration } from '@aws-cdk/core';
@@ -7,6 +7,7 @@ import { Construct, Stack, CfnOutput, SecretValue, Duration } from '@aws-cdk/cor
 export interface CacclDocDbProps {
   instanceType: string;
   instanceCount: number;
+  profiler: boolean;
   vpc: Vpc;
 }
 
@@ -43,11 +44,26 @@ export class CacclDocDb extends Construct {
       },
     });
 
+    const parameterGroupParams: { [key: string]: string } = {};
+
+    if (props.profiler) {
+      parameterGroupParams.profiler = 'enabled';
+      parameterGroupParams.profiler_threshold_ms = '500';
+    }
+
+    const parameterGroup = new ClusterParameterGroup(this, 'ClusterParameterGroup', {
+      dbClusterParameterGroupName: `${Stack.of(this).stackName}-param-group`,
+      family: 'docdb3.6',
+      description: `Cluster parameter group for ${Stack.of(this).stackName}`,
+      parameters: parameterGroupParams,
+    });
+
     this.dbCluster = new DatabaseCluster(this, 'DocDbCluster', {
       masterUser: {
         username: 'root',
         password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
       },
+      parameterGroup,
       instances: props.instanceCount,
       instanceProps: {
         vpc,
