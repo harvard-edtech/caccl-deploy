@@ -3,13 +3,13 @@ import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { Construct } from '@aws-cdk/core';
 
 export interface CacclAppEnvioronmentProps {
-  envVars: { [key: string]: string };
+  envVars: { [key: string]: string; };
 }
 
 export class CacclAppEnvironment extends Construct {
-  env: { [key: string]: string };
+  env: { [key: string]: string; };
 
-  secrets: { [key: string]: EcsSecret };
+  secrets: { [key: string]: EcsSecret; };
 
   constructor(scope: Construct, id: string, props: CacclAppEnvioronmentProps) {
     super(scope, id);
@@ -21,7 +21,7 @@ export class CacclAppEnvironment extends Construct {
 
     this.secrets = {};
     Object.entries(props.envVars).forEach(([name, value]) => {
-      if (value.toLowerCase().startsWith('arn:aws:secretsmanager')) {
+      if (value.toString().toLowerCase().startsWith('arn:aws:secretsmanager')) {
         const varSecret = Secret.fromSecretArn(this, `${name}SecretArn`, value) as Secret;
         this.secrets[name] = EcsSecret.fromSecretsManager(varSecret);
       } else {

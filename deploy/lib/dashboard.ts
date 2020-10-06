@@ -30,6 +30,7 @@ export class CacclMonitoring extends Construct {
 
     new CfnOutput(this, 'DashboardLink', {
       value: dashboardLink,
+      exportName: `${stackName}-cloudwatch-dashboard-link`,
     });
 
     const lbLink = `https://console.aws.amazon.com/ec2/v2/home?region=${region}#LoadBalancers:tag:caccl_deploy_stack_name=${stackName}`;
