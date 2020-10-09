@@ -1,7 +1,7 @@
 import { Alarm } from '@aws-cdk/aws-cloudwatch';
 import { SecurityGroup } from '@aws-cdk/aws-ec2';
 import { Cluster, FargateService, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
-import { Construct, Stack } from '@aws-cdk/core';
+import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
 import { CacclTaskDef } from './taskdef';
 
 export interface CacclServiceProps {
@@ -41,5 +41,15 @@ export class CacclService extends Construct {
     });
 
     this.alarms = [];
+
+    new CfnOutput(this, 'ClusterName', {
+      exportName: `${Stack.of(this).stackName}-cluster-name`,
+      value: cluster.clusterName,
+    });
+
+    new CfnOutput(this, 'ServiceName', {
+      exportName: `${Stack.of(this).stackName}-service-name`,
+      value: serviceName,
+    });
   }
 }
