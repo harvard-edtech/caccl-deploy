@@ -7,7 +7,9 @@ module.exports = () => {
   }
 
   // otherwise use the package.json version
-  const version = [require('../package.json').version];
+  const version = [
+    `package=${require('../package.json').version}`
+  ];
 
   // are we on a git tag?
   try {
@@ -20,6 +22,11 @@ module.exports = () => {
     if (!err.message.includes('no tag exactly matches')) {
       console.log(err);
     }
+    const commitSha = execSync(
+      'git rev-parse --short HEAD',
+      { stdio: 'pipe' },
+    ).toString().trim();
+    version.push(`sha=${commitSha}`);
   }
 
   // what about the branch?
