@@ -1,103 +1,407 @@
-/* eslint-disable no-console */
+#!/usr/bin/env node
 
-const path = require('path');
-const minimist = require('minimist');
+const { Command } = require('commander');
 const { execSync } = require('child_process');
-const print = require('./helpers/print');
-const aws = require('./helpers/aws');
-const version = require('./helpers/version');
-const ConfigManager = require('./helpers/configManager');
+const { table } = require('table');
+const path = require('path');
+const moment = require('moment');
+const aws = require('./lib/aws');
+const conf = require('./lib/conf');
+const DeployConfig = require('./lib/deployConfig');
+const { confirm } = require('./lib/helpers');
+const { version, description } = require('./package.json');
 
-// Prep command executor
-const exec = (command, options = {}) => {
-  options.stdio = 'inherit';
-  console.log(command);
-  return execSync(command, options);
+const initAwsProfile = (profile) => {
+  try {
+    aws.initProfile(profile);
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
 };
 
-module.exports = async () => {
-  const args = minimist(process.argv.slice(2), {
-    // allow use of config in an alternate location
-    string: ['config', 'profile'],
-    boolean: ['yes'],
-    alias: { c: 'config', p: 'profile', y: 'yes' },
-  });
-
-  let configManager;
-  let cdkExecPath;
-  let cdkProfileOption = '';
-
-  // set the AWS api module to use a specified profile
-  if (args.profile !== undefined) {
-    aws.initProfile(args.profile);
-    cdkProfileOption = `--profile ${args.profile}`;
+class DeckCommander extends Command {
+  createCommand(name) {
+    const cmd = new DeckCommander(name)
+      .storeOptionsAsProperties();
+    return cmd;
   }
 
-  // First see if we were provided an explicit config path.
-  // This is most likely when using as a stand-alone tool
-  if (args.config !== undefined) {
-    configManager = new ConfigManager(args.config);
-    if (!configManager.exists()) {
-      console.error(`No config file at '${args.config}'`);
-      process.exit(1);
+  getAppPrefix(appName) {
+    const options = this.opts();
+    if (options.ssmRootPrefix === undefined
+      || (options.app === undefined && appName === undefined)) {
+      throw Error('Attempted to make an ssm prefix with undefined values');
     }
-    cdkExecPath = process.env.PWD;
-  } else {
-    // Otherwise assume we're running as an installed package
-    // in the context of an app to deploy
-    configPath = path.join(process.env.PWD, 'config/deployConfig.js');
-    configManager = new ConfigManager(configPath);
+    return `${options.ssmRootPrefix}/${appName !== undefined ? appName : options.app}`;
+  }
 
-    // confirm config/deployConfig.js exists or create it
-    if (!configManager.exists()) {
-      console.log(`no deploy config found at ${configPath}`);
-      console.log("We can generate one now, but you'll need several bits of information, ");
-      console.log('including AWS and LTI client and consumer credentials, as well as ');
-      console.log('the ARN identifier of an AWS Certificate Manager SSL certificate.');
-      print.enterToContinue();
-      await configManager.generate();
+  getSsmParameterName(configName, appName) {
+    return `${this.getAppPrefix(appName)}/${configName}`;
+  }
+
+  getCfnStackName(appName) {
+    const options = this.opts();
+    if (options.cfnStackPrefix === undefined
+      || (options.app === undefined && appName === undefined)) {
+      throw Error('Attempted to make a cloudformation stack name with undefined values');
     }
-    // exec cdk in the caccl-deploy directory; $PWD is safe so long as we're called via `npm run ...`
-    cdkExecPath = path.join(process.env.PWD, 'node_modules/caccl-deploy');
+    return `${options.cfnStackPrefix}${appName !== undefined ? appName : options.app}`;
   }
 
-  // validate the deploy config
-  if (!configManager.validate()) {
-    throw new Error('deployConfig.js is invalid!');
+  async getDeployConfig(resolveSecrets = true) {
+    const AppPrefix = this.getAppPrefix();
+    try {
+      const deployConfig = await DeployConfig.fromSsmParams(
+        AppPrefix,
+        resolveSecrets
+      );
+      return deployConfig;
+    } catch (err) {
+      if (err.name === 'AppNotFound') {
+        console.log(`${this.app} configuration not found!`);
+        process.exit(1);
+      }
+    }
   }
 
-  // by default run `cdk deploy` but also allow other cdk commands for advanced users
-  let cdkCommand = args._.length
-    ? `cdk ${args._.join(' ')} ${cdkProfileOption}`
-    : `cdk list ${cdkProfileOption}`; // deploy'
-
-  if (cdkCommand.includes('cdk deploy') && args.yes) {
-    cdkCommand = `${cdkCommand} --require-approval=never`;
+  commonOptions() {
+    return this
+      .option(
+        '--profile <string>',
+        'activate a specific aws config/credential profile',
+        initAwsProfile
+      )
+      .option(
+        '--ecr-access-role-arn <string>',
+        'IAM role ARN for cross account ECR repo access',
+        conf.get('ecrAccessRoleArn')
+      )
+      .requiredOption(
+        '--ssm-root-prefix <string>',
+        'The root prefix for ssm parameter store entries',
+        conf.get('ssmRootPrefix')
+      )
+      .requiredOption(
+        '--cfn-stack-prefix <string>',
+        'cloudformation stack name prefix, e.g. "CacclDeploy-"',
+        conf.get('cfnStackPrefix')
+      );
   }
 
-  // for adding some environment variables
-  const envCopy = { ...process.env };
-
-  // tell the cdk app what version it's being built with
-  envCopy.CACCL_DEPLOY_VERSION = version();
-
-  // tell the cdk app where our config is
-  envCopy.CACCL_DEPLOY_CONFIG = configManager.configPath;
-
-  // tell the cdk exec environment where our calling app lives
-  envCopy.APP_DIR = process.env.PWD;
-
-  // set a default for the aws account id. This value comes from an AWS STS API call to get the
-  // caller identity. It will not override an `awsAccountId` setting in the `deployConfig.js`
-  envCopy.AWS_ACCOUNT_ID = await aws.getAccountId();
-
-  if (envCopy.AWS_REGION === undefined) {
-    envCopy.AWS_REGION = 'us-east-1';
+  appOption() {
+    return this.requiredOption(
+      '-a --app <string>',
+      'name of the app to work with'
+    );
   }
+}
 
-  console.log(`About to execute ${cdkCommand}`);
-  if (!args.yes) print.enterToContinue();
+async function main() {
+  const deck = new DeckCommander()
+    .version(version)
+    .description(description);
 
-  // TODO: do we need to try/catch here, or does `run.js` deal with that?
-  exec(cdkCommand, { env: envCopy, cwd: cdkExecPath });
-};
+  deck
+    .command('list')
+    .description('list available app configurations')
+    .commonOptions()
+    .passCommandToAction()
+    .action(async (cmd) => {
+      const apps = await aws.getAppList(cmd.ssmRootPrefix);
+      const tableData = apps.map((a) => {
+        return [a];
+      });
+      console.log(apps.length
+        ? table([['App'], ...tableData])
+        : `No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
+    });
+
+  deck
+    .command('import')
+    .description('import an app deploy configuration from a json file')
+    .commonOptions()
+    .appOption()
+    .option('-f --file <path>',
+      'path to a deploy config json file')
+    .option('-F --force',
+      'non-interactive, yes to everything, overwrite existing, etc')
+    .option('-W --wipe',
+      'wipe out any existing config (this will not delete entries created in secretsmanager)')
+    .passCommandToAction()
+    .action(async (cmd) => {
+      const deployConfig = DeployConfig.fromFile(cmd.file);
+      const existingApps = await aws.getAppList(cmd.ssmRootPrefix);
+
+      if (existingApps.includes(cmd.appName)) {
+        console.log(`Configuration for ${cmd.appName} already exists`);
+        if (!cmd.force && !await confirm('Overwrite?')) {
+          console.log('Bye!');
+          process.exit();
+        }
+      }
+
+      const AppPrefix = cmd.getAppPrefix();
+      if (cmd.wipe) {
+        await DeployConfig.wipeExisting(AppPrefix);
+      }
+
+      await deployConfig.syncToSsm(AppPrefix);
+    });
+
+  deck
+    .command('delete')
+    .description('delete an app configuration')
+    .commonOptions()
+    .appOption()
+    .passCommandToAction()
+    .action(async (cmd) => {
+      const AppPrefix = cmd.getAppPrefix();
+      try {
+        await DeployConfig.wipeExisting(AppPrefix);
+        console.log(`${cmd.app} configuration deleted`);
+      } catch (err) {
+        if (err.name === 'AppNotFound') {
+          console.log(`${cmd.app} configuration not found!`);
+          process.exit(1);
+        }
+      }
+    });
+
+  deck
+    .command('show')
+    .description('display an app\'s current configuration')
+    .commonOptions()
+    .appOption()
+    .option('-f --flat',
+      'display the flattened, key: value form of the config')
+    .option('--no-resolve-secrets',
+      'show app environment secret value ARNs instead of dereferencing')
+    .passCommandToAction()
+    .action(async (cmd) => {
+      const deployConfig = await cmd.getDeployConfig(cmd.resolveSecrets);
+      console.log(deployConfig.toString(true, cmd.flat));
+    });
+
+  deck
+    .command('repos')
+    .description('list the available ECR repositories')
+    .commonOptions()
+    .passCommandToAction()
+    .action(async (cmd) => {
+      if (cmd.ecrAccessRoleArn !== undefined) {
+        aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
+      }
+      const repos = await aws.getRepoList();
+      const data = repos.map((r) => { return [r]; });
+
+      if (data.length) {
+        const tableOutput = table([
+          ['Respository Name'],
+          ...data,
+        ]);
+        console.log(tableOutput);
+      } else {
+        console.log('No ECR repositories found');
+      }
+    });
+
+  deck
+    .command('images')
+    .description('list the most recent available ECR images for an app')
+    .commonOptions()
+    .requiredOption('-r --repo <string>',
+      'the name of the ECR repo; use `deck app repos` for available repos')
+    .option('-A --all',
+      'show all images; default is to show only semver-tagged releases')
+    .passCommandToAction()
+    .action(async (cmd) => {
+      if (cmd.ecrAccessRoleArn !== undefined) {
+        aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
+      }
+      const images = await aws.getRepoImageList(cmd.repo, cmd.all);
+      const data = images.map((i) => {
+        return [
+          moment(i.imagePushedAt).format(),
+          i.imageTags.join('\n'),
+        ];
+      });
+      if (data.length) {
+        const tableOutput = table([
+          ['Pushed On', 'Tags'],
+          ...data,
+        ]);
+        console.log(tableOutput);
+      } else {
+        console.log('No images found');
+      }
+    });
+
+  deck
+    .command('release')
+    .description('release a new version of an app')
+    .commonOptions()
+    .appOption()
+    .requiredOption('-i --image-tag <string>',
+      'the docker image version tag to release')
+    .option('-f --force',
+      'just do it; no confirmations or prompts')
+    .option('--no-deploy',
+      'Update the Fargate Task Definition but don\' redeploy the service')
+    .passCommandToAction()
+    .action(async (cmd) => {
+      if (cmd.ecrAccessRoleArn !== undefined) {
+        aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
+      }
+
+      const deployConfig = await cmd.getDeployConfig();
+
+      /**
+       * caccl-deploy allows non-ECR images, but in the `deck` context
+       * we can assume that `appImage.repoName` will be an ECR repo ARN
+       */
+      const repoArn = aws.parseEcrArn(deployConfig.appImage.repoName);
+
+      // check that the specified image tag is legit
+      console.log(`Checking that an image exists with the tag ${cmd.imageTag}`);
+      const imageTagExists = await aws.imageTagExists(
+        repoArn.repoName,
+        cmd.imageTag
+      );
+      if (!imageTagExists) {
+        console.log(`No image with tag ${cmd.imageTag} in ${repoArn.repoName}`);
+        process.exit(1);
+      }
+
+      // check if it's the latest release and prompt if not
+      console.log(`Checking ${cmd.imageTag} is the latest tag`);
+      const isLatestTag = await aws.isLatestTag(repoArn.repoName, cmd.imageTag);
+      if (!isLatestTag && !cmd.force) {
+        console.log(`${cmd.imageTag} is not the most recent release`);
+        if (!await confirm('Proceed?')) {
+          process.exit();
+        }
+      }
+
+      // generate the new repo image arn to be deployed
+      const newAppImageRepoName = aws.createEcrArn({
+        ...repoArn,
+        imageTag: cmd.imageTag,
+      });
+
+      // fetch the fargate task definition name (aka "family")
+      const cfnStackName = cmd.getCfnStackName();
+      const {
+        taskDefName,
+        clusterName,
+        serviceName,
+      } = await aws.getCfnStackOutputs(cfnStackName);
+
+      console.log(`Updating ${cmd.appName} task to use ${newAppImageRepoName}`);
+      await aws.updateTaskDefAppImage(taskDefName, newAppImageRepoName);
+
+      // update the ssm parameter
+      console.log('Updating stored deployment configuration');
+      await deployConfig.update(
+        cmd.getAppPrefix(),
+        'appImage/repoName',
+        newAppImageRepoName
+      );
+
+      // redeploy the service
+      if (cmd.deploy) {
+        console.log(`Redeploying the ${serviceName} service...`);
+        await aws.redeployEcsServcie(clusterName, serviceName);
+      } else {
+        console.log('Redployment skipped');
+        console.log('WARNING: service is out-of-sync with stored deployment configuration');
+      }
+    });
+
+  deck
+    .command('redeploy')
+    .description('no changes; just force a redeploy')
+    .commonOptions()
+    .appOption()
+    .passCommandToAction()
+    .action(async (cmd) => {
+      // fetch the fargate task definition name (aka "family")
+      const cfnStackName = cmd.getCfnStackName();
+      const {
+        clusterName,
+        serviceName,
+      } = await aws.getCfnStackOutputs(cfnStackName);
+
+      // redeploy the service
+      await aws.redeployEcsServcie(clusterName, serviceName);
+    });
+
+  deck
+    .command('update')
+    .description('update a single deploy config setting')
+    .commonOptions()
+    .appOption()
+    .passCommandToAction()
+    .action(async (cmd) => {
+      const deployConfig = await cmd.getDeployConfig();
+      const [param, value] = cmd.args;
+      await deployConfig.update(
+        cmd.getAppPrefix(),
+        param,
+        value
+      );
+    });
+
+  deck
+    .command('new')
+    .commonOptions()
+    .description('generate a new app configuration')
+    .action(async () => {
+
+    });
+
+  deck
+    .command('stack')
+    .commonOptions()
+    .appOption()
+    .option('-F --force',
+      'non-interactive, yes to everything, overwrite existing, etc')
+    .description('diff, deploy, update or delete the app\'s AWS resources')
+    .action(async (cmd) => {
+      const cdkCommand = cmd.args;
+
+      const envAdditions = {};
+      envAdditions.CACCL_DEPLOY_APP_NAME = cmd.app;
+      envAdditions.CACCL_DEPLOY_APP_PREFIX = cmd.getAppPrefix();
+      envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
+      envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+
+      console.log(envAdditions);
+
+      const execOpts = {
+        stdio: 'inherit',
+        cwd: path.join(__dirname, 'cdk'),
+        env: { ...process.env, ...envAdditions },
+      };
+
+      const cdkProfileOption = (cmd.profile !== undefined)
+        ? `--profile ${cmd.profile}`
+        : '';
+
+      // default is `cdk list` but allow other commands for advanced users
+      let execCommand = cdkCommand.length
+        ? `cdk ${cdkCommand.join(' ')} ${cdkProfileOption}`
+        : `cdk list ${cdkProfileOption}`; // deploy'
+
+      if (execCommand.includes('cdk deploy') && cmd.force) {
+        execCommand = `${execCommand} --require-approval=never`;
+      }
+
+      console.log(execCommand);
+      execSync(execCommand, execOpts);
+    });
+
+  await deck.parse(process.argv);
+}
+
+main();
