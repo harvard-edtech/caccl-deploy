@@ -10,14 +10,14 @@ import {
   TargetType,
 } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Bucket } from '@aws-cdk/aws-s3';
-import { Construct, Duration, Stack } from '@aws-cdk/core';
+import { CfnOutput, Construct, Duration, Stack } from '@aws-cdk/core';
 
 export interface CacclLoadBalancerProps {
   sg: SecurityGroup;
   vpc: Vpc;
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
-  loadBalancerLogBucket?: string;
+  albLogBucketName?: string;
 }
 
 export class CacclLoadBalancer extends Construct {
@@ -25,14 +25,14 @@ export class CacclLoadBalancer extends Construct {
 
   httpsListener: ApplicationListener;
 
-  metrics: { [key: string]: Metric };
+  metrics: { [key: string]: Metric; };
 
   alarms: Alarm[];
 
   constructor(scope: Construct, id: string, props: CacclLoadBalancerProps) {
     super(scope, id);
 
-    const { sg, vpc, certificateArn, loadBalancerTarget, loadBalancerLogBucket } = props;
+    const { sg, vpc, certificateArn, loadBalancerTarget, albLogBucketName } = props;
 
     this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
@@ -40,8 +40,8 @@ export class CacclLoadBalancer extends Construct {
       internetFacing: true,
     });
 
-    if (loadBalancerLogBucket !== undefined) {
-      const bucket = Bucket.fromBucketName(this, 'AlbLogBucket', loadBalancerLogBucket);
+    if (albLogBucketName !== undefined) {
+      const bucket = Bucket.fromBucketName(this, 'AlbLogBucket', albLogBucketName);
       const objPrefix = Stack.of(this).stackName;
       this.loadBalancer.logAccessLogs(bucket, objPrefix);
     }
@@ -132,5 +132,10 @@ export class CacclLoadBalancer extends Construct {
         alarmDescription: `${Stack.of(this).stackName} target group unhealthy host count (UnHealthyHostCount)`,
       }),
     ];
+
+    new CfnOutput(this, 'LoadBalancerHostname', {
+      exportName: `${Stack.of(this).stackName}-load-balancer-hostname`,
+      value: this.loadBalancer.loadBalancerDnsName,
+    });
   }
 }

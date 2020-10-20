@@ -8,14 +8,14 @@ import { CacclGitRepoVolumeContainer } from './volumeContainer';
 const DEFAULT_PROXY_REPO_NAME = 'hdce/nginx-ssl-proxy';
 
 export interface CacclTaskDefProps {
-  appImage: CacclContainerImageOptions;
-  proxyImage?: CacclContainerImageOptions;
+  appImage: string;
+  proxyImage?: string;
   vpcCidrBlock?: string;
   appEnvironment?: CacclAppEnvironment;
   taskCpu?: number;
-  taskMemoryLimit?: number;
+  taskMemory?: number;
   logRetentionDays?: number;
-  gitRepoVolume?: { [key: string]: string };
+  gitRepoVolume?: { [key: string]: string; };
 }
 
 export class CacclTaskDef extends Construct {
@@ -32,19 +32,21 @@ export class CacclTaskDef extends Construct {
 
     const {
       appImage,
-      proxyImage = { repoName: DEFAULT_PROXY_REPO_NAME },
+      proxyImage = DEFAULT_PROXY_REPO_NAME,
       appEnvironment,
       taskCpu = 256,
-      taskMemoryLimit = 512,
+      taskMemory = 512,
       logRetentionDays = 90,
     } = props;
 
     this.taskDef = new FargateTaskDefinition(this, 'Task', {
       cpu: taskCpu,
-      memoryLimitMiB: taskMemoryLimit,
+      memoryLimitMiB: taskMemory,
     });
 
-    const appContainerImage = new CacclContainerImage(this, 'AppImage', appImage);
+    const appContainerImage = new CacclContainerImage(this, 'AppImage', {
+      appImage,
+    });
 
     // this container gets our app
     this.appContainer = new ContainerDefinition(this, 'AppContainer', {
@@ -68,9 +70,11 @@ export class CacclTaskDef extends Construct {
       hostPort: 8080,
     });
 
-    const proxyContainerImage = new CacclContainerImage(this, 'ProxyImage', proxyImage);
+    const proxyContainerImage = new CacclContainerImage(this, 'ProxyImage', {
+      appImage: proxyImage,
+    });
 
-    const environment: { [key: string]: string } = {
+    const environment: { [key: string]: string; } = {
       APP_PORT: '8080',
     };
 

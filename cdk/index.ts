@@ -3,27 +3,43 @@
 import 'source-map-support/register';
 import { App, CfnOutput } from '@aws-cdk/core';
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
+import { readFileSync } from 'fs';
+const yn = require('yn');
 
-const deployConfig = require('./config')();
+if (process.env.CDK_STACK_PROPS_FILE_PATH === undefined) {
+  throw new Error();
+}
 
-const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION || '';
-const stackName = `CacclDeploy-${deployConfig.appName}`;
+const stackPropsData = JSON.parse(
+  readFileSync(process.env.CDK_STACK_PROPS_FILE_PATH, 'utf8')
+);
+
+const {
+  stackName,
+  vpcId,
+  ecsClusterName,
+  awsRegion,
+  awsAccountId,
+  cacclDeployVersion,
+  albLogBucketName,
+  deployConfig,
+} = stackPropsData;
 
 const stackProps: CacclDeployStackProps = {
   stackName,
-  vpcId: deployConfig.vpcId,
+  vpcId,
+  ecsClusterName,
+  albLogBucketName,
   cidrBlock: deployConfig.cidrBlock,
   maxAzs: deployConfig.maxAzs || 2,
   certificateArn: deployConfig.certificateArn,
-  ecsClusterName: deployConfig.ecsClusterName,
   appEnvironment: deployConfig.appEnvironment || {},
   notifications: deployConfig.notifications || {},
-  loadBalancerLogBucket: deployConfig.loadBalancerLogBucket,
   taskDefProps: {
-    appImage: deployConfig.appImage || {},
+    appImage: deployConfig.appImage,
     proxyImage: deployConfig.proxyImage,
     taskCpu: deployConfig.taskCpu,
-    taskMemoryLimit: deployConfig.taskMemoryLimit,
+    taskMemory: deployConfig.taskMemory,
     logRetentionDays: deployConfig.logRetentionDays,
     gitRepoVolume: deployConfig.gitRepoVolume,
   },
@@ -33,25 +49,27 @@ const stackProps: CacclDeployStackProps = {
     ...deployConfig.tags,
   },
   env: {
-    account: deployConfig.awsAccountId || process.env.AWS_ACCOUNT_ID,
-    region: deployConfig.awsRegion || process.env.AWS_REGION,
+    account: awsAccountId,
+    region: awsRegion,
   },
 };
 
-if (deployConfig.docDb) {
+if (yn(deployConfig.docDb)) {
   stackProps.docDbOptions = {
-    instanceType: deployConfig.docDbInstanceType || 'r5.large',
+    instanceType: deployConfig.docDbInstanceType || 't3.medium',
     instanceCount: deployConfig.docDbInstanceCount || 1,
-    profiler: deployConfig.docDbProfiler || false,
+    profiler: yn(deployConfig.docDbProfiler),
   };
 }
 
 const app = new App();
 const stack = new CacclDeployStack(app, stackName, stackProps);
 
-new CfnOutput(stack, 'CacclDeployVersion', {
-  exportName: `${stackName}-caccl-deploy-version`,
-  value: cacclDeployVersion,
-});
+if (cacclDeployVersion !== undefined) {
+  new CfnOutput(stack, 'CacclDeployVersion', {
+    exportName: `${stackName}-caccl-deploy-version`,
+    value: cacclDeployVersion,
+  });
+}
 
 app.synth();

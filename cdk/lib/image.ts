@@ -5,9 +5,8 @@ import { ContainerImage } from '@aws-cdk/aws-ecs';
 import { Construct } from '@aws-cdk/core';
 
 export interface CacclContainerImageOptions {
-  repoName?: string;
+  appImage?: string;
   buildPath?: string;
-  repoType?: string;
 }
 
 export class CacclContainerImage extends Construct {
@@ -16,27 +15,27 @@ export class CacclContainerImage extends Construct {
   constructor(scope: Construct, id: string, props: CacclContainerImageOptions) {
     super(scope, id);
 
-    const { repoName, repoType, buildPath = process.env.APP_DIR } = props;
+    const { appImage, buildPath = process.env.APP_DIR } = props;
 
-    if (repoName !== undefined) {
-      if (repoType === 'ecr') {
+    if (appImage !== undefined) {
+      if (appImage.startsWith('arn:aws:ecr')) {
         // need to split any tag off the end of the arn
         let repoTag = 'latest';
         let repoArn;
 
-        const splitArn = repoName.split(':');
+        const splitArn = appImage.split(':');
         if (splitArn.length === 7) {
           // tag is appended to arn
           repoArn = splitArn.slice(0, 6).join(':');
           repoTag = splitArn.slice(-1).join();
         } else {
-          repoArn = repoName;
+          repoArn = appImage;
         }
 
         const repo = Repository.fromRepositoryArn(this, 'ContainerImageRepo', repoArn);
         this.image = ContainerImage.fromEcrRepository(repo, repoTag);
       } else {
-        this.image = ContainerImage.fromRegistry(repoName);
+        this.image = ContainerImage.fromRegistry(appImage);
       }
     } else if (buildPath !== undefined) {
       if (!fs.existsSync(path.join(buildPath, 'Dockerfile'))) {

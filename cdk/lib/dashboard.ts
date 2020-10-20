@@ -134,13 +134,21 @@ export class CacclMonitoring extends Construct {
       }),
     );
 
+    let servcieAlarmWidget = [];
+
+    if (cacclService.alarms.length) {
+      servcieAlarmWidget.push(
+        new AlarmStatusWidget({
+          alarms: cacclService.alarms,
+          width: 8,
+          height: 6,
+          title: 'ECS Service Alarm States',
+        })
+      );
+    }
+
     this.dashboard.addWidgets(
-      new AlarmStatusWidget({
-        alarms: cacclService.alarms,
-        width: 8,
-        height: 6,
-        title: 'ECS Service Alarm States',
-      }),
+      ...servcieAlarmWidget,
       new GraphWidget({
         title: 'Storage Read/Write Bytes',
         left: [makeCIMetric('StorageReadBytes')],
@@ -231,5 +239,5 @@ export class CacclMonitoring extends Construct {
         right: [cacclDocDb.metrics.WriteLatency],
       }),
     );
-  }
+  };
 }
