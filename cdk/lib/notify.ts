@@ -10,7 +10,7 @@ import { CacclService } from './service';
 import { CacclDocDb } from './docdb';
 
 export interface CacclNotificationsProps {
-  email?: [string];
+  email?: (string | string[]);
   slack?: string;
   service: CacclService;
   loadBalancer: CacclLoadBalancer;
@@ -25,7 +25,13 @@ export class CacclNotifications extends Construct {
   constructor(scope: Construct, id: string, props: CacclNotificationsProps) {
     super(scope, id);
 
-    const { email = [], slack, service, loadBalancer } = props;
+    let { email = [] } = props;
+
+    if (typeof email === "string") {
+      email = [email];
+    }
+
+    const { slack, service, loadBalancer } = props;
 
     this.topic = new Topic(this, 'NotificationTopic', {
       displayName: `${Stack.of(this).stackName}-notifications`,

@@ -1,12 +1,5 @@
-*.js
-!index.js
-!run.js
-!secrets.js
-!.eslint.js
-!.prettierrc.js
-!helpers/*.js
-*.d.ts
 node_modules
+*.tgz
 
 # CDK asset staging directory
 .cdk.staging

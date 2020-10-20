@@ -30,7 +30,7 @@ export class CacclGitRepoVolumeContainer extends Construct {
     taskDefinition.addVolume({ name: VOLUME_NAME });
 
     // container gets the full URL (including auth bits) via secrets manager
-    const repoUrlSecret = EcsSecret.fromSecretsManager(Secret.fromSecretArn(this, 'RepoUrlSecret', repoUrlSecretArn));
+    const repoUrlSecret = EcsSecret.fromSecretsManager(Secret.fromSecretCompleteArn(this, 'RepoUrlSecret', repoUrlSecretArn));
 
     this.container = new ContainerDefinition(this, 'GitRepoVolumeContainer', {
       image: ContainerImage.fromRegistry('alpine/git'),
