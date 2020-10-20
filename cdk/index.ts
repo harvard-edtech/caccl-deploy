@@ -5,14 +5,27 @@ import { App, CfnOutput } from '@aws-cdk/core';
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 import DeployConfig from '../lib/deployConfig';
 
-const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION || '';
-const appPrefix = process.env.CACCL_DEPLOY_APP_PREFIX || '';
+[
+  'CACCL_DEPLOY_VERSION',
+  'CACCL_DEPLOY_SSM_APP_PREFIX',
+  'CACCL_DEPLOY_STACK_NAME_PREFIX',
+  'CACCL_DEPLOY_APP_NAME',
+  'AWS_ACCOUNT_ID',
+  'AWS_REGION',
+].forEach((envVar) => {
+  if (process.env[envVar] === undefined) {
+    console.error(`CDK operation missing ${envVar}`);
+    process.exit(1);
+  }
+});
+
+const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION;
+const ssmAppPrefix = process.env.CACCL_DEPLOY_SSM_APP_PREFIX;
+const stackNamePrefix = process.env.CACCL_DEPLOY_STACK_NAME_PREFIX;
 const appName = process.env.CACCL_DEPLOY_APP_NAME;
-const stackName = `CacclDeploy-${appName}`;
+const stackName = `${stackNamePrefix}${appName}`;
 
-console.log(appPrefix, appName, stackName);
-
-DeployConfig.fromSsmParams(appPrefix, false)
+DeployConfig.fromSsmParams(ssmAppPrefix, false)
   .then((deployConfig) => {
     const stackProps: CacclDeployStackProps = {
       stackName,
@@ -38,8 +51,8 @@ DeployConfig.fromSsmParams(appPrefix, false)
         ...deployConfig.tags,
       },
       env: {
-        account: deployConfig.awsAccountId || process.env.AWS_ACCOUNT_ID,
-        region: deployConfig.awsRegion || process.env.AWS_REGION,
+        account: process.env.AWS_ACCOUNT_ID,
+        region: process.env.AWS_REGION,
       },
     };
 
@@ -51,15 +64,15 @@ DeployConfig.fromSsmParams(appPrefix, false)
       };
     }
 
-    console.log(stackProps);
-
     const app = new App();
     const stack = new CacclDeployStack(app, stackName, stackProps);
 
-    new CfnOutput(stack, 'CacclDeployVersion', {
-      exportName: `${stackName}-caccl-deploy-version`,
-      value: cacclDeployVersion,
-    });
+    if (cacclDeployVersion !== undefined) {
+      new CfnOutput(stack, 'CacclDeployVersion', {
+        exportName: `${stackName}-caccl-deploy-version`,
+        value: cacclDeployVersion,
+      });
+    }
 
     app.synth();
   })

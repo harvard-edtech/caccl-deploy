@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const { Command } = require('commander');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const { table } = require('table');
 const path = require('path');
 const moment = require('moment');
@@ -9,7 +9,9 @@ const aws = require('./lib/aws');
 const conf = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { confirm } = require('./lib/helpers');
-const { version, description } = require('./package.json');
+const { description } = require('./package.json');
+
+const cacclDeployVersion = require('./lib/generateVersion')();
 
 const initAwsProfile = (profile) => {
   try {
@@ -99,7 +101,7 @@ class DeckCommander extends Command {
 
 async function main() {
   const deck = new DeckCommander()
-    .version(version)
+    .version(cacclDeployVersion)
     .description(description);
 
   deck
@@ -368,15 +370,27 @@ async function main() {
       'non-interactive, yes to everything, overwrite existing, etc')
     .description('diff, deploy, update or delete the app\'s AWS resources')
     .action(async (cmd) => {
-      const cdkCommand = cmd.args;
+      const cdkArgs = [...cmd.args];
+
+      if (!cdkArgs.length) {
+        cdkArgs.push('list');
+      }
+
+      if (cmd.profile !== undefined) {
+        cdkArgs.push('--profile', cmd.profile);
+      }
+
+      if (cdkArgs[0] === 'deploy' && cmd.force) {
+        cdkArgs.push('--require-approval-never');
+      }
 
       const envAdditions = {};
+      envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
       envAdditions.CACCL_DEPLOY_APP_NAME = cmd.app;
-      envAdditions.CACCL_DEPLOY_APP_PREFIX = cmd.getAppPrefix();
+      envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
+      envAdditions.CACCL_DEPLOY_STACK_NAME_PREFIX = cmd.cfnStackPrefix;
       envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
       envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-
-      console.log(envAdditions);
 
       const execOpts = {
         stdio: 'inherit',
@@ -384,24 +398,19 @@ async function main() {
         env: { ...process.env, ...envAdditions },
       };
 
-      const cdkProfileOption = (cmd.profile !== undefined)
-        ? `--profile ${cmd.profile}`
-        : '';
-
-      // default is `cdk list` but allow other commands for advanced users
-      let execCommand = cdkCommand.length
-        ? `cdk ${cdkCommand.join(' ')} ${cdkProfileOption}`
-        : `cdk list ${cdkProfileOption}`; // deploy'
-
-      if (execCommand.includes('cdk deploy') && cmd.force) {
-        execCommand = `${execCommand} --require-approval=never`;
+      try {
+        const cdkProc = spawnSync(
+          'cdk',
+          cdkArgs,
+          execOpts
+        );
+        console.log(cdkProc);
+      } catch (err) {
+        console.error(err);
       }
-
-      console.log(execCommand);
-      execSync(execCommand, execOpts);
     });
 
   await deck.parse(process.argv);
 }
 
-main();
+main().catch(console.log);
