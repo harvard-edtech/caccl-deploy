@@ -1,52 +1,41 @@
 {
-  "name": "caccl-deploy",
-  "version": "1.2.0",
-  "main": "index.js",
+  "name": "deck",
+  "version": "1.0.0",
+  "description": "D.E.C.K. (DCE ECS Config Kommander): a cli tool for managing ECS apps at DCE",
+  "main": "cli.js",
+  "bin": {
+    "caccl-deploy": "./cli.js"
+  },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "deploy": "node run.js",
-    "secrets": "node secrets.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "cd cdk; npm install"
+  },
+  "keywords": [
+    "DCE",
+    "CLI",
+    "AWS",
+    "ECS"
+  ],
+  "author": "Jay Luker",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.750.0",
+    "camel-case": "^4.1.1",
+    "commander": "^6.1.0",
+    "conf": "^7.1.2",
+    "deep-diff": "^1.0.2",
+    "flat": "^5.0.2",
+    "moment": "^2.29.0",
+    "prompts": "^2.3.2",
+    "table": "^6.0.3",
+    "untildify": "^4.0.0"
   },
   "devDependencies": {
-    "@types/node": "14.6.4",
-    "@typescript-eslint/eslint-plugin": "^4.0.1",
-    "@typescript-eslint/parser": "^4.0.1",
-    "aws-cdk": "1.62.0",
-    "eslint": "^7.8.1",
-    "eslint-config-airbnb-base": "^14.2.0",
-    "eslint-config-prettier": "^6.11.0",
+    "eslint": "^7.9.0",
+    "eslint-config-airbnb": "^18.2.0",
     "eslint-plugin-import": "^2.22.0",
-    "eslint-plugin-prettier": "^3.1.4",
-    "prettier": "^2.1.1",
-    "ts-node": "^9.0.0",
-    "typescript": "~4.0.2"
-  },
-  "dependencies": {
-    "@aws-cdk/aws-cloudwatch": "^1.62.0",
-    "@aws-cdk/aws-cloudwatch-actions": "^1.62.0",
-    "@aws-cdk/aws-docdb": "^1.62.0",
-    "@aws-cdk/aws-ec2": "^1.62.0",
-    "@aws-cdk/aws-ecr": "^1.62.0",
-    "@aws-cdk/aws-ecr-assets": "^1.62.0",
-    "@aws-cdk/aws-ecs": "^1.62.0",
-    "@aws-cdk/aws-ecs-patterns": "^1.62.0",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^1.62.0",
-    "@aws-cdk/aws-events": "^1.62.0",
-    "@aws-cdk/aws-events-targets": "^1.62.0",
-    "@aws-cdk/aws-iam": "^1.62.0",
-    "@aws-cdk/aws-lambda": "^1.62.0",
-    "@aws-cdk/aws-logs": "^1.62.0",
-    "@aws-cdk/aws-s3": "^1.62.0",
-    "@aws-cdk/aws-secretsmanager": "^1.62.0",
-    "@aws-cdk/aws-sns": "^1.62.0",
-    "@aws-cdk/aws-sns-subscriptions": "^1.62.0",
-    "@aws-cdk/aws-ssm": "^1.62.0",
-    "@aws-cdk/core": "1.62.0",
-    "aws-sdk": "^2.746.0",
-    "minimist": "^1.2.5",
-    "prompt-sync": "^4.2.0",
-    "source-map-support": "^0.5.19",
-    "untildify": "^4.0.0"
+    "eslint-plugin-jest": "^24.0.1",
+    "eslint-plugin-jsx-a11y": "^6.3.1",
+    "eslint-plugin-react": "^7.20.6"
   }
 }

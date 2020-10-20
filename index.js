@@ -2,13 +2,13 @@
 
 const path = require('path');
 const minimist = require('minimist');
+const { execSync } = require('child_process');
 const print = require('./helpers/print');
 const aws = require('./helpers/aws');
 const version = require('./helpers/version');
 const ConfigManager = require('./helpers/configManager');
 
 // Prep command executor
-const { execSync } = require('child_process');
 const exec = (command, options = {}) => {
   options.stdio = 'inherit';
   console.log(command);
@@ -16,11 +16,10 @@ const exec = (command, options = {}) => {
 };
 
 module.exports = async () => {
-
   const args = minimist(process.argv.slice(2), {
     // allow use of config in an alternate location
-    string: [ 'config', 'profile' ],
-    boolean: [ 'yes' ],
+    string: ['config', 'profile'],
+    boolean: ['yes'],
     alias: { c: 'config', p: 'profile', y: 'yes' },
   });
 
@@ -46,7 +45,7 @@ module.exports = async () => {
   } else {
     // Otherwise assume we're running as an installed package
     // in the context of an app to deploy
-    configPath = path.join(process.env.PWD, 'config/deployConfig.js')
+    configPath = path.join(process.env.PWD, 'config/deployConfig.js');
     configManager = new ConfigManager(configPath);
 
     // confirm config/deployConfig.js exists or create it
@@ -60,7 +59,6 @@ module.exports = async () => {
     }
     // exec cdk in the caccl-deploy directory; $PWD is safe so long as we're called via `npm run ...`
     cdkExecPath = path.join(process.env.PWD, 'node_modules/caccl-deploy');
-
   }
 
   // validate the deploy config
@@ -74,11 +72,11 @@ module.exports = async () => {
     : `cdk list ${cdkProfileOption}`; // deploy'
 
   if (cdkCommand.includes('cdk deploy') && args.yes) {
-    cdkCommand = `${cdkCommand} --require-approval=never`
+    cdkCommand = `${cdkCommand} --require-approval=never`;
   }
 
   // for adding some environment variables
-  const envCopy = Object.assign({}, process.env);
+  const envCopy = { ...process.env };
 
   // tell the cdk app what version it's being built with
   envCopy.CACCL_DEPLOY_VERSION = version();
@@ -98,7 +96,7 @@ module.exports = async () => {
   }
 
   console.log(`About to execute ${cdkCommand}`);
-  if (! args.yes) print.enterToContinue();
+  if (!args.yes) print.enterToContinue();
 
   // TODO: do we need to try/catch here, or does `run.js` deal with that?
   exec(cdkCommand, { env: envCopy, cwd: cdkExecPath });
