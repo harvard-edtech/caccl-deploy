@@ -22,9 +22,9 @@ const initAwsProfile = (profile) => {
   }
 };
 
-class DeckCommander extends Command {
+class CacclDeployCommander extends Command {
   createCommand(name) {
-    const cmd = new DeckCommander(name)
+    const cmd = new CacclDeployCommander(name)
       .storeOptionsAsProperties();
     return cmd;
   }
@@ -100,11 +100,11 @@ class DeckCommander extends Command {
 }
 
 async function main() {
-  const deck = new DeckCommander()
+  const cli = new CacclDeployCommander()
     .version(cacclDeployVersion)
     .description(description);
 
-  deck
+  cli
     .command('list')
     .description('list available app configurations')
     .commonOptions()
@@ -119,7 +119,7 @@ async function main() {
         : `No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
     });
 
-  deck
+  cli
     .command('import')
     .description('import an app deploy configuration from a json file')
     .commonOptions()
@@ -151,7 +151,7 @@ async function main() {
       await deployConfig.syncToSsm(AppPrefix);
     });
 
-  deck
+  cli
     .command('delete')
     .description('delete an app configuration')
     .commonOptions()
@@ -174,7 +174,7 @@ async function main() {
       }
     });
 
-  deck
+  cli
     .command('show')
     .description('display an app\'s current configuration')
     .commonOptions()
@@ -189,7 +189,7 @@ async function main() {
       console.log(deployConfig.toString(true, cmd.flat));
     });
 
-  deck
+  cli
     .command('repos')
     .description('list the available ECR repositories')
     .commonOptions()
@@ -212,12 +212,12 @@ async function main() {
       }
     });
 
-  deck
+  cli
     .command('images')
     .description('list the most recent available ECR images for an app')
     .commonOptions()
     .requiredOption('-r --repo <string>',
-      'the name of the ECR repo; use `deck app repos` for available repos')
+      'the name of the ECR repo; use `caccl-deploy app repos` for available repos')
     .option('-A --all',
       'show all images; default is to show only semver-tagged releases')
     .passCommandToAction()
@@ -243,7 +243,7 @@ async function main() {
       }
     });
 
-  deck
+  cli
     .command('release')
     .description('release a new version of an app')
     .commonOptions()
@@ -274,7 +274,7 @@ async function main() {
       }
 
       /**
-       * caccl-deploy allows non-ECR images, but in the `deck` context
+       * caccl-deploy allows non-ECR images, but in the `caccl-deploy` context
        * we can assume that `appImage.repoName` will be an ECR repo ARN
        */
       const repoArn = aws.parseEcrArn(deployConfig.appImage.repoName);
@@ -329,7 +329,7 @@ async function main() {
       }
     });
 
-  deck
+  cli
     .command('restart')
     .description('no changes; just force a restart')
     .commonOptions()
@@ -351,7 +351,7 @@ async function main() {
       await aws.restartEcsServcie(clusterName, serviceName);
     });
 
-  deck
+  cli
     .command('update')
     .description('update (or delete) a single deploy config setting')
     .commonOptions()
@@ -375,7 +375,7 @@ async function main() {
       }
     });
 
-  deck
+  cli
     .command('new')
     .commonOptions()
     .description('generate a new app configuration')
@@ -383,7 +383,7 @@ async function main() {
 
     });
 
-  deck
+  cli
     .command('stack')
     .commonOptions()
     .appOption()
@@ -427,7 +427,7 @@ async function main() {
       }
     });
 
-  await deck.parse(process.argv);
+  await cli.parse(process.argv);
 }
 
 main();
