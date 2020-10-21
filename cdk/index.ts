@@ -8,12 +8,12 @@ import DeployConfig from '../lib/deployConfig';
 [
   'CACCL_DEPLOY_VERSION',
   'CACCL_DEPLOY_SSM_APP_PREFIX',
-  'CACCL_DEPLOY_STACK_NAME_PREFIX',
+  'CACCL_DEPLOY_STACK_NAME',
   'CACCL_DEPLOY_APP_NAME',
   'AWS_ACCOUNT_ID',
   'AWS_REGION',
 ].forEach((envVar) => {
-  if (process.env[envVar] === undefined) {
+  if (process.env[envVar] === undefined || process.env[envVar] === '') {
     console.error(`CDK operation missing ${envVar}`);
     process.exit(1);
   }
@@ -21,9 +21,7 @@ import DeployConfig from '../lib/deployConfig';
 
 const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION;
 const ssmAppPrefix = process.env.CACCL_DEPLOY_SSM_APP_PREFIX;
-const stackNamePrefix = process.env.CACCL_DEPLOY_STACK_NAME_PREFIX;
-const appName = process.env.CACCL_DEPLOY_APP_NAME;
-const stackName = `${stackNamePrefix}${appName}`;
+const stackName = process.env.CACCL_DEPLOY_STACK_NAME || '';
 
 DeployConfig.fromSsmParams(ssmAppPrefix, false)
   .then((deployConfig) => {

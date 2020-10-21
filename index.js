@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const { Command } = require('commander');
-const { execSync, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const { table } = require('table');
 const path = require('path');
 const moment = require('moment');
@@ -158,10 +158,14 @@ async function main() {
     .appOption()
     .passCommandToAction()
     .action(async (cmd) => {
-      const AppPrefix = cmd.getAppPrefix();
+      const appPrefix = cmd.getAppPrefix();
+
       try {
-        await DeployConfig.wipeExisting(AppPrefix);
-        console.log(`${cmd.app} configuration deleted`);
+        console.log(`This will delete all deployment configuation for ${cmd.app}`);
+        if (await confirm('Are you sure?')) {
+          await DeployConfig.wipeExisting(appPrefix, false);
+          console.log(`${cmd.app} configuration deleted`);
+        }
       } catch (err) {
         if (err.name === 'AppNotFound') {
           console.log(`${cmd.app} configuration not found!`);
@@ -249,7 +253,7 @@ async function main() {
     .option('-f --force',
       'just do it; no confirmations or prompts')
     .option('--no-deploy',
-      'Update the Fargate Task Definition but don\' redeploy the service')
+      'Update the Fargate Task Definition but don\' restart the service')
     .passCommandToAction()
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
@@ -257,6 +261,17 @@ async function main() {
       }
 
       const deployConfig = await cmd.getDeployConfig();
+
+      const cfnStackName = cmd.getCfnStackName();
+      let cfnOutputs;
+      try {
+        cfnOutputs = await aws.getCfnStackOutputs(cfnStackName);
+      } catch (err) {
+        if (err.name === 'CfnStackNotFound') {
+          console.log(err.message);
+        }
+        process.exit(1);
+      }
 
       /**
        * caccl-deploy allows non-ECR images, but in the `deck` context
@@ -291,13 +306,7 @@ async function main() {
         imageTag: cmd.imageTag,
       });
 
-      // fetch the fargate task definition name (aka "family")
-      const cfnStackName = cmd.getCfnStackName();
-      const {
-        taskDefName,
-        clusterName,
-        serviceName,
-      } = await aws.getCfnStackOutputs(cfnStackName);
+      const { taskDefName, clusterName, serviceName } = cfnOutputs;
 
       console.log(`Updating ${cmd.appName} task to use ${newAppImageRepoName}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImageRepoName);
@@ -310,10 +319,10 @@ async function main() {
         newAppImageRepoName
       );
 
-      // redeploy the service
+      // restart the service
       if (cmd.deploy) {
-        console.log(`Redeploying the ${serviceName} service...`);
-        await aws.redeployEcsServcie(clusterName, serviceName);
+        console.log(`Restarting the ${serviceName} service...`);
+        await aws.restartEcsServcie(clusterName, serviceName);
       } else {
         console.log('Redployment skipped');
         console.log('WARNING: service is out-of-sync with stored deployment configuration');
@@ -321,37 +330,49 @@ async function main() {
     });
 
   deck
-    .command('redeploy')
-    .description('no changes; just force a redeploy')
+    .command('restart')
+    .description('no changes; just force a restart')
     .commonOptions()
     .appOption()
     .passCommandToAction()
     .action(async (cmd) => {
-      // fetch the fargate task definition name (aka "family")
       const cfnStackName = cmd.getCfnStackName();
-      const {
-        clusterName,
-        serviceName,
-      } = await aws.getCfnStackOutputs(cfnStackName);
-
-      // redeploy the service
-      await aws.redeployEcsServcie(clusterName, serviceName);
+      let cfnOutputs;
+      try {
+        cfnOutputs = await aws.getCfnStackOutputs(cfnStackName);
+      } catch (err) {
+        if (err.name === 'CfnStackNotFound') {
+          console.log(err.message);
+        }
+        process.exit(1);
+      }
+      const { clusterName, serviceName } = cfnOutputs;
+      // restartthe service
+      await aws.restartEcsServcie(clusterName, serviceName);
     });
 
   deck
     .command('update')
-    .description('update a single deploy config setting')
+    .description('update (or delete) a single deploy config setting')
     .commonOptions()
     .appOption()
+    .option('-D --delete',
+      'delete the named parameter instead of creating/updating')
     .passCommandToAction()
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
-      const [param, value] = cmd.args;
-      await deployConfig.update(
-        cmd.getAppPrefix(),
-        param,
-        value
-      );
+      if (cmd.delete) {
+        const [param] = cmd.args;
+        const paramPath = [cmd.getAppPrefix(), param].join('/');
+        await aws.deleteSsmParameters([paramPath]);
+      } else {
+        const [param, value] = cmd.args;
+        await deployConfig.update(
+          cmd.getAppPrefix(),
+          param,
+          value
+        );
+      }
     });
 
   deck
@@ -371,6 +392,7 @@ async function main() {
     .description('diff, deploy, update or delete the app\'s AWS resources')
     .action(async (cmd) => {
       const cdkArgs = [...cmd.args];
+      const cfnStackName = cmd.getCfnStackName();
 
       if (!cdkArgs.length) {
         cdkArgs.push('list');
@@ -388,7 +410,7 @@ async function main() {
       envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
       envAdditions.CACCL_DEPLOY_APP_NAME = cmd.app;
       envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
-      envAdditions.CACCL_DEPLOY_STACK_NAME_PREFIX = cmd.cfnStackPrefix;
+      envAdditions.CACCL_DEPLOY_STACK_NAME = cfnStackName;
       envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
       envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 
@@ -399,12 +421,7 @@ async function main() {
       };
 
       try {
-        const cdkProc = spawnSync(
-          'cdk',
-          cdkArgs,
-          execOpts
-        );
-        console.log(cdkProc);
+        spawnSync('cdk', cdkArgs, execOpts);
       } catch (err) {
         console.error(err);
       }
@@ -413,4 +430,4 @@ async function main() {
   await deck.parse(process.argv);
 }
 
-main().catch(console.log);
+main();
