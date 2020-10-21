@@ -22,6 +22,7 @@ const initAwsProfile = (profile) => {
   }
 };
 
+
 class CacclDeployCommander extends Command {
   createCommand(name) {
     const cmd = new CacclDeployCommander(name)
@@ -430,4 +431,6 @@ async function main() {
   await cli.parse(process.argv);
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+});
