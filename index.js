@@ -5,8 +5,10 @@ const { spawnSync } = require('child_process');
 const { table } = require('table');
 const path = require('path');
 const moment = require('moment');
+const chalk = require('chalk');
+const figlet = require('figlet');
 const aws = require('./lib/aws');
-const conf = require('./lib/conf');
+const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { confirm } = require('./lib/helpers');
 const { description } = require('./package.json');
@@ -21,7 +23,6 @@ const initAwsProfile = (profile) => {
     return err;
   }
 };
-
 
 class CacclDeployCommander extends Command {
   createCommand(name) {
@@ -101,6 +102,25 @@ class CacclDeployCommander extends Command {
 }
 
 async function main() {
+  if (!conf.get('ssmRootPrefix')) {
+    console.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
+    console.log([
+      'It looks like this is your first time running caccl-deploy. ',
+      `A preferences file has been created at ${chalk.yellow(conf.path)}`,
+      'with the following default values:',
+      '',
+      ...Object.entries(configDefaults).map(([k, v]) => {
+        return `  - ${chalk.yellow(k)}: ${chalk.bold(v)}`;
+      }),
+      '',
+      'Please see the docs for explanations of these settings',
+    ].join('\n'));
+    if (!await confirm('Continue')) {
+      process.exit(0);
+    }
+    setConfigDefaults();
+  }
+
   const cli = new CacclDeployCommander()
     .version(cacclDeployVersion)
     .description(description);
