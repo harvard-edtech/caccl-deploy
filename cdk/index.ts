@@ -40,7 +40,7 @@ DeployConfig.fromSsmParams(ssmAppPrefix, false)
       notifications: deployConfig.notifications || {},
       loadBalancerLogBucket: deployConfig.loadBalancerLogBucket,
       taskDefProps: {
-        appImage: deployConfig.appImage || {},
+        appImage: deployConfig.appImage,
         proxyImage: deployConfig.proxyImage,
         taskCpu: deployConfig.taskCpu,
         taskMemoryLimit: deployConfig.taskMemoryLimit,

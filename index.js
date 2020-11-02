@@ -304,9 +304,9 @@ async function main() {
 
       /**
        * caccl-deploy allows non-ECR images, but in the `caccl-deploy` context
-       * we can assume that `appImage.repoName` will be an ECR repo ARN
+       * we can assume that `appImage` will be an ECR repo ARN
        */
-      const repoArn = aws.parseEcrArn(deployConfig.appImage.repoName);
+      const repoArn = aws.parseEcrArn(deployConfig.appImage);
 
       // check that the specified image tag is legit
       console.log(`Checking that an image exists with the tag ${cmd.imageTag}`);
@@ -330,23 +330,19 @@ async function main() {
       }
 
       // generate the new repo image arn to be deployed
-      const newAppImageRepoName = aws.createEcrArn({
+      const newAppImage = aws.createEcrArn({
         ...repoArn,
         imageTag: cmd.imageTag,
       });
 
       const { taskDefName, clusterName, serviceName } = cfnExports;
 
-      console.log(`Updating ${cmd.appName} task to use ${newAppImageRepoName}`);
-      await aws.updateTaskDefAppImage(taskDefName, newAppImageRepoName);
+      console.log(`Updating ${cmd.appName} task to use ${newAppImage}`);
+      await aws.updateTaskDefAppImage(taskDefName, newAppImage);
 
       // update the ssm parameter
       console.log('Updating stored deployment configuration');
-      await deployConfig.update(
-        cmd.getAppPrefix(),
-        'appImage/repoName',
-        newAppImageRepoName
-      );
+      await deployConfig.update(cmd.getAppPrefix(), 'appImage', newAppImage);
 
       // restart the service
       if (cmd.deploy) {

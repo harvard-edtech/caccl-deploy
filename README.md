@@ -5,33 +5,32 @@ CACCL apps to AWS Elastic Container Service (ECS).
 
 ### Requirements
 
-* nodejs ≥ v10
-* a nodejs/react app built using the CACCL library
-* one of the following:
-    * docker installed locally if you want `caccl-deploy` to build the image for you
-    * an existing docker image of the app
-* an AWS Certificate Manager certificate, preferably one that matches a hostname you have
+- nodejs ≥ v10
+- a nodejs/react app built using the CACCL library
+- one of the following:
+  - docker installed locally if you want `caccl-deploy` to build the image for you
+  - an existing docker image of the app
+- an AWS Certificate Manager certificate, preferably one that matches a hostname you have
   in mind for the app.
-* an AWS account with create/update privileges for the following services and/or resources:
-    * VPC
-    * Elastic Load Balancer
-    * ECS
-    * IAM Role
-    * Cloudwatch Log Group
-    * Cloudformation
+- an AWS account with create/update privileges for the following services and/or resources:
+  - VPC
+  - Elastic Load Balancer
+  - ECS
+  - IAM Role
+  - Cloudwatch Log Group
+  - Cloudformation
 
 ### Running as an installed package
 
-* `npm run deploy` - executes a deployment if a `deployConfig.js` exists in the default location
+- `npm run deploy` - executes a deployment if a `deployConfig.js` exists in the default location
   (`${PWD}/config/deployConfig.js`), otherwise will walk through creating one
-* `npm run deploy config` - creates or updates the deploy configuration
-* `npm run deploy diff` - shows changes that will be applied by a deploy
-* `npm run deploy list` - will out put the name of the deployment stack; useful as a sanity check
+- `npm run deploy config` - creates or updates the deploy configuration
+- `npm run deploy diff` - shows changes that will be applied by a deploy
+- `npm run deploy list` - will out put the name of the deployment stack; useful as a sanity check
 
 ### Running standalone
 
-* `node index.js [-c path to deploy config] [cdk command]`
-
+- `node index.js [-c path to deploy config] [cdk command]`
 
 ### `deployConfig.js`
 
@@ -58,9 +57,7 @@ module.exports = {
   ecsClusterName: 'my-ecs-cluster',
 
   // if not provided caccl-deploy is capable of building an image asset from your app source
-  appImage: {
-    imageName: 'my-org/my-app:latest',
-  },
+  appImage: 'my-org/my-app:latest',
 
   // the namesace prefix for AWS SecretManager entries; defaults to '/${your app name}'
   secretNamePrefix: '/caccl-deploy/my-app-staging',
@@ -114,6 +111,6 @@ module.exports = {
 
 ##### Required
 
-* certificateArn
+- certificateArn
 
 ##### Optional
