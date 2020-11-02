@@ -292,9 +292,9 @@ async function main() {
       const deployConfig = await cmd.getDeployConfig();
 
       const cfnStackName = cmd.getCfnStackName();
-      let cfnOutputs;
+      let cfnExports;
       try {
-        cfnOutputs = await aws.getCfnStackOutputs(cfnStackName);
+        cfnExports = await aws.getCfnStackExports(cfnStackName);
       } catch (err) {
         if (err.name === 'CfnStackNotFound') {
           console.log(err.message);
@@ -335,7 +335,7 @@ async function main() {
         imageTag: cmd.imageTag,
       });
 
-      const { taskDefName, clusterName, serviceName } = cfnOutputs;
+      const { taskDefName, clusterName, serviceName } = cfnExports;
 
       console.log(`Updating ${cmd.appName} task to use ${newAppImageRepoName}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImageRepoName);
@@ -366,16 +366,16 @@ async function main() {
     .passCommandToAction()
     .action(async (cmd) => {
       const cfnStackName = cmd.getCfnStackName();
-      let cfnOutputs;
+      let cfnExports;
       try {
-        cfnOutputs = await aws.getCfnStackOutputs(cfnStackName);
+        cfnExports = await aws.getCfnStackExports(cfnStackName);
       } catch (err) {
         if (err.name === 'CfnStackNotFound') {
           console.log(err.message);
         }
         process.exit(1);
       }
-      const { clusterName, serviceName } = cfnOutputs;
+      const { clusterName, serviceName } = cfnExports;
       // restartthe service
       await aws.restartEcsServcie(clusterName, serviceName);
     });
@@ -418,7 +418,7 @@ async function main() {
       const {
         vpcId,
         ecsClusterName,
-      } = await aws.getCfnStackOutputs(deployConfig.infraStackName);
+      } = await aws.getCfnStackExports(deployConfig.infraStackName);
 
       const cdkArgs = [...cmd.args];
       if (!cdkArgs.length) {
