@@ -10,7 +10,7 @@ const figlet = require('figlet');
 const aws = require('./lib/aws');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
-const { confirm } = require('./lib/helpers');
+const { confirm, prompt, PROMPTS_OPTS } = require('./lib/helpers');
 const { description } = require('./package.json');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
@@ -54,10 +54,10 @@ class CacclDeployCommander extends Command {
   }
 
   async getDeployConfig(resolveSecrets = true) {
-    const AppPrefix = this.getAppPrefix();
+    const appPrefix = this.getAppPrefix();
     try {
       const deployConfig = await DeployConfig.fromSsmParams(
-        AppPrefix,
+        appPrefix,
         resolveSecrets
       );
       return deployConfig;
@@ -93,11 +93,14 @@ class CacclDeployCommander extends Command {
       );
   }
 
-  appOption() {
-    return this.requiredOption(
+  appOption(required = true) {
+    const args = [
       '-a --app <string>',
-      'name of the app to work with'
-    );
+      'name of the app to work with',
+    ];
+    return required
+      ? this.requiredOption(...args)
+      : this.option(...args);
   }
 }
 
@@ -126,7 +129,7 @@ async function main() {
     .description(description);
 
   cli
-    .command('list')
+    .command('apps')
     .description('list available app configurations')
     .commonOptions()
     .passCommandToAction()
@@ -141,35 +144,40 @@ async function main() {
     });
 
   cli
-    .command('import')
-    .description('import an app deploy configuration from a json file')
+    .command('new')
+    .description('create a new app deploy config via prompts or import')
     .commonOptions()
-    .appOption()
+    .appOption(false)
     .option('-f --file <path>',
-      'path to a deploy config json file')
+      'import new deploy config from a json file')
     .option('-F --force',
       'non-interactive, yes to everything, overwrite existing, etc')
-    .option('-W --wipe',
-      'wipe out any existing config (this will not delete entries created in secretsmanager)')
+    .description('create a new app configuration')
     .passCommandToAction()
     .action(async (cmd) => {
-      const deployConfig = DeployConfig.fromFile(cmd.file);
       const existingApps = await aws.getAppList(cmd.ssmRootPrefix);
 
-      if (existingApps.includes(cmd.appName)) {
-        console.log(`Configuration for ${cmd.appName} already exists`);
-        if (!cmd.force && !await confirm('Overwrite?')) {
+      const appName = (cmd.app === undefined)
+        ? await prompt(PROMPTS_OPTS.appName)
+        : cmd.app;
+
+      const appPrefix = cmd.getAppPrefix(appName);
+
+      if (existingApps.includes(appName)) {
+        console.log(`Configuration for ${cmd.app} already exists`);
+        if (cmd.force || await confirm('Overwrite?', false)) {
+          await DeployConfig.wipeExisting(appPrefix);
+        } else {
           console.log('Bye!');
           process.exit();
         }
       }
 
-      const AppPrefix = cmd.getAppPrefix();
-      if (cmd.wipe) {
-        await DeployConfig.wipeExisting(AppPrefix);
-      }
+      const deployConfig = (cmd.file !== undefined)
+        ? DeployConfig.fromFile(cmd.file)
+        : await DeployConfig.generate();
 
-      await deployConfig.syncToSsm(AppPrefix);
+      await deployConfig.syncToSsm(appPrefix);
     });
 
   cli
@@ -394,14 +402,6 @@ async function main() {
           value
         );
       }
-    });
-
-  cli
-    .command('new')
-    .commonOptions()
-    .description('generate a new app configuration')
-    .action(async () => {
-
     });
 
   cli
