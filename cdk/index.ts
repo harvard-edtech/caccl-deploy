@@ -9,29 +9,33 @@ import DeployConfig from '../lib/deployConfig';
   'CACCL_DEPLOY_VERSION',
   'CACCL_DEPLOY_SSM_APP_PREFIX',
   'CACCL_DEPLOY_STACK_NAME',
-  'CACCL_DEPLOY_APP_NAME',
   'AWS_ACCOUNT_ID',
   'AWS_REGION',
 ].forEach((envVar) => {
+  console.log(process.env[envVar]);
   if (process.env[envVar] === undefined || process.env[envVar] === '') {
     console.error(`CDK operation missing ${envVar}`);
     process.exit(1);
   }
 });
 
+const awsAccountId = process.env.AWS_ACCOUNT_ID;
+const awsRegion = process.env.AWS_REGION;
 const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION;
 const ssmAppPrefix = process.env.CACCL_DEPLOY_SSM_APP_PREFIX;
 const stackName = process.env.CACCL_DEPLOY_STACK_NAME || '';
+const vpcId = process.env.CACCL_DEPLOY_VPC_ID;
+const ecsClusterName = process.env.CACCL_DEPLOY_ECS_CLUSTER;
 
 DeployConfig.fromSsmParams(ssmAppPrefix, false)
   .then((deployConfig) => {
     const stackProps: CacclDeployStackProps = {
       stackName,
-      vpcId: deployConfig.vpcId,
+      vpcId,
+      ecsClusterName,
       cidrBlock: deployConfig.cidrBlock,
       maxAzs: deployConfig.maxAzs || 2,
       certificateArn: deployConfig.certificateArn,
-      ecsClusterName: deployConfig.ecsClusterName,
       appEnvironment: deployConfig.appEnvironment || {},
       notifications: deployConfig.notifications || {},
       loadBalancerLogBucket: deployConfig.loadBalancerLogBucket,
@@ -49,8 +53,8 @@ DeployConfig.fromSsmParams(ssmAppPrefix, false)
         ...deployConfig.tags,
       },
       env: {
-        account: process.env.AWS_ACCOUNT_ID,
-        region: process.env.AWS_REGION,
+        account: awsAccountId,
+        region: awsRegion,
       },
     };
 

@@ -406,15 +406,21 @@ async function main() {
 
   cli
     .command('stack')
+    .description('diff, deploy, update or delete the app\'s AWS resources')
     .commonOptions()
     .appOption()
     .option('-F --force',
       'non-interactive, yes to everything, overwrite existing, etc')
-    .description('diff, deploy, update or delete the app\'s AWS resources')
+    .passCommandToAction()
     .action(async (cmd) => {
-      const cdkArgs = [...cmd.args];
+      const deployConfig = await cmd.getDeployConfig();
       const cfnStackName = cmd.getCfnStackName();
+      const {
+        vpcId,
+        ecsClusterName,
+      } = await aws.getCfnStackOutputs(deployConfig.infraStackName);
 
+      const cdkArgs = [...cmd.args];
       if (!cdkArgs.length) {
         cdkArgs.push('list');
       }
@@ -429,9 +435,10 @@ async function main() {
 
       const envAdditions = {};
       envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
-      envAdditions.CACCL_DEPLOY_APP_NAME = cmd.app;
       envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
       envAdditions.CACCL_DEPLOY_STACK_NAME = cfnStackName;
+      envAdditions.CACCL_DEPLOY_VPC_ID = vpcId;
+      envAdditions.CACCL_DEPLOY_ECS_CLUSTER = ecsClusterName;
       envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
       envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
 
