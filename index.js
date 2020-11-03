@@ -27,7 +27,9 @@ const initAwsProfile = (profile) => {
 class CacclDeployCommander extends Command {
   createCommand(name) {
     const cmd = new CacclDeployCommander(name)
-      .storeOptionsAsProperties();
+      .storeOptionsAsProperties()
+      .commonOptions()
+      .passCommandToAction();
     return cmd;
   }
 
@@ -131,8 +133,6 @@ async function main() {
   cli
     .command('apps')
     .description('list available app configurations')
-    .commonOptions()
-    .passCommandToAction()
     .action(async (cmd) => {
       const apps = await aws.getAppList(cmd.ssmRootPrefix);
       const tableData = apps.map((a) => {
@@ -146,14 +146,12 @@ async function main() {
   cli
     .command('new')
     .description('create a new app deploy config via prompts or import')
-    .commonOptions()
     .appOption(false)
     .option('-f --file <path>',
       'import new deploy config from a json file')
     .option('-F --force',
       'non-interactive, yes to everything, overwrite existing, etc')
     .description('create a new app configuration')
-    .passCommandToAction()
     .action(async (cmd) => {
       const existingApps = await aws.getAppList(cmd.ssmRootPrefix);
 
@@ -183,9 +181,7 @@ async function main() {
   cli
     .command('delete')
     .description('delete an app configuration')
-    .commonOptions()
     .appOption()
-    .passCommandToAction()
     .action(async (cmd) => {
       const appPrefix = cmd.getAppPrefix();
 
@@ -206,13 +202,11 @@ async function main() {
   cli
     .command('show')
     .description('display an app\'s current configuration')
-    .commonOptions()
     .appOption()
     .option('-f --flat',
       'display the flattened, key: value form of the config')
     .option('--no-resolve-secrets',
       'show app environment secret value ARNs instead of dereferencing')
-    .passCommandToAction()
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig(cmd.resolveSecrets);
       console.log(deployConfig.toString(true, cmd.flat));
@@ -221,8 +215,6 @@ async function main() {
   cli
     .command('repos')
     .description('list the available ECR repositories')
-    .commonOptions()
-    .passCommandToAction()
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
@@ -244,12 +236,10 @@ async function main() {
   cli
     .command('images')
     .description('list the most recent available ECR images for an app')
-    .commonOptions()
     .requiredOption('-r --repo <string>',
       'the name of the ECR repo; use `caccl-deploy app repos` for available repos')
     .option('-A --all',
       'show all images; default is to show only semver-tagged releases')
-    .passCommandToAction()
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
@@ -275,7 +265,6 @@ async function main() {
   cli
     .command('release')
     .description('release a new version of an app')
-    .commonOptions()
     .appOption()
     .requiredOption('-i --image-tag <string>',
       'the docker image version tag to release')
@@ -283,7 +272,6 @@ async function main() {
       'just do it; no confirmations or prompts')
     .option('--no-deploy',
       'Update the Fargate Task Definition but don\' restart the service')
-    .passCommandToAction()
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
@@ -357,9 +345,7 @@ async function main() {
   cli
     .command('restart')
     .description('no changes; just force a restart')
-    .commonOptions()
     .appOption()
-    .passCommandToAction()
     .action(async (cmd) => {
       const cfnStackName = cmd.getCfnStackName();
       let cfnExports;
@@ -379,11 +365,9 @@ async function main() {
   cli
     .command('update')
     .description('update (or delete) a single deploy config setting')
-    .commonOptions()
     .appOption()
     .option('-D --delete',
       'delete the named parameter instead of creating/updating')
-    .passCommandToAction()
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
       if (cmd.delete) {
@@ -403,11 +387,9 @@ async function main() {
   cli
     .command('stack')
     .description('diff, deploy, update or delete the app\'s AWS resources')
-    .commonOptions()
     .appOption()
     .option('-F --force',
       'non-interactive, yes to everything, overwrite existing, etc')
-    .passCommandToAction()
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
       const cfnStackName = cmd.getCfnStackName();
