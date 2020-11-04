@@ -8,9 +8,9 @@ const moment = require('moment');
 const chalk = require('chalk');
 const figlet = require('figlet');
 const aws = require('./lib/aws');
+const { promptAppName, confirm } = require('./lib/configPrompts');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
-const { confirm, prompt, PROMPTS_OPTS } = require('./lib/helpers');
 const { description } = require('./package.json');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
@@ -145,10 +145,10 @@ async function main() {
 
   cli
     .command('new')
-    .description('create a new app deploy config via prompts or import')
+    .description('create a new app deploy config via import and/or prompts')
     .appOption(false)
-    .option('-f --file <path>',
-      'import new deploy config from a json file')
+    .option('-i --import <string>',
+      'import new deploy config from a json file or URL')
     .option('-F --force',
       'non-interactive, yes to everything, overwrite existing, etc')
     .description('create a new app configuration')
@@ -156,7 +156,7 @@ async function main() {
       const existingApps = await aws.getAppList(cmd.ssmRootPrefix);
 
       const appName = (cmd.app === undefined)
-        ? await prompt(PROMPTS_OPTS.appName)
+        ? await promptAppName()
         : cmd.app;
 
       const appPrefix = cmd.getAppPrefix(appName);
@@ -171,9 +171,14 @@ async function main() {
         }
       }
 
-      const deployConfig = (cmd.file !== undefined)
-        ? DeployConfig.fromFile(cmd.file)
-        : await DeployConfig.generate();
+      let importedConfig;
+      if (cmd.import !== undefined) {
+        importedConfig = (/^http(s):\//.test(cmd.import))
+          ? await DeployConfig.fromUrl(cmd.import)
+          : DeployConfig.fromFile(cmd.import);
+      }
+
+      const deployConfig = await DeployConfig.generate(importedConfig);
 
       await deployConfig.syncToSsm(appPrefix);
     });
