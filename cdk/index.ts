@@ -12,7 +12,6 @@ import DeployConfig from '../lib/deployConfig';
   'AWS_ACCOUNT_ID',
   'AWS_REGION',
 ].forEach((envVar) => {
-  console.log(process.env[envVar]);
   if (process.env[envVar] === undefined || process.env[envVar] === '') {
     console.error(`CDK operation missing ${envVar}`);
     process.exit(1);

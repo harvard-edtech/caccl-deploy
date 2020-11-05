@@ -12,6 +12,7 @@ const { promptAppName, confirm } = require('./lib/configPrompts');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
+const { looksLikeSemver } = require('./lib/helpers');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
 
@@ -250,15 +251,36 @@ async function main() {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
       const images = await aws.getRepoImageList(cmd.repo, cmd.all);
+      const account = await aws.getAccountId();
+      const region = aws.getCurrentRegion();
       const data = images.map((i) => {
+        const imageTags = i.imageTags.filter((t) => {
+          return cmd.all || looksLikeSemver(t);
+        }).join('\n');
+
+        const imageArns = i.imageTags.reduce((collect, t) => {
+          if (cmd.all || looksLikeSemver(t)) {
+            collect.push(
+              aws.createEcrArn({
+                repoName: cmd.repo,
+                imageTag: t,
+                account,
+                region,
+              })
+            );
+          }
+          return collect;
+        }, []).join('\n');
+
         return [
           moment(i.imagePushedAt).format(),
-          i.imageTags.join('\n'),
+          imageTags,
+          imageArns,
         ];
       });
       if (data.length) {
         const tableOutput = table([
-          ['Pushed On', 'Tags'],
+          ['Pushed On', 'Tags', 'ARNs'],
           ...data,
         ]);
         console.log(tableOutput);

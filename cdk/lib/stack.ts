@@ -21,7 +21,7 @@ export interface CacclDeployStackProps extends StackProps {
   maxAzs: number;
   certificateArn: string;
   ecsClusterName?: string;
-  appEnvironment: { [key: string]: string };
+  appEnvironment: { [key: string]: string; };
   taskDefProps: CacclTaskDefProps;
   taskCount: number;
   docDbOptions?: CacclDocDbOptions;
