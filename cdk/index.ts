@@ -37,7 +37,7 @@ DeployConfig.fromSsmParams(ssmAppPrefix, false)
       certificateArn: deployConfig.certificateArn,
       appEnvironment: deployConfig.appEnvironment || {},
       notifications: deployConfig.notifications || {},
-      loadBalancerLogBucket: deployConfig.loadBalancerLogBucket,
+      albLogBucketName: deployConfig.albLogBucketName,
       taskDefProps: {
         appImage: deployConfig.appImage,
         proxyImage: deployConfig.proxyImage,

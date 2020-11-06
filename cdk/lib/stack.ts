@@ -26,7 +26,7 @@ export interface CacclDeployStackProps extends StackProps {
   taskCount: number;
   docDbOptions?: CacclDocDbOptions;
   notifications: CacclNotificationsProps;
-  loadBalancerLogBucket?: string;
+  albLogBucketName?: string;
 }
 
 export class CacclDeployStack extends Stack {
@@ -104,7 +104,7 @@ export class CacclDeployStack extends Stack {
     const loadBalancer = new CacclLoadBalancer(this, 'LoadBalancer', {
       certificateArn: props.certificateArn,
       loadBalancerTarget: service.loadBalancerTarget,
-      loadBalancerLogBucket: props.loadBalancerLogBucket,
+      albLogBucketName: props.albLogBucketName,
       vpc,
       sg,
     });
