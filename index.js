@@ -219,6 +219,28 @@ async function main() {
     });
 
   cli
+    .command('update')
+    .description('update (or delete) a single deploy config setting')
+    .appOption()
+    .option('-D --delete',
+      'delete the named parameter instead of creating/updating')
+    .action(async (cmd) => {
+      const deployConfig = await cmd.getDeployConfig();
+      if (cmd.delete) {
+        const [param] = cmd.args;
+        const paramPath = [cmd.getAppPrefix(), param].join('/');
+        await aws.deleteSsmParameters([paramPath]);
+      } else {
+        const [param, value] = cmd.args;
+        await deployConfig.update(
+          cmd.getAppPrefix(),
+          param,
+          value
+        );
+      }
+    });
+
+  cli
     .command('repos')
     .description('list the available ECR repositories')
     .action(async (cmd) => {
@@ -287,6 +309,75 @@ async function main() {
       } else {
         console.log('No images found');
       }
+    });
+
+  cli
+    .command('stack')
+    .description('diff, deploy, update or delete the app\'s AWS resources')
+    .appOption()
+    .option('-F --force',
+      'non-interactive, yes to everything, overwrite existing, etc')
+    .action(async (cmd) => {
+      const deployConfig = await cmd.getDeployConfig();
+      const cfnStackName = cmd.getCfnStackName();
+      const {
+        vpcId,
+        ecsClusterName,
+      } = await aws.getCfnStackExports(deployConfig.infraStackName);
+
+      const cdkArgs = [...cmd.args];
+      if (!cdkArgs.length) {
+        cdkArgs.push('list');
+      }
+
+      if (cmd.profile !== undefined) {
+        cdkArgs.push('--profile', cmd.profile);
+      }
+
+      if (cdkArgs[0] === 'deploy' && cmd.force) {
+        cdkArgs.push('--require-approval-never');
+      }
+
+      const envAdditions = {};
+      envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
+      envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
+      envAdditions.CACCL_DEPLOY_STACK_NAME = cfnStackName;
+      envAdditions.CACCL_DEPLOY_VPC_ID = vpcId;
+      envAdditions.CACCL_DEPLOY_ECS_CLUSTER = ecsClusterName;
+      envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
+      envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+
+      const execOpts = {
+        stdio: 'inherit',
+        cwd: path.join(__dirname, 'cdk'),
+        env: { ...process.env, ...envAdditions },
+      };
+
+      try {
+        spawnSync('cdk', cdkArgs, execOpts);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+  cli
+    .command('restart')
+    .description('no changes; just force a restart')
+    .appOption()
+    .action(async (cmd) => {
+      const cfnStackName = cmd.getCfnStackName();
+      let cfnExports;
+      try {
+        cfnExports = await aws.getCfnStackExports(cfnStackName);
+      } catch (err) {
+        if (err.name === 'CfnStackNotFound') {
+          console.log(err.message);
+        }
+        process.exit(1);
+      }
+      const { clusterName, serviceName } = cfnExports;
+      // restartthe service
+      await aws.restartEcsServcie(clusterName, serviceName);
     });
 
   cli
@@ -368,98 +459,6 @@ async function main() {
         console.log('WARNING: service is out-of-sync with stored deployment configuration');
       }
     });
-
-  cli
-    .command('restart')
-    .description('no changes; just force a restart')
-    .appOption()
-    .action(async (cmd) => {
-      const cfnStackName = cmd.getCfnStackName();
-      let cfnExports;
-      try {
-        cfnExports = await aws.getCfnStackExports(cfnStackName);
-      } catch (err) {
-        if (err.name === 'CfnStackNotFound') {
-          console.log(err.message);
-        }
-        process.exit(1);
-      }
-      const { clusterName, serviceName } = cfnExports;
-      // restartthe service
-      await aws.restartEcsServcie(clusterName, serviceName);
-    });
-
-  cli
-    .command('update')
-    .description('update (or delete) a single deploy config setting')
-    .appOption()
-    .option('-D --delete',
-      'delete the named parameter instead of creating/updating')
-    .action(async (cmd) => {
-      const deployConfig = await cmd.getDeployConfig();
-      if (cmd.delete) {
-        const [param] = cmd.args;
-        const paramPath = [cmd.getAppPrefix(), param].join('/');
-        await aws.deleteSsmParameters([paramPath]);
-      } else {
-        const [param, value] = cmd.args;
-        await deployConfig.update(
-          cmd.getAppPrefix(),
-          param,
-          value
-        );
-      }
-    });
-
-  cli
-    .command('stack')
-    .description('diff, deploy, update or delete the app\'s AWS resources')
-    .appOption()
-    .option('-F --force',
-      'non-interactive, yes to everything, overwrite existing, etc')
-    .action(async (cmd) => {
-      const deployConfig = await cmd.getDeployConfig();
-      const cfnStackName = cmd.getCfnStackName();
-      const {
-        vpcId,
-        ecsClusterName,
-      } = await aws.getCfnStackExports(deployConfig.infraStackName);
-
-      const cdkArgs = [...cmd.args];
-      if (!cdkArgs.length) {
-        cdkArgs.push('list');
-      }
-
-      if (cmd.profile !== undefined) {
-        cdkArgs.push('--profile', cmd.profile);
-      }
-
-      if (cdkArgs[0] === 'deploy' && cmd.force) {
-        cdkArgs.push('--require-approval-never');
-      }
-
-      const envAdditions = {};
-      envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
-      envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
-      envAdditions.CACCL_DEPLOY_STACK_NAME = cfnStackName;
-      envAdditions.CACCL_DEPLOY_VPC_ID = vpcId;
-      envAdditions.CACCL_DEPLOY_ECS_CLUSTER = ecsClusterName;
-      envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
-      envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-
-      const execOpts = {
-        stdio: 'inherit',
-        cwd: path.join(__dirname, 'cdk'),
-        env: { ...process.env, ...envAdditions },
-      };
-
-      try {
-        spawnSync('cdk', cdkArgs, execOpts);
-      } catch (err) {
-        console.error(err);
-      }
-    });
-
   await cli.parse(process.argv);
 }
 
