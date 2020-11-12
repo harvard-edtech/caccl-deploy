@@ -154,6 +154,9 @@ async function main() {
       'non-interactive, yes to everything, overwrite existing, etc')
     .description('create a new app configuration')
     .action(async (cmd) => {
+      if (cmd.ecrAccessRoleArn !== undefined) {
+        aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
+      }
       const existingApps = await aws.getAppList(cmd.ssmRootPrefix);
 
       const appName = (cmd.app === undefined)
