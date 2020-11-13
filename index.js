@@ -19,6 +19,7 @@ const cacclDeployVersion = require('./lib/generateVersion')();
 const initAwsProfile = (profile) => {
   try {
     aws.initProfile(profile);
+    return profile;
   } catch (err) {
     console.log(err);
     return err;
@@ -276,20 +277,22 @@ async function main() {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
       const images = await aws.getRepoImageList(cmd.repo, cmd.all);
-      const account = await aws.getAccountId();
       const region = aws.getCurrentRegion();
+
+      const includeThisTag = (t) => {
+        return cmd.all || looksLikeSemver(t) || ['master', 'stage'].includes(t);
+      };
+
       const data = images.map((i) => {
-        const imageTags = i.imageTags.filter((t) => {
-          return cmd.all || looksLikeSemver(t);
-        }).join('\n');
+        const imageTags = i.imageTags.filter(includeThisTag).join('\n');
 
         const imageArns = i.imageTags.reduce((collect, t) => {
-          if (cmd.all || looksLikeSemver(t)) {
+          if (includeThisTag(t)) {
             collect.push(
               aws.createEcrArn({
                 repoName: cmd.repo,
                 imageTag: t,
-                account,
+                account: i.registryId,
                 region,
               })
             );
@@ -318,6 +321,7 @@ async function main() {
     .command('stack')
     .description('diff, deploy, update or delete the app\'s AWS resources')
     .appOption()
+    .commonOptions()
     .option('-F --force',
       'non-interactive, yes to everything, overwrite existing, etc')
     .action(async (cmd) => {
@@ -328,19 +332,6 @@ async function main() {
         ecsClusterName,
       } = await aws.getCfnStackExports(deployConfig.infraStackName);
 
-      const cdkArgs = [...cmd.args];
-      if (!cdkArgs.length) {
-        cdkArgs.push('list');
-      }
-
-      if (cmd.profile !== undefined) {
-        cdkArgs.push('--profile', cmd.profile);
-      }
-
-      if (cdkArgs[0] === 'deploy' && cmd.force) {
-        cdkArgs.push('--require-approval-never');
-      }
-
       const envAdditions = {};
       envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
       envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
@@ -349,6 +340,20 @@ async function main() {
       envAdditions.CACCL_DEPLOY_ECS_CLUSTER = ecsClusterName;
       envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
       envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+
+      const cdkArgs = [...cmd.args];
+      if (!cdkArgs.length) {
+        cdkArgs.push('list');
+      }
+
+      if (cmd.profile !== undefined) {
+        cdkArgs.push('--profile', cmd.profile);
+        envAdditions.AWS_PROFILE = cmd.profile;
+      }
+
+      if (cdkArgs[0] === 'deploy' && cmd.force) {
+        cdkArgs.push('--require-approval-never');
+      }
 
       const execOpts = {
         stdio: 'inherit',
