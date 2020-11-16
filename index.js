@@ -8,7 +8,7 @@ const moment = require('moment');
 const chalk = require('chalk');
 const figlet = require('figlet');
 const aws = require('./lib/aws');
-const { promptAppName, confirm } = require('./lib/configPrompts');
+const { promptAppName, confirm, confirmProductionOp } = require('./lib/configPrompts');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
@@ -94,6 +94,10 @@ class CacclDeployCommander extends Command {
         '--cfn-stack-prefix <string>',
         'cloudformation stack name prefix, e.g. "CacclDeploy-"',
         conf.get('cfnStackPrefix')
+      )
+      .option(
+        '-F --force',
+        'non-interactive, yes to everything, overwrite existing, etc'
       );
   }
 
@@ -161,8 +165,6 @@ async function main() {
     .appOption(false)
     .option('-i --import <string>',
       'import new deploy config from a json file or URL')
-    .option('-F --force',
-      'non-interactive, yes to everything, overwrite existing, etc')
     .description('create a new app configuration')
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
@@ -179,6 +181,7 @@ async function main() {
       if (existingApps.includes(appName)) {
         console.log(`Configuration for ${cmd.app} already exists`);
         if (cmd.force || await confirm('Overwrite?', false)) {
+          await confirmProductionOp(cmd.force);
           await DeployConfig.wipeExisting(appPrefix);
         } else {
           console.log('Bye!');
@@ -207,7 +210,8 @@ async function main() {
 
       try {
         console.log(`This will delete all deployment configuation for ${cmd.app}`);
-        if (await confirm('Are you sure?')) {
+        if (cmd.force || await confirm('Are you sure?')) {
+          await confirmProductionOp(cmd.force);
           await DeployConfig.wipeExisting(appPrefix, false);
           console.log(`${cmd.app} configuration deleted`);
         }
@@ -240,6 +244,7 @@ async function main() {
       'delete the named parameter instead of creating/updating')
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
+      await confirmProductionOp(cmd.force);
       if (cmd.delete) {
         const [param] = cmd.args;
         const paramPath = [cmd.getAppPrefix(), param].join('/');
@@ -329,11 +334,9 @@ async function main() {
 
   cli
     .command('stack')
-    .description('diff, deploy, update or delete the app\'s AWS resources')
+    .description('diff, deploy, or delete the app\'s AWS resources')
     .appOption()
     .commonOptions()
-    .option('-F --force',
-      'non-interactive, yes to everything, overwrite existing, etc')
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
       const cfnStackName = cmd.getCfnStackName();
@@ -363,6 +366,10 @@ async function main() {
 
       if (cdkArgs[0] === 'deploy' && cmd.force) {
         cdkArgs.push('--require-approval-never');
+      }
+
+      if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
+        await confirmProductionOp(cmd.force);
       }
 
       const execOpts = {
@@ -395,6 +402,7 @@ async function main() {
       }
       const { clusterName, serviceName } = cfnExports;
       // restartthe service
+      await confirmProductionOp(cmd.force);
       await aws.restartEcsServcie(clusterName, serviceName);
     });
 
@@ -404,8 +412,6 @@ async function main() {
     .appOption()
     .requiredOption('-i --image-tag <string>',
       'the docker image version tag to release')
-    .option('-f --force',
-      'just do it; no confirmations or prompts')
     .option('--no-deploy',
       'Update the Fargate Task Definition but don\' restart the service')
     .action(async (cmd) => {
@@ -460,6 +466,8 @@ async function main() {
       });
 
       const { taskDefName, clusterName, serviceName } = cfnExports;
+
+      await confirmProductionOp(cmd.force);
 
       console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImage);
