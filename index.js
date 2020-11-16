@@ -137,11 +137,21 @@ async function main() {
     .description('list available app configurations')
     .action(async (cmd) => {
       const apps = await aws.getAppList(cmd.ssmRootPrefix);
+      const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
       const tableData = apps.map((a) => {
-        return [a];
+        const cfnStackName = cmd.getCfnStackName(a);
+        let cfnStackStatus;
+        try {
+          cfnStackStatus = cfnStacks.find((s) => {
+            return s.StackName === cfnStackName && s.StackStatus !== 'DELETE_COMPLETE';
+          }).StackStatus;
+        } catch (err) {
+          cfnStackStatus = '';
+        }
+        return [a, cfnStackStatus];
       });
       console.log(apps.length
-        ? table([['App'], ...tableData])
+        ? table([['App', 'CloudFormation Stack Status'], ...tableData])
         : `No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
     });
 
@@ -451,7 +461,7 @@ async function main() {
 
       const { taskDefName, clusterName, serviceName } = cfnExports;
 
-      console.log(`Updating ${cmd.appName} task to use ${newAppImage}`);
+      console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImage);
 
       // update the ssm parameter

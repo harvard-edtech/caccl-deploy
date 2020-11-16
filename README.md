@@ -249,7 +249,9 @@ There are two parts to setting this up. For the purposes of this README lets ass
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::[production account id]:root"
+        "AWS": [
+          "arn:aws:iam::[production account id]:root"
+        ]
       },
       "Action": "sts:AssumeRole",
     }
