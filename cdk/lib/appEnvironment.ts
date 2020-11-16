@@ -22,7 +22,7 @@ export class CacclAppEnvironment extends Construct {
     this.secrets = {};
     Object.entries(props.envVars).forEach(([name, value]) => {
       if (value.toString().toLowerCase().startsWith('arn:aws:secretsmanager')) {
-        const varSecret = Secret.fromSecretArn(this, `${name}SecretArn`, value) as Secret;
+        const varSecret = Secret.fromSecretCompleteArn(this, `${name}SecretArn`, value) as Secret;
         this.secrets[name] = EcsSecret.fromSecretsManager(varSecret);
       } else {
         this.env[name] = value;
