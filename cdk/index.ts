@@ -57,11 +57,11 @@ DeployConfig.fromSsmParams(ssmAppPrefix, false)
       },
     };
 
-    if (deployConfig.docDb) {
+    if (deployConfig.docDb === "true") {
       stackProps.docDbOptions = {
-        instanceType: deployConfig.docDbInstanceType || 'r5.large',
+        instanceType: deployConfig.docDbInstanceType || 't3.medium',
         instanceCount: deployConfig.docDbInstanceCount || 1,
-        profiler: deployConfig.docDbProfiler || false,
+        profiler: deployConfig.docDbProfiler === "true",
       };
     }
 
