@@ -424,11 +424,21 @@ async function main() {
       let cfnExports;
       try {
         cfnExports = await aws.getCfnStackExports(cfnStackName);
+        [
+          'taskDefName',
+          'clusterName',
+          'serviceName',
+        ].forEach((exportValue) => {
+          if (cfnExports[exportValue] === undefined) {
+            throw new Error(`Incomplete app stack: missing ${exportValue}`);
+          }
+        });
       } catch (err) {
-        if (err.name === 'CfnStackNotFound') {
+        if (err.name === 'CfnStackNotFound' || err.message.includes('Incomplete')) {
           console.log(err.message);
+          process.exit(1);
         }
-        process.exit(1);
+        throw err;
       }
 
       /**
