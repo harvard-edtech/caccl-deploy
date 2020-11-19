@@ -90,11 +90,12 @@ Please see the docs for explanations of these settings
 ✖ Continue … yes
 ```
 
-There are three possible settings in the `config.json`:
+There are four possible settings in the `config.json`:
 
 - `ssmRootPrefix` (string) - this determines the root namespace for all SSM Parameter Store entries controlled by `caccl-deploy`. For instance, the default value of `/caccl-deploy` means that the program will only look for parameters whose names begin with that string, and newly created app configurations will be created with a namespace of `/caccl-deploy/my-new-app`. See the section below on Parameters & Secrets for more detail.
 - `cfnStackPrefix` (string) - this determines the prefix for all CloudFormation stacks controlled by `caccl-deploy`. For example, if you create an app called "foo-app" it will be provisioned with the CFn stack "CacclDeploy-foo-app".
-- `ecrAccessRoleArn` (string) - the ARN of an IAM role for allowing cross-account access to ECR repositories and images. This setting is necessary for situations in which you have multiple AWS accounts but only use ECR repos/images in one of them. See the section below on ECR Repositories
+- `ecrAccessRoleArn` (string) - the ARN of an IAM role for allowing cross-account access to ECR repositories and images. This setting is necessary for situations in which you have multiple AWS accounts but only use ECR repos/images in one of them. See the section below on ECR Repositories.
+- `productionAccouts` (array) - if you want an additional, loud warning prompt when performing operations on a production account, include its account id (as a string) here.
 
 ### Deployment configuration
 
@@ -259,4 +260,212 @@ There are two parts to setting this up. For the purposes of this README lets ass
 }
 ```
 
-### DocumentDB`
+Once this role is created its ARN should be added to your `caccl-deploy` configuration file. See "Configuring caccl-deploy" above.
+
+### DocumentDB
+
+For apps that require a DocumentDB instance include `"docDb": "true"` int your deploy configuration. You can add to an existing configuration using the `update` command.
+
+`caccl-deploy update -a [app name] docDb true`
+
+By default you will get a single instance of type "t3.medium". We turn slow query profiling on by default.
+
+A shell script, `bin/docdb.sh` is provided to assist in accessing the resulting database. It might work out of the box or at least be useful as a starting point.
+
+---
+
+### Subommands & Options Details
+
+```
+Usage: caccl-deploy [options] [command]
+
+A cli tool for managing ECS/Fargate app deployments
+
+Options:
+  -V, --version      output the version number
+  -h, --help         display help for command
+
+Commands:
+  apps [options]     list available app configurations
+  new [options]      create a new app configuration
+  delete [options]   delete an app configuration
+  show [options]     display an app's current configuration
+  update [options]   update (or delete) a single deploy config setting
+  repos [options]    list the available ECR repositories
+  images [options]   list the most recent available ECR images for an app
+  stack [options]    diff, deploy, or delete the app's AWS resources
+  restart [options]  no changes; just force a restart
+  release [options]  release a new version of an app
+  help [command]     display help for command
+```
+
+#### Common Options
+
+`-V`/`--version`: This will output a generated string with the installed package version. In development context (i.e., if running from a git checkout) the version string will also include the current commit hash and branch name.
+
+`-h`/`--help`: show usage info for the program or any subcommand
+
+`-f`/`--force`: for any option that would normally prompt for confirmation, including production account failsafe confirmations, adding this option will assume "yes" for all prompts. Should really be used carefully and perhaps only in some kind of scripted operation context. For subcommands that don't actually modify resources this flag does nothing.
+
+`--profile`: this controls which set of credentials will be used for interactions with AWS. `caccl-deploy` does not manage these credentials for you; it is assumed you have the `awscli` program installed and configured.
+
+`--ssm-root-prefix`, `--cfn-stack-prefix`, `--ecr-access-role-arn`: these are command-line args that correspond to the settings described in "Configuring caccl-deploy" above.
+
+#### Subcommands
+
+#### apps
+
+This will list the existing app configurations found using the provided or configured SSM prefix. If the app configuration has a corresponding CloudFormation stack (i.e., it's been deployed) then the stack status will be shown as well.
+
+---
+
+#### new
+
+This command allows you to create a new app configuration in a few ways:
+
+* from scratch with prompts for the required options
+* import from a json file using the `-i` option, with prompts for any missing, required values
+* import from a URL (json response) using the `-i` option, with prompts for any missing, required values
+
+The required options (also described above in the section on "Config setting explanations") which will need to be provided via prompt or included in your imported json, are:
+
+- `infraStackName` - this is the name of the CloudFormation stack that holds the shared infrastructure (VPC, ECS cluster). If not provided, the process will allow you to select from a list of available infrastructure stacks in the AWS account being used.
+
+- `certificateARN` - the full ARN of an ACM certificate entry. This certificate will be used for the load balancer's HTTPS listener.
+
+- `appImage` - the id of your app's Docker image.
+
+The process will also prompt you to add any desired AWS resource tags and app environment variables.
+
+When finished the process stores the deployment configuration settings in Parameter Store (and SecretsManager for any app environment variable values) using a namespace formed from your `ssmRootPrefix` and the app name.
+
+##### options
+
+- `-a`/`--app` - the name of the app. You will be prompted for this value if not provided. This should be unique for the AWS account being used. Otherwise you will be prompted to first wipe any existing configuration for the specified app name.
+- `-i`/`--import` - use this option to import existing configuration settings (in json form) from a file or url.
+
+---
+
+#### show
+
+Display the current deployment configuration for an app. The process fetches the relevant Paramter Store entries based on the `/[ssmRootPrefx]/[app name]` namespace and assembles them into a json object and outputs to stdout.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+- `-f`/`--flat` - show the flattened version of the configuration data.
+- `--no-resolve-secrets` - by default the output will include the actual, dereferenced values of app environment variables stored in SecretsManager. Use this option to see the ARNs of the SecretsManger entries instead.
+
+---
+
+#### delete
+
+Remove an app configuration entirely. This wipes out all Paramter Store entries for a app, including any referenced SecretsManager entries.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+
+---
+
+#### update
+
+This subcommands allows adding, updating or deleting a single configuration setting.
+
+For adding or updating use the form `caccl-deploy update -a [app name] [param] [value]`.
+
+To delete a setting use the `-D` flag, like `caccl-deploy update -a [app name] -D [param]`.
+
+For nested values, like an app environment variable, use the full path to the setting. For instance, to update the value of the `FOOBAR` environment variable you would use `caccl-deploy update -a [app name] appEnvironment/FOOBAR baz`.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+
+---
+
+#### repos
+
+Displays a list of the available ECR repositories. See details above about cross-account ECR stuff.
+
+---
+
+#### images
+
+Given a respository, this command lists its avaialble images. Use this command to get the value for your configuration's `appImage` setting.
+
+##### options
+
+- `-r`/`--repository` - the name of the ECR repository. Use the `repos` command to get the available list.
+- `-A`/`--all` - By default the `images` command will only show those images that have been tagged with a semver-looking value, e.g. "1.0.0". Use this option to display all the available images, including those identified only by their git commit sha.
+
+---
+
+_The commands below all perform operations on the actual deployed resources_
+
+---
+
+#### stack
+
+This subcommand acts as a wrapper for the `cdk` program (part of the [aws-cdk](https://aws.amazon.com/cdk/) library), which it spawns as a subprocess after setting up several variables in the process execution environment. Any valild `cdk` subcommand can be used, the default being `cdk list`. The most common operations will be `list`, `diff`, `deploy`, and `destroy`.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+
+---
+
+#### restart
+
+This subcommand executes a forced redeploy of your app's ECS Fargate service without changes to any of the service or task settings. _**HOWEVER**_, any changes you have made to app environment variables or the app's container images (including the nginx proxy server) will be present when the service restarts.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+
+---
+
+#### release
+
+This subcommand combines an change to the app's Docker image (i.e. switching to a new version tag) with a service restart.
+
+For example, say your app's `appImage` was set to `arn:aws:ecr:us-east-1:123456789012:repository/hdce/tool-playground:1.0.0` and you wanted to release the image tagged `1.1.0`, you would do:
+
+`caccl-deploy release -a my-app -i 1.1.0`
+
+The `-i` input value is validated against the list of tags available in the repo indicated by your full image id. You will also be prompted to confirm if the tag is not for the most recent image available in the repository.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+- `-i`/`--image-tag` (required) - the new image release tag. This can be any value shown in the output of the `images` subcommand.
+
+---
+
+### Development
+
+Just going to do an overview of what's where and what does what.
+
+##### `index.js`
+
+This is the main cli script that defines the `caccl-deploy` command and subcommands. It uses the [commander.js](https://github.com/tj/commander.js) library, making use of some of the provided hooks and overrides to customize how the command actions and options are implemented.
+
+##### `./cdk/*`
+
+The code in this directory is where the cdk app, stack and constructs are implemented. It's possible in theory to use this code directly via the cdk's own `cdk` command, but the expectation is that it be executed via the `caccl-deploy stack` subcommand, which sets up several important environment variables based on whichever app's deployment configuration is loaded.
+
+##### `./cdk/cdk.json`
+
+This file tells the cdk how to execute the cdk code.
+
+##### `./cdk/cdk.context.json`
+
+This file is generated by cdk and contains data about the VPC infrastructure. It _**should not**_ be added to version control.
+
+##### `./cdk/index.ts`
+
+This is the "main" script for the cdk code. It picks up the environment variables set by the `caccl-deploy stack` subcommand wrapper, fetches the deploy configuration from Parameter Store, and runs whatever cdk subcommand is requested (list, diff, deploy, etc).
+
+##### `./cdk/lib/*`
+
+These are the cdk construct classes that define the AWS resources that make up each app's stack. 

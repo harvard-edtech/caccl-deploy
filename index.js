@@ -67,7 +67,7 @@ class CacclDeployCommander extends Command {
       return deployConfig;
     } catch (err) {
       if (err.name === 'AppNotFound') {
-        console.log(`${this.app} configuration not found!`);
+        console.log(`${this.app} app configuration not found!`);
         process.exit(1);
       }
     }
@@ -217,7 +217,7 @@ async function main() {
         }
       } catch (err) {
         if (err.name === 'AppNotFound') {
-          console.log(`${cmd.app} configuration not found!`);
+          console.log(`${cmd.app} app configuration not found!`);
           process.exit(1);
         }
       }
@@ -336,7 +336,6 @@ async function main() {
     .command('stack')
     .description('diff, deploy, or delete the app\'s AWS resources')
     .appOption()
-    .commonOptions()
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
       const cfnStackName = cmd.getCfnStackName();
