@@ -1,6 +1,6 @@
 {
   "name": "caccl-deploy",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "A cli tool for managing ECS/Fargate app deployments",
   "main": "index.js",
   "bin": {
@@ -18,6 +18,11 @@
   ],
   "author": "Jay Luker",
   "license": "ISC",
+  "files": [
+    "lib",
+    "index.js",
+    "cdk"
+  ],
   "dependencies": {
     "aws-sdk": "^2.787.0",
     "camel-case": "^4.1.1",
