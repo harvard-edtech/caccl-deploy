@@ -60,6 +60,7 @@
     "react/jsx-filename-extension": "off",
     "no-underscore-dangle": "off",
     "no-await-in-loop": "off",
-    "max-params": ["warn", { "max": 3 }]
+    "max-params": ["warn", { "max": 3 }],
+    "no-unused-expressions": "off"
   }
 }

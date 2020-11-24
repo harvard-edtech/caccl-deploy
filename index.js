@@ -13,6 +13,7 @@ const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
 const { looksLikeSemver } = require('./lib/helpers');
+const { UserCancel } = require('./lib/errors');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
 
@@ -24,6 +25,11 @@ const initAwsProfile = (profile) => {
     console.log(err);
     return err;
   }
+};
+
+const bye = (msg = 'bye!', code = 0) => {
+  console.log(msg);
+  process.exit(code);
 };
 
 class CacclDeployCommander extends Command {
@@ -67,8 +73,7 @@ class CacclDeployCommander extends Command {
       return deployConfig;
     } catch (err) {
       if (err.name === 'AppNotFound') {
-        console.log(`${this.app} app configuration not found!`);
-        process.exit(1);
+        bye(`${this.app} app configuration not found!`, 1);
       }
     }
   }
@@ -126,9 +131,8 @@ async function main() {
       '',
       'Please see the docs for explanations of these settings',
     ].join('\n'));
-    if (!await confirm('Continue')) {
-      process.exit(0);
-    }
+
+    (await confirm('Continue?')) || bye();
     setConfigDefaults();
   }
 
@@ -172,20 +176,27 @@ async function main() {
       }
       const existingApps = await aws.getAppList(cmd.ssmRootPrefix);
 
-      const appName = (cmd.app === undefined)
-        ? await promptAppName()
-        : cmd.app;
+      let appName;
+      try {
+        appName = (cmd.app === undefined)
+          ? await promptAppName()
+          : cmd.app;
+      } catch (err) {
+        if (err.name === UserCancel.name) {
+          bye();
+        }
+        throw err;
+      }
 
       const appPrefix = cmd.getAppPrefix(appName);
 
       if (existingApps.includes(appName)) {
         console.log(`Configuration for ${cmd.app} already exists`);
         if (cmd.force || await confirm('Overwrite?', false)) {
-          await confirmProductionOp(cmd.force);
+          (await confirmProductionOp(cmd.force)) || bye();
           await DeployConfig.wipeExisting(appPrefix);
         } else {
-          console.log('Bye!');
-          process.exit();
+          bye();
         }
       }
 
@@ -196,7 +207,15 @@ async function main() {
           : DeployConfig.fromFile(cmd.import);
       }
 
-      const deployConfig = await DeployConfig.generate(importedConfig);
+      let deployConfig;
+      try {
+        deployConfig = await DeployConfig.generate(importedConfig);
+      } catch (err) {
+        if (err.name === 'UserCancel') {
+          bye(err.message, 1);
+        }
+        throw err;
+      }
 
       await deployConfig.syncToSsm(appPrefix);
     });
@@ -211,14 +230,13 @@ async function main() {
       try {
         console.log(`This will delete all deployment configuation for ${cmd.app}`);
         if (cmd.force || await confirm('Are you sure?')) {
-          await confirmProductionOp(cmd.force);
+          (await confirmProductionOp(cmd.force)) || bye();
           await DeployConfig.wipeExisting(appPrefix, false);
           console.log(`${cmd.app} configuration deleted`);
         }
       } catch (err) {
         if (err.name === 'AppNotFound') {
-          console.log(`${cmd.app} app configuration not found!`);
-          process.exit(1);
+          bye(`${cmd.app} app configuration not found!`, 1);
         }
       }
     });
@@ -244,7 +262,7 @@ async function main() {
       'delete the named parameter instead of creating/updating')
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
-      await confirmProductionOp(cmd.force);
+      (await confirmProductionOp(cmd.force)) || bye();
       if (cmd.delete) {
         const [param] = cmd.args;
         const paramPath = [cmd.getAppPrefix(), param].join('/');
@@ -368,7 +386,7 @@ async function main() {
       }
 
       if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
-        await confirmProductionOp(cmd.force);
+        (await confirmProductionOp(cmd.force)) || bye();
       }
 
       const execOpts = {
@@ -395,13 +413,13 @@ async function main() {
         cfnExports = await aws.getCfnStackExports(cfnStackName);
       } catch (err) {
         if (err.name === 'CfnStackNotFound') {
-          console.log(err.message);
+          bye(err.message, 1);
         }
-        process.exit(1);
+        throw err;
       }
       const { clusterName, serviceName } = cfnExports;
       // restartthe service
-      await confirmProductionOp(cmd.force);
+      (await confirmProductionOp(cmd.force)) || bye();
       await aws.restartEcsServcie(clusterName, serviceName);
     });
 
@@ -435,8 +453,7 @@ async function main() {
         });
       } catch (err) {
         if (err.name === 'CfnStackNotFound' || err.message.includes('Incomplete')) {
-          console.log(err.message);
-          process.exit(1);
+          bye(err.message, 1);
         }
         throw err;
       }
@@ -454,8 +471,7 @@ async function main() {
         cmd.imageTag
       );
       if (!imageTagExists) {
-        console.log(`No image with tag ${cmd.imageTag} in ${repoArn.repoName}`);
-        process.exit(1);
+        bye(`No image with tag ${cmd.imageTag} in ${repoArn.repoName}`, 1);
       }
 
       // check if it's the latest release and prompt if not
@@ -463,9 +479,7 @@ async function main() {
       const isLatestTag = await aws.isLatestTag(repoArn.repoName, cmd.imageTag);
       if (!isLatestTag && !cmd.force) {
         console.log(`${cmd.imageTag} is not the most recent release`);
-        if (!await confirm('Proceed?')) {
-          process.exit();
-        }
+        (await confirm('Proceed?')) || bye();
       }
 
       // generate the new repo image arn to be deployed
@@ -476,7 +490,7 @@ async function main() {
 
       const { taskDefName, clusterName, serviceName } = cfnExports;
 
-      await confirmProductionOp(cmd.force);
+      (await confirmProductionOp(cmd.force)) || bye();
 
       console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImage);
