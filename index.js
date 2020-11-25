@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 const { Command } = require('commander');
-const { spawnSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const { table } = require('table');
 const path = require('path');
 const moment = require('moment');
 const chalk = require('chalk');
 const figlet = require('figlet');
+const yn = require('yn');
 const aws = require('./lib/aws');
 const { promptAppName, confirm, confirmProductionOp } = require('./lib/configPrompts');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
@@ -16,6 +17,8 @@ const { looksLikeSemver } = require('./lib/helpers');
 const { UserCancel } = require('./lib/errors');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
+
+const { CACCL_DEPLOY_NON_INTERACTIVE = false } = process.env;
 
 const initAwsProfile = (profile) => {
   try {
@@ -102,7 +105,8 @@ class CacclDeployCommander extends Command {
       )
       .option(
         '-F --force',
-        'non-interactive, yes to everything, overwrite existing, etc'
+        'non-interactive, yes to everything, overwrite existing, etc',
+        yn(CACCL_DEPLOY_NON_INTERACTIVE)
       );
   }
 
@@ -132,7 +136,7 @@ async function main() {
       'Please see the docs for explanations of these settings',
     ].join('\n'));
 
-    (await confirm('Continue?')) || bye();
+    CACCL_DEPLOY_NON_INTERACTIVE || (await confirm('Continue?')) || bye();
     setConfigDefaults();
   }
 
@@ -399,7 +403,7 @@ async function main() {
       };
 
       try {
-        spawnSync('cdk', cdkArgs, execOpts);
+        execSync(['npx cdk', ...cdkArgs].join(' '), execOpts);
       } catch (err) {
         console.error(err);
       }

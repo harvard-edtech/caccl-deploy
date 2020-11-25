@@ -4,6 +4,7 @@ import 'source-map-support/register';
 import { App, CfnOutput } from '@aws-cdk/core';
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 import DeployConfig from '../lib/deployConfig';
+const yn = require('yn');
 
 [
   'CACCL_DEPLOY_VERSION',
@@ -57,11 +58,11 @@ DeployConfig.fromSsmParams(ssmAppPrefix, false)
       },
     };
 
-    if (deployConfig.docDb === "true") {
+    if (yn(deployConfig.docDb)) {
       stackProps.docDbOptions = {
         instanceType: deployConfig.docDbInstanceType || 't3.medium',
         instanceCount: deployConfig.docDbInstanceCount || 1,
-        profiler: deployConfig.docDbProfiler === "true",
+        profiler: yn(deployConfig.docDbProfiler),
       };
     }
 
