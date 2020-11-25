@@ -4,7 +4,7 @@ ARG package=./caccl-deploy.tgz
 
 RUN DEBIAN_FRONTEND=noninteractive apt -y update \
   && apt -y dist-upgrade \
-  && apt -y install awscli
+  && apt -y install awscli vim
 
 USER node
 WORKDIR /home/node

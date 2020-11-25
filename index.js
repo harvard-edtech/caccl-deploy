@@ -15,6 +15,7 @@ const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
 const { looksLikeSemver } = require('./lib/helpers');
 const { UserCancel } = require('./lib/errors');
+const tempy = require('tempy');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
 
@@ -369,44 +370,52 @@ async function main() {
         ecsClusterName,
       } = await aws.getCfnStackExports(deployConfig.infraStackName);
 
-      const envAdditions = {};
-      envAdditions.CACCL_DEPLOY_VERSION = cacclDeployVersion;
-      envAdditions.CACCL_DEPLOY_SSM_APP_PREFIX = cmd.getAppPrefix();
-      envAdditions.CACCL_DEPLOY_STACK_NAME = cfnStackName;
-      envAdditions.CACCL_DEPLOY_VPC_ID = vpcId;
-      envAdditions.CACCL_DEPLOY_ECS_CLUSTER = ecsClusterName;
-      envAdditions.AWS_ACCOUNT_ID = await aws.getAccountId();
-      envAdditions.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
-
-      const cdkArgs = [...cmd.args];
-      if (!cdkArgs.length) {
-        cdkArgs.push('list');
-      }
-
-      if (cmd.profile !== undefined) {
-        cdkArgs.push('--profile', cmd.profile);
-        envAdditions.AWS_PROFILE = cmd.profile;
-      }
-
-      if (cdkArgs[0] === 'deploy' && cmd.force) {
-        cdkArgs.push('--require-approval-never');
-      }
-
-      if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
-        (await confirmProductionOp(cmd.force)) || bye();
-      }
-
-      const execOpts = {
-        stdio: 'inherit',
-        cwd: path.join(__dirname, 'cdk'),
-        env: { ...process.env, ...envAdditions },
+      const cdkStackProps = {
+        vpcId,
+        ecsClusterName,
+        cacclDeployVersion,
+        stackName: cfnStackName,
+        awsAccountId: await aws.getAccountId(),
+        awsRegion: process.env.AWS_REGION || 'us-east-1',
+        deployConfig,
       };
 
-      try {
-        execSync(['npx cdk', ...cdkArgs].join(' '), execOpts);
-      } catch (err) {
-        console.error(err);
-      }
+      tempy.write.task(JSON.stringify(cdkStackProps), async (tempPath) => {
+        const envAdditions = {
+          AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+          CDK_STACK_PROPS_FILE_PATH: tempPath,
+        };
+
+        const cdkArgs = [...cmd.args];
+        if (!cdkArgs.length) {
+          cdkArgs.push('list');
+        }
+
+        if (cmd.profile !== undefined) {
+          cdkArgs.push('--profile', cmd.profile);
+          envAdditions.AWS_PROFILE = cmd.profile;
+        }
+
+        if (cdkArgs[0] === 'deploy' && cmd.force) {
+          cdkArgs.push('--require-approval-never');
+        }
+
+        if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
+          (await confirmProductionOp(cmd.force)) || bye();
+        }
+
+        const execOpts = {
+          stdio: 'inherit',
+          cwd: path.join(__dirname, 'cdk'),
+          env: { ...process.env, ...envAdditions },
+        };
+
+        try {
+          execSync(['npx cdk', ...cdkArgs].join(' '), execOpts);
+        } catch (err) {
+          console.error(err);
+        }
+      });
     });
 
   cli

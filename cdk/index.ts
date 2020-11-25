@@ -3,81 +3,72 @@
 import 'source-map-support/register';
 import { App, CfnOutput } from '@aws-cdk/core';
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
-import DeployConfig from '../lib/deployConfig';
+import { readFileSync } from 'fs';
 const yn = require('yn');
 
-[
-  'CACCL_DEPLOY_VERSION',
-  'CACCL_DEPLOY_SSM_APP_PREFIX',
-  'CACCL_DEPLOY_STACK_NAME',
-  'AWS_ACCOUNT_ID',
-  'AWS_REGION',
-].forEach((envVar) => {
-  if (process.env[envVar] === undefined || process.env[envVar] === '') {
-    console.error(`CDK operation missing ${envVar}`);
-    process.exit(1);
-  }
-});
+if (process.env.CDK_STACK_PROPS_FILE_PATH === undefined) {
+  throw new Error();
+}
 
-const awsAccountId = process.env.AWS_ACCOUNT_ID;
-const awsRegion = process.env.AWS_REGION;
-const cacclDeployVersion = process.env.CACCL_DEPLOY_VERSION;
-const ssmAppPrefix = process.env.CACCL_DEPLOY_SSM_APP_PREFIX;
-const stackName = process.env.CACCL_DEPLOY_STACK_NAME || '';
-const vpcId = process.env.CACCL_DEPLOY_VPC_ID;
-const ecsClusterName = process.env.CACCL_DEPLOY_ECS_CLUSTER;
+const stackPropsData = JSON.parse(
+  readFileSync(process.env.CDK_STACK_PROPS_FILE_PATH, 'utf8')
+);
 
-DeployConfig.fromSsmParams(ssmAppPrefix, false)
-  .then((deployConfig) => {
-    const stackProps: CacclDeployStackProps = {
-      stackName,
-      vpcId,
-      ecsClusterName,
-      cidrBlock: deployConfig.cidrBlock,
-      maxAzs: deployConfig.maxAzs || 2,
-      certificateArn: deployConfig.certificateArn,
-      appEnvironment: deployConfig.appEnvironment || {},
-      notifications: deployConfig.notifications || {},
-      albLogBucketName: deployConfig.albLogBucketName,
-      taskDefProps: {
-        appImage: deployConfig.appImage,
-        proxyImage: deployConfig.proxyImage,
-        taskCpu: deployConfig.taskCpu,
-        taskMemoryLimit: deployConfig.taskMemoryLimit,
-        logRetentionDays: deployConfig.logRetentionDays,
-        gitRepoVolume: deployConfig.gitRepoVolume,
-      },
-      taskCount: deployConfig.taskCount || 1,
-      tags: {
-        caccl_deploy_stack_name: stackName,
-        ...deployConfig.tags,
-      },
-      env: {
-        account: awsAccountId,
-        region: awsRegion,
-      },
-    };
+const {
+  stackName,
+  vpcId,
+  ecsClusterName,
+  awsRegion,
+  awsAccountId,
+  cacclDeployVersion,
+  deployConfig,
+} = stackPropsData;
 
-    if (yn(deployConfig.docDb)) {
-      stackProps.docDbOptions = {
-        instanceType: deployConfig.docDbInstanceType || 't3.medium',
-        instanceCount: deployConfig.docDbInstanceCount || 1,
-        profiler: yn(deployConfig.docDbProfiler),
-      };
-    }
+const stackProps: CacclDeployStackProps = {
+  stackName,
+  vpcId,
+  ecsClusterName,
+  cidrBlock: deployConfig.cidrBlock,
+  maxAzs: deployConfig.maxAzs || 2,
+  certificateArn: deployConfig.certificateArn,
+  appEnvironment: deployConfig.appEnvironment || {},
+  notifications: deployConfig.notifications || {},
+  albLogBucketName: deployConfig.albLogBucketName,
+  taskDefProps: {
+    appImage: deployConfig.appImage,
+    proxyImage: deployConfig.proxyImage,
+    taskCpu: deployConfig.taskCpu,
+    taskMemoryLimit: deployConfig.taskMemoryLimit,
+    logRetentionDays: deployConfig.logRetentionDays,
+    gitRepoVolume: deployConfig.gitRepoVolume,
+  },
+  taskCount: deployConfig.taskCount || 1,
+  tags: {
+    caccl_deploy_stack_name: stackName,
+    ...deployConfig.tags,
+  },
+  env: {
+    account: awsAccountId,
+    region: awsRegion,
+  },
+};
 
-    const app = new App();
-    const stack = new CacclDeployStack(app, stackName, stackProps);
+if (yn(deployConfig.docDb)) {
+  stackProps.docDbOptions = {
+    instanceType: deployConfig.docDbInstanceType || 't3.medium',
+    instanceCount: deployConfig.docDbInstanceCount || 1,
+    profiler: yn(deployConfig.docDbProfiler),
+  };
+}
 
-    if (cacclDeployVersion !== undefined) {
-      new CfnOutput(stack, 'CacclDeployVersion', {
-        exportName: `${stackName}-caccl-deploy-version`,
-        value: cacclDeployVersion,
-      });
-    }
+const app = new App();
+const stack = new CacclDeployStack(app, stackName, stackProps);
 
-    app.synth();
-  })
-  .catch((err) => {
-    console.log(err);
+if (cacclDeployVersion !== undefined) {
+  new CfnOutput(stack, 'CacclDeployVersion', {
+    exportName: `${stackName}-caccl-deploy-version`,
+    value: cacclDeployVersion,
   });
+}
+
+app.synth();
