@@ -444,7 +444,7 @@ The `-i` input value is validated against the list of tags available in the repo
 
 ### Development
 
-Just going to do an overview of what's where and what does what.
+As for the code here's an overview of what's where and what does what.
 
 ##### `index.js`
 
@@ -468,4 +468,4 @@ This is the "main" script for the cdk code. It picks up the environment variable
 
 ##### `./cdk/lib/*`
 
-These are the cdk construct classes that define the AWS resources that make up each app's stack. 
+These are the cdk construct classes that define the AWS resources that make up each app's stack.
