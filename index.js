@@ -138,7 +138,10 @@ async function main() {
 
   const cli = new CacclDeployCommander()
     .version(cacclDeployVersion)
-    .description(description);
+    .description([
+      description,
+      `config: ${conf.path}`,
+    ].join('\n'));
 
   cli
     .command('apps')
