@@ -38,7 +38,7 @@ const stackProps: CacclDeployStackProps = {
     appImage: deployConfig.appImage,
     proxyImage: deployConfig.proxyImage,
     taskCpu: deployConfig.taskCpu,
-    taskMemoryLimit: deployConfig.taskMemoryLimit,
+    taskMemory: deployConfig.taskMemory,
     logRetentionDays: deployConfig.logRetentionDays,
     gitRepoVolume: deployConfig.gitRepoVolume,
   },

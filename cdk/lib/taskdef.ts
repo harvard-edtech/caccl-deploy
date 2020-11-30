@@ -13,7 +13,7 @@ export interface CacclTaskDefProps {
   vpcCidrBlock?: string;
   appEnvironment?: CacclAppEnvironment;
   taskCpu?: number;
-  taskMemoryLimit?: number;
+  taskMemory?: number;
   logRetentionDays?: number;
   gitRepoVolume?: { [key: string]: string; };
 }
@@ -35,13 +35,13 @@ export class CacclTaskDef extends Construct {
       proxyImage = DEFAULT_PROXY_REPO_NAME,
       appEnvironment,
       taskCpu = 256,
-      taskMemoryLimit = 512,
+      taskMemory = 512,
       logRetentionDays = 90,
     } = props;
 
     this.taskDef = new FargateTaskDefinition(this, 'Task', {
       cpu: taskCpu,
-      memoryLimitMiB: taskMemoryLimit,
+      memoryLimitMiB: taskMemory,
     });
 
     const appContainerImage = new CacclContainerImage(this, 'AppImage', {

@@ -147,7 +147,7 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
   },
   "taskCount": "1",
   "taskCpu": "256",
-  "taskMemoryLimit": "512",
+  "taskMemory": "512",
   "docDb": "false",
   "docDbInstanceCount": "1",
   "docDbInstanceType": "t3.medium",
@@ -182,7 +182,9 @@ Now the optional stuff.
 
 `taskCount` - how many concurrent tasks should the Fargate service run. Default is "1".
 
-`taskCpu`/`taskMemoryLimit` - these control the amount of CPU and memory resources assigned to each task. Default is "256" and "512" respectively. See the [ECS docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size) for the constraints on these values, but as a general rule it's typical to have a 1:2 ratio of cpu:memory.
+`taskCpu` - the amount of CPU units assigned to each task. Default is "256", which is equivalent to 1 virtual CPU (vCPU). See note below.
+
+`taskMemory` - memory in MB assigned to each task. Default is "512". See note below.
 
 `docDb` - does the app need a DocumentDB cluster? If "true" one will be provisioned and its connection details and credentials injected into the container environment. See the DocumentDB section below for more info.
 
@@ -193,6 +195,12 @@ Now the optional stuff.
 `docDbProfiler` - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
 
 `gitRepoVolume` - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
+
+##### A note about `taskCpu` and `taskMemory`
+
+These values are closely related, and setting one affects the set of valid choices for the other. See the [ECS docs](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#task_size) for the constraints on these values.
+
+For dev/staging apps the defaults are almost always going to be fine. An exception might be if you're trying to load test something, in which case it's going to depend on what you're trying to test. As a general rule it's typical to have a 1:2 ratio of cpu:memory. For instance, a production app might have "2048" for `taskCpu` and "4096" for `taskMemory`.
 
 ### Parameters & appEnvironment Secrets
 
