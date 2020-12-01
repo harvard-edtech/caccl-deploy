@@ -363,7 +363,7 @@ async function main() {
     .description('diff, deploy, or delete the app\'s AWS resources')
     .appOption()
     .action(async (cmd) => {
-      const deployConfig = await cmd.getDeployConfig();
+      const deployConfig = await cmd.getDeployConfig(false);
       const cfnStackName = cmd.getCfnStackName();
       const {
         vpcId,
