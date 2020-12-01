@@ -237,7 +237,7 @@ async function main() {
 
       try {
         console.log(`This will delete all deployment configuation for ${cmd.app}`);
-        if (cmd.force || await confirm('Are you sure?')) {
+        if (cmd.force || await confirm('Are you sure?', false)) {
           (await confirmProductionOp(cmd.force)) || bye();
           await DeployConfig.wipeExisting(appPrefix, false);
           console.log(`${cmd.app} configuration deleted`);
@@ -368,11 +368,13 @@ async function main() {
       const {
         vpcId,
         ecsClusterName,
+        albLogBucketName,
       } = await aws.getCfnStackExports(deployConfig.infraStackName);
 
       const cdkStackProps = {
         vpcId,
         ecsClusterName,
+        albLogBucketName,
         cacclDeployVersion,
         stackName: cfnStackName,
         awsAccountId: await aws.getAccountId(),

@@ -21,6 +21,7 @@ const {
   awsRegion,
   awsAccountId,
   cacclDeployVersion,
+  albLogBucketName,
   deployConfig,
 } = stackPropsData;
 
@@ -28,12 +29,12 @@ const stackProps: CacclDeployStackProps = {
   stackName,
   vpcId,
   ecsClusterName,
+  albLogBucketName,
   cidrBlock: deployConfig.cidrBlock,
   maxAzs: deployConfig.maxAzs || 2,
   certificateArn: deployConfig.certificateArn,
   appEnvironment: deployConfig.appEnvironment || {},
   notifications: deployConfig.notifications || {},
-  albLogBucketName: deployConfig.albLogBucketName,
   taskDefProps: {
     appImage: deployConfig.appImage,
     proxyImage: deployConfig.proxyImage,
