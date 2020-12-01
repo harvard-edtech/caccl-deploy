@@ -105,7 +105,7 @@ The deployment configuration for an app can be represented as JSON but is stored
 {
   ...
   "notifications": {
-    "email": [ "somebody@example.edu" ],
+    "email": "somebody@example.edu",
     "slack": "https://hooks.slack.com/services/abc/123/xyz"
   }
   ...
@@ -115,7 +115,7 @@ The deployment configuration for an app can be represented as JSON but is stored
 
 ... would be stored as two Parameter Store entries:
 
-- `/caccl-deploy/my-app/notifications/email/0`
+- `/caccl-deploy/my-app/notifications/email`
 - `/caccl-deploy/my-app/notifications/slack`
 
 To view the JSON-serialized configuration you can use the `caccl-deploy show` subcommand, e.g. `caccl-deploy show --app my-app`. Add the `--flat` option to that command to view a flattend version of the JSON.
@@ -135,12 +135,10 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
     "WOOF": "12345",
     "BAZ": "blarg"
   },
-	"notifications": {
-		"slack": "https://hooks.slack.com/services/abc/123/xyz",
-		"email": [
-			"somebody@example.edu"
-		]
-	},
+  "notifications": {
+    "slack": "https://hooks.slack.com/services/abc/123/xyz",
+    "email": "somebody@example.edu",
+  },
   "tags": {
     "AppName": "my-app",
     "DeployedUsing": "caccl-deploy"
@@ -176,7 +174,19 @@ Now the optional stuff.
 
 `notifications.slack` - a slack webhook URL. If configured this will result in a Lambda function being added to your stack and subscribed to the stack's SNS topic for alert notifications.
 
-`notifications.email.[0-n]` - these email addresses will be subscribed to the stack's SNS topic for alert notifications.
+`notifications.email` - an email address for subscribing to the stack's SNS topic for alerts and other notifications. This setting also supports a list of addresses, which would be represented as `notifications.email.[0-n]`. In other words, the following configuration is also supported:
+
+```
+{
+  "notifications": {
+    "email": [
+      "foo@example.com",
+      "bar@example.com"
+    ]
+  }
+}
+```
+_**Important**_: The configured address(es) will redceive a confirmation message and must confirm to complete the subscription.
 
 `tags` - a set of key value pairs. these will be assigned to the CloudFormation stack and by extension all the resources in the stack (for resource types that support this (which is most)).
 
@@ -356,7 +366,7 @@ When finished the process stores the deployment configuration settings in Parame
 
 #### show
 
-Display the current deployment configuration for an app. The process fetches the relevant Paramter Store entries based on the `/[ssmRootPrefx]/[app name]` namespace and assembles them into a json object and outputs to stdout.
+Display the current deployment configuration for an app. The process fetches the relevant Parameter Store entries based on the `/[ssmRootPrefx]/[app name]` namespace and assembles them into a json object and outputs to stdout.
 
 ##### options
 
@@ -368,7 +378,7 @@ Display the current deployment configuration for an app. The process fetches the
 
 #### delete
 
-Remove an app configuration entirely. This wipes out all Paramter Store entries for a app, including any referenced SecretsManager entries.
+Remove an app configuration entirely. This wipes out all Parameter Store entries for a app, including any referenced SecretsManager entries.
 
 ##### options
 
