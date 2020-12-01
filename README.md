@@ -21,6 +21,16 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
   - SecretsManager
   - Lambda (if using slack notifications)
 
+### Install
+
+For the typical use case `caccl-deploy` should be installed globally.
+
+`npm install -g caccl-deploy`
+
+If you are developing `caccl-deploy` you'll want to `git clone` the repo and do:
+
+`npm install && npm link`
+`
 ### How does it work? / What does it do?
 
 `caccl-deploy` lets you to do two main things:
