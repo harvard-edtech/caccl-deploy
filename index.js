@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 const { Command } = require('commander');
-const { execSync, spawnSync } = require('child_process');
+const { execSync } = require('child_process');
 const { table } = require('table');
 const path = require('path');
 const moment = require('moment');
 const chalk = require('chalk');
 const figlet = require('figlet');
 const yn = require('yn');
+const tempy = require('tempy');
 const aws = require('./lib/aws');
 const { promptAppName, confirm, confirmProductionOp } = require('./lib/configPrompts');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
@@ -15,7 +16,6 @@ const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
 const { looksLikeSemver } = require('./lib/helpers');
 const { UserCancel } = require('./lib/errors');
-const tempy = require('tempy');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
 
