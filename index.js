@@ -436,8 +436,9 @@ async function main() {
         throw err;
       }
       const { clusterName, serviceName } = cfnExports;
-      // restartthe service
+      console.log(`Restarting service ${serviceName} on cluster ${clusterName}`);
       (await confirmProductionOp(cmd.yes)) || bye();
+      // restart the service
       await aws.restartEcsServcie(clusterName, serviceName);
     });
 

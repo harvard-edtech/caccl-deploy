@@ -445,7 +445,9 @@ This subcommand acts as a wrapper for the `cdk` program (part of the [aws-cdk](h
 
 #### restart
 
-This subcommand executes a forced redeploy of your app's ECS Fargate service without changes to any of the service or task settings. _**HOWEVER**_, any changes you have made to app environment variables or the app's container images (including the nginx proxy server) will be present when the service restarts.
+This subcommand executes a forced redeploy of your app's ECS Fargate service without changes to any of the service or task settings. You would typically use this in a development context where, for instance, you're not switching to a new image tag but the app's current image ("stage") has been updated. Another use case would be if during development you change the value of an environment variable but you want to skip doing a full `stack deploy`.
+
+_**IMPORTANT**_, any changes you have made to app environment variables or the app's container images (including the nginx proxy server) will be present when the service restarts.
 
 ##### options
 
