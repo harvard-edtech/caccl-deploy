@@ -483,6 +483,11 @@ async function main() {
        */
       const repoArn = aws.parseEcrArn(deployConfig.appImage);
 
+      if (repoArn.imageTag === cmd.imageTag && !cmd.yes) {
+        const confirmMsg = `${cmd.app} is already using image tag ${cmd.imageTag}`;
+        (await confirm(`${confirmMsg}. Proceed?`, false)) || bye();
+      }
+
       // check that the specified image tag is legit
       console.log(`Checking that an image exists with the tag ${cmd.imageTag}`);
       const imageTagExists = await aws.imageTagExists(
