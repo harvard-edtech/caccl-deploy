@@ -333,7 +333,7 @@ Commands:
 
 `-h`/`--help`: show usage info for the program or any subcommand
 
-`-f`/`--force`: for any option that would normally prompt for confirmation, including production account failsafe confirmations, adding this option will assume "yes" for all prompts. Should really be used carefully and perhaps only in some kind of scripted operation context. For subcommands that don't actually modify resources this flag does nothing.
+`-y`/`--yes`: for any option that would normally prompt for confirmation, including production account failsafe confirmations, adding this option will assume "yes" for all prompts. Should really be used carefully and perhaps only in some kind of scripted operation context. For subcommands that don't actually modify resources this flag does nothing.
 
 `--profile`: this controls which set of credentials will be used for interactions with AWS. `caccl-deploy` does not manage these credentials for you; it is assumed you have the `awscli` program installed and configured.
 

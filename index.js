@@ -105,7 +105,7 @@ class CacclDeployCommander extends Command {
         conf.get('cfnStackPrefix')
       )
       .option(
-        '-F --force',
+        '-y --yes',
         'non-interactive, yes to everything, overwrite existing, etc',
         yn(CACCL_DEPLOY_NON_INTERACTIVE)
       );
@@ -200,8 +200,8 @@ async function main() {
 
       if (existingApps.includes(appName)) {
         console.log(`Configuration for ${cmd.app} already exists`);
-        if (cmd.force || await confirm('Overwrite?', false)) {
-          (await confirmProductionOp(cmd.force)) || bye();
+        if (cmd.yes || await confirm('Overwrite?', false)) {
+          (await confirmProductionOp(cmd.yes)) || bye();
           await DeployConfig.wipeExisting(appPrefix);
         } else {
           bye();
@@ -237,8 +237,8 @@ async function main() {
 
       try {
         console.log(`This will delete all deployment configuation for ${cmd.app}`);
-        if (cmd.force || await confirm('Are you sure?', false)) {
-          (await confirmProductionOp(cmd.force)) || bye();
+        if (cmd.yes || await confirm('Are you sure?', false)) {
+          (await confirmProductionOp(cmd.yes)) || bye();
           await DeployConfig.wipeExisting(appPrefix, false);
           console.log(`${cmd.app} configuration deleted`);
         }
@@ -270,7 +270,7 @@ async function main() {
       'delete the named parameter instead of creating/updating')
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
-      (await confirmProductionOp(cmd.force)) || bye();
+      (await confirmProductionOp(cmd.yes)) || bye();
       if (cmd.delete) {
         const [param] = cmd.args;
         const paramPath = [cmd.getAppPrefix(), param].join('/');
@@ -398,12 +398,12 @@ async function main() {
           envAdditions.AWS_PROFILE = cmd.profile;
         }
 
-        if (cdkArgs[0] === 'deploy' && cmd.force) {
+        if (cdkArgs[0] === 'deploy' && cmd.yes) {
           cdkArgs.push('--require-approval-never');
         }
 
         if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
-          (await confirmProductionOp(cmd.force)) || bye();
+          (await confirmProductionOp(cmd.yes)) || bye();
         }
 
         const execOpts = {
@@ -437,7 +437,7 @@ async function main() {
       }
       const { clusterName, serviceName } = cfnExports;
       // restartthe service
-      (await confirmProductionOp(cmd.force)) || bye();
+      (await confirmProductionOp(cmd.yes)) || bye();
       await aws.restartEcsServcie(clusterName, serviceName);
     });
 
@@ -495,7 +495,7 @@ async function main() {
       // check if it's the latest release and prompt if not
       console.log(`Checking ${cmd.imageTag} is the latest tag`);
       const isLatestTag = await aws.isLatestTag(repoArn.repoName, cmd.imageTag);
-      if (!isLatestTag && !cmd.force) {
+      if (!isLatestTag && !cmd.yes) {
         console.log(`${cmd.imageTag} is not the most recent release`);
         (await confirm('Proceed?')) || bye();
       }
@@ -508,7 +508,7 @@ async function main() {
 
       const { taskDefName, clusterName, serviceName } = cfnExports;
 
-      (await confirmProductionOp(cmd.force)) || bye();
+      (await confirmProductionOp(cmd.yes)) || bye();
 
       console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImage);
