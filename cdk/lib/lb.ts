@@ -10,7 +10,7 @@ import {
   TargetType,
 } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Bucket } from '@aws-cdk/aws-s3';
-import { Construct, Duration, Stack } from '@aws-cdk/core';
+import { CfnOutput, Construct, Duration, Stack } from '@aws-cdk/core';
 
 export interface CacclLoadBalancerProps {
   sg: SecurityGroup;
@@ -132,5 +132,10 @@ export class CacclLoadBalancer extends Construct {
         alarmDescription: `${Stack.of(this).stackName} target group unhealthy host count (UnHealthyHostCount)`,
       }),
     ];
+
+    new CfnOutput(this, 'LoadBalancerHostname', {
+      exportName: `${Stack.of(this).stackName}-load-balancer-hostname`,
+      value: this.loadBalancer.loadBalancerDnsName,
+    });
   }
 }
