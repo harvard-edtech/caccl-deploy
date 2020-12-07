@@ -306,6 +306,34 @@ A shell script, `bin/docdb.sh` is provided to assist in accessing the resulting 
 
 ---
 
+### Example scenarios
+
+##### Create a new app from scratch
+
+1. Run `caccly-deploy new`. You will be prompted for the following values. **Note**: all except the app name can be changed prior to the actual deployment:
+    - The name of your app. This should be unique for the AWS account.
+    - The base infrastructure stack into which your app will be deployed. If there's only one available it will be selected for you.
+    - The full ARN identifier of your AWS Certificate Manager entry.
+    - The ECR repository where your app's images are registered
+    - The ECR image tag to use. If you don't see the one you want, just pick one; you can change it later.
+    - Any AWS resource tags to apply to your app's CloudFormation stack
+    - Any environment variables that should be injected into the container's runtime environment.
+1. Optionally, run `caccl-deploy update --app [your app name] [setting] [value]` to add or update the generated deployment configuration.
+1. Optionally, run `caccl-deploy stack --app [your app name] diff` to sanity check and see the list of resources that will be created by the CDK/CloudFormation process.
+1. Run `caccl-deploy stack --app [your app name] deploy` to deploy the app. After a few minutes your app should be available and running.
+1. The output from the previous command should include the hostname of your app's load balancer. Head over to Route53 and create a alias record that points your (sub)domain to the load balancer.
+
+##### Update an environment variable for an existing app
+
+Let's say your app had a couple of environment variables that needed to be changed, `API_KEY` and `API_SECRET`.
+
+1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
+    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--no-resolve-secrets` flag to the above command.
+1. Update the `API_KEY` value: `caccl-deploy update --app [your app name] appEnvironment/API_KEY my-new-api-key-value`
+1. Update the `API_SECRET` value: `caccl-deploy update --app [your app name] appEnvironment/API_SECRET my-new-api-secret-value`
+1. Run `caccl-deploy restart --app [your app name]`
+
+
 ### Subommands & Options Details
 
 ```
