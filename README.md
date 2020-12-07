@@ -5,8 +5,8 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 ### Requirements
 
 - nodejs ≥ v10
-- the `aws-cdk` package installed globally: `npm install -g aws-cdk@latest`
-- a docker image that runs your CACCL app
+- a docker image that runs your app on port 8080
+- the [awscli tool](https://aws.amazon.com/cli/) installed and configured
 - an AWS Certificate Manager certificate. You probably want one that matches the hostname you have in mind for the app.
 - an AWS account with create/update privileges for the following services and/or resources:
   - VPC
@@ -21,16 +21,6 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
   - SecretsManager
   - Lambda (if using slack notifications)
 
-### Install
-
-For the typical use case `caccl-deploy` should be installed globally.
-
-`npm install -g caccl-deploy`
-
-If you are developing `caccl-deploy` you'll want to `git clone` the repo and do:
-
-`npm install && npm link`
-`
 ### How does it work? / What does it do?
 
 `caccl-deploy` lets you to do two main things:
@@ -46,12 +36,26 @@ As part of this app deployment, `caccl-deploy` will create and manage a deployme
 - the name of the CloudFormation stack containing your underlying infrastructure (VPC, ECS Cluster)
 - the ARN of an ACM ssl certificate
 - one of either
-  - the ARN of a Docker image in an ECR repository
-  - the name of an image in, e.g., DockerHub
+	- the ARN of a Docker image in an ECR repository
+	- the name of an image in, e.g., DockerHub
 - a set of 0 or more environment variables your app needs
 - a set of 0 or more AWS resource tags
 - various task provisioning settings, such as number of CPUs, memory, number of tasks, etc
 
+### Install & Getting Started
+
+For the typical use case `caccl-deploy` should be installed globally.
+
+`npm install -g caccl-deploy`
+
+If you are developing `caccl-deploy` you'll want to `git clone` the repo and do:
+
+`npm install && npm link`
+
+##### awscli
+
+If you have not already, make sure to install [awscli](https://aws.amazon.com/cli/) and run `aws configure` to configure your AWS credentials. Otherwise `caccl-deploy` will complain and refuse to run.
+`
 ### Quick command summary
 
 These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy new`. Execute `caccl-deploy` with no options or with the `-h|--help` flag to show the list of subcommands. Use the `-h|--help` flag on any of the subcommands to show the options available.

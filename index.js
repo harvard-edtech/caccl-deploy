@@ -123,6 +123,12 @@ class CacclDeployCommander extends Command {
 }
 
 async function main() {
+  if (!aws.isConfigured()) {
+    console.log('Looks like you have configured your AWS credentials')
+    console.log('Did you run `aws configure`?');
+    process.exit(1);
+  }
+
   if (!conf.get('ssmRootPrefix')) {
     console.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
     console.log([
