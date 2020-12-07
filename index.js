@@ -14,7 +14,7 @@ const { promptAppName, confirm, confirmProductionOp } = require('./lib/configPro
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
-const { looksLikeSemver } = require('./lib/helpers');
+const { looksLikeSemver, validSSMParamName } = require('./lib/helpers');
 const { UserCancel } = require('./lib/errors');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
@@ -277,17 +277,32 @@ async function main() {
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
       (await confirmProductionOp(cmd.yes)) || bye();
-      if (cmd.delete) {
-        const [param] = cmd.args;
-        const paramPath = [cmd.getAppPrefix(), param].join('/');
-        await aws.deleteSsmParameters([paramPath]);
-      } else {
-        const [param, value] = cmd.args;
-        await deployConfig.update(
-          cmd.getAppPrefix(),
-          param,
-          value
-        );
+      try {
+        if (cmd.args.length > 2) {
+          console.log('Too many arguments!');
+          process.exit(1);
+        }
+        if (cmd.delete) {
+          const [param] = cmd.args;
+          if (!validSSMParamName(param)) {
+            throw new Error(`Invalid param name: '${param}'`);
+          }
+          const paramPath = [cmd.getAppPrefix(), param].join('/');
+          await aws.deleteSsmParameters([paramPath]);
+        } else {
+          const [param, value] = cmd.args;
+          if (!validSSMParamName(param)) {
+            throw new Error(`Invalid param name: '${param}'`);
+          }
+          await deployConfig.update(
+            cmd.getAppPrefix(),
+            param,
+            value
+          );
+        }
+      } catch (err) {
+        console.log(`Something went wrong: ${err.message}`);
+        process.exit(1);
       }
     });
 
