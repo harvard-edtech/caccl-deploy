@@ -323,16 +323,39 @@ A shell script, `bin/docdb.sh` is provided to assist in accessing the resulting 
 1. Run `caccl-deploy stack --app [your app name] deploy` to deploy the app. After a few minutes your app should be available and running.
 1. The output from the previous command should include the hostname of your app's load balancer. Head over to Route53 and create a alias record that points your (sub)domain to the load balancer.
 
+##### Create a new app by "cloning" the configuration for an existing app
+
+Let's say you had an existing app called "fooapp-stage" and you wanted to create a new development instance called "fooapp-dev" with the only difference being the name of the app (i.e. the container image and all the environment variables would be the same).
+
+1. Run `caccl-deploy show --app fooapp-stage > fooapp-dev.json` to export the existing app's config to a file.
+1. Run `caccl-deploy new --app fooapp-dev -i $(pwd)/fooapp-dev.json` to import the configuration for the new app.
+1. Proceed with steps 2-x from the previous scenario.
+
 ##### Update an environment variable for an existing app
 
 Let's say your app had a couple of environment variables that needed to be changed, `API_KEY` and `API_SECRET`.
 
 1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
     - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--no-resolve-secrets` flag to the above command.
-1. Update the `API_KEY` value: `caccl-deploy update --app [your app name] appEnvironment/API_KEY my-new-api-key-value`
-1. Update the `API_SECRET` value: `caccl-deploy update --app [your app name] appEnvironment/API_SECRET my-new-api-secret-value`
+1. Update the `API_KEY` variable to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_KEY my-api-key`
+1. Update the `API_SECRET` variable to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_SECRET 12345abcdef`
 1. Run `caccl-deploy restart --app [your app name]`
 
+Note that the final step is only a `restart` vs a `stack ... deploy`. This is because we're only changing the values of _existing_ environment variables, i.e., we're not adding anything _new_ to the app's CloudFormation stack. If you were adding a new environment variable you would need to run a `stack ... deploy` command as shown in the next scenario.
+
+##### Add a new environment variable to an existing app
+
+In this example we're going to add a new variable, `API_BASE_URL`, to an existing configuration.
+
+1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
+    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--no-resolve-secrets` flag to the above command.
+1. Add the `API_BASE_URL` value to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_BASE_URL https://api.example.edu/v1`
+1. Review the app's stack changes `caccl-deploy stack --app [your app name] diff`
+1. Deploy the app's stack changes `caccl-deploy stack --app [your app name] deploy`. _**WARNING**_ this will restart the app.
+
+Note that you do not need a separate `restart` action in this case. The `stack ... deploy` action will do that for you as a result of the changes to the Fargate Task Definition.
+
+---
 
 ### Subommands & Options Details
 
