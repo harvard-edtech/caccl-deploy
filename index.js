@@ -289,6 +289,7 @@ async function main() {
           }
           const paramPath = [cmd.getAppPrefix(), param].join('/');
           await aws.deleteSsmParameters([paramPath]);
+          delete deployConfig[param];
         } else {
           const [param, value] = cmd.args;
           if (!validSSMParamName(param)) {
@@ -300,6 +301,7 @@ async function main() {
             value
           );
         }
+        console.log(deployConfig.toString(true));
       } catch (err) {
         console.log(`Something went wrong: ${err.message}`);
         process.exit(1);
