@@ -15,7 +15,7 @@ const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
 const { description } = require('./package.json');
 const { looksLikeSemver, validSSMParamName } = require('./lib/helpers');
-const { UserCancel } = require('./lib/errors');
+const { UserCancel, AwsProfileNotFound } = require('./lib/errors');
 
 const cacclDeployVersion = require('./lib/generateVersion')();
 
@@ -26,8 +26,12 @@ const initAwsProfile = (profile) => {
     aws.initProfile(profile);
     return profile;
   } catch (err) {
-    console.log(err);
-    return err;
+    if (err.name === AwsProfileNotFound.name) {
+      console.log(err.message);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   }
 };
 
@@ -124,7 +128,7 @@ class CacclDeployCommander extends Command {
 
 async function main() {
   if (!aws.isConfigured()) {
-    console.log('Looks like you have configured your AWS credentials')
+    console.log('Looks like you haven\'t configured your AWS credentials!');
     console.log('Did you run `aws configure`?');
     process.exit(1);
   }
@@ -158,8 +162,16 @@ async function main() {
     .command('apps')
     .description('list available app configurations')
     .action(async (cmd) => {
-      const apps = await aws.getAppList(cmd.ssmRootPrefix);
-      const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
+      let apps;
+      let cfnStacks;
+      try {
+        apps = await aws.getAppList(cmd.ssmRootPrefix);
+        cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
+      } catch (err) {
+        console.log(`Something went wrong: ${err.message}`);
+        process.exit(1);
+      }
+
       const tableData = apps.map((a) => {
         const cfnStackName = cmd.getCfnStackName(a);
         let cfnStackStatus;
@@ -558,6 +570,7 @@ async function main() {
   await cli.parse(process.argv);
 }
 
-main().catch((err) => {
-  console.error(err);
-});
+main()
+  .catch((err) => {
+    console.error(err);
+  });
