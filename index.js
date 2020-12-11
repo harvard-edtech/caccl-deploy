@@ -133,7 +133,6 @@ class CacclDeployCommander extends Command {
   }
 }
 
-
 async function main() {
   if (!aws.isConfigured()) {
     byeWithCredentialsError();
@@ -168,10 +167,8 @@ async function main() {
     .command('apps')
     .description('list available app configurations')
     .action(async (cmd) => {
-      let apps;
-      let cfnStacks;
-      apps = await aws.getAppList(cmd.ssmRootPrefix);
-      cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
+      const apps = await aws.getAppList(cmd.ssmRootPrefix);
+      const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
 
       const tableData = apps.map((a) => {
         const cfnStackName = cmd.getCfnStackName(a);
@@ -246,6 +243,15 @@ async function main() {
       }
 
       await deployConfig.syncToSsm(appPrefix);
+      console.log(chalk.yellowBright(figlet.textSync(`${appName}!`)));
+      console.log([
+        '',
+        'Your new app deployment configuration is created!',
+        'Next steps:',
+        `  * modify or add settings with 'caccl-deploy update -a ${appName} [...]'`,
+        `  * deploy the app stack with 'caccl-deploy stack -a ${appName} deploy'`,
+        '',
+      ].join('\n'));
     });
 
   cli
