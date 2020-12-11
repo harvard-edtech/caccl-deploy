@@ -40,6 +40,13 @@ const bye = (msg = 'bye!', code = 0) => {
   process.exit(code);
 };
 
+const byeWithCredentialsError = () => {
+  bye([
+    'Looks like there is a problem with your AWS credentials configuration.',
+    'Did you run `aws configure`? Did you set a region? Default profile?',
+  ].join('\n'));
+};
+
 class CacclDeployCommander extends Command {
   createCommand(name) {
     const cmd = new CacclDeployCommander(name)
@@ -126,11 +133,10 @@ class CacclDeployCommander extends Command {
   }
 }
 
+
 async function main() {
   if (!aws.isConfigured()) {
-    console.log('Looks like you haven\'t configured your AWS credentials!');
-    console.log('Did you run `aws configure`? Did you set a region?');
-    process.exit(1);
+    byeWithCredentialsError();
   }
 
   if (!conf.get('ssmRootPrefix')) {
@@ -164,13 +170,8 @@ async function main() {
     .action(async (cmd) => {
       let apps;
       let cfnStacks;
-      try {
-        apps = await aws.getAppList(cmd.ssmRootPrefix);
-        cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
-      } catch (err) {
-        console.log(`Something went wrong: ${err.message}`);
-        process.exit(1);
-      }
+      apps = await aws.getAppList(cmd.ssmRootPrefix);
+      cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
 
       const tableData = apps.map((a) => {
         const cfnStackName = cmd.getCfnStackName(a);
@@ -184,6 +185,7 @@ async function main() {
         }
         return [a, cfnStackStatus];
       });
+
       console.log(apps.length
         ? table([['App', 'CloudFormation Stack Status'], ...tableData])
         : `No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
@@ -567,10 +569,13 @@ async function main() {
         console.log('WARNING: service is out-of-sync with stored deployment configuration');
       }
     });
-  await cli.parse(process.argv);
+  await cli.parseAsync(process.argv);
 }
 
 main()
   .catch((err) => {
+    if (err.name === 'CredentialsError') {
+      byeWithCredentialsError();
+    }
     console.error(err);
   });
