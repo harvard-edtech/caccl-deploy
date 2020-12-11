@@ -9,13 +9,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt -y update \
 USER node
 WORKDIR /home/node
 
-COPY ${package} ${package}
-
 ENV NPM_PACKAGES="/home/node/.npm-packages"
 RUN mkdir -p ${NPM_PACKAGES}
 RUN npm config set prefix ${NPM_PACKAGES}
-RUN npm i -g ${package}
 ENV PATH="${PATH}:${NPM_PACKAGES}/bin"
-ENV AWS_SDK_LOAD_CONFIG=true
+
+COPY ${package} ${package}
+RUN npm i -g ${package}
 
 CMD ["/bin/bash"]

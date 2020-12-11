@@ -129,7 +129,7 @@ class CacclDeployCommander extends Command {
 async function main() {
   if (!aws.isConfigured()) {
     console.log('Looks like you haven\'t configured your AWS credentials!');
-    console.log('Did you run `aws configure`?');
+    console.log('Did you run `aws configure`? Did you set a region?');
     process.exit(1);
   }
 
