@@ -321,7 +321,6 @@ async function main() {
             value
           );
         }
-        console.log(deployConfig.toString(true));
       } catch (err) {
         console.log(`Something went wrong: ${err.message}`);
         process.exit(1);
