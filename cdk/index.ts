@@ -22,6 +22,7 @@ const {
   awsAccountId,
   cacclDeployVersion,
   albLogBucketName,
+  deployConfigHash,
   deployConfig,
 } = stackPropsData;
 
@@ -65,11 +66,14 @@ if (yn(deployConfig.docDb)) {
 const app = new App();
 const stack = new CacclDeployStack(app, stackName, stackProps);
 
-if (cacclDeployVersion !== undefined) {
-  new CfnOutput(stack, 'CacclDeployVersion', {
-    exportName: `${stackName}-caccl-deploy-version`,
-    value: cacclDeployVersion,
-  });
-}
+new CfnOutput(stack, 'DeployConfigHash', {
+  exportName: `${stackName}-deploy-config-hash`,
+  value: deployConfigHash,
+});
+
+new CfnOutput(stack, 'CacclDeployVersion', {
+  exportName: `${stackName}-caccl-deploy-version`,
+  value: cacclDeployVersion,
+});
 
 app.synth();
