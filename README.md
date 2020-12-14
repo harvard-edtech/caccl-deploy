@@ -398,7 +398,12 @@ Commands:
 
 #### apps
 
-This will list the existing app configurations found using the provided or configured SSM prefix. If the app configuration has a corresponding CloudFormation stack (i.e., it's been deployed) then the stack status will be shown as well.
+This will list the existing app configurations found using the provided or configured SSM parameter name prefix.
+
+- `--full-status` - enables the output of additional information. If the app configuration has a corresponding CloudFormation stack (i.e., it's been deployed) then 3 additional columns will be generated:
+    * "Infra Stack": shows the name of the shared infrastructure stack the app is or will be deployed to
+    * "Stack Status": shows the current status of the Cloudformation stack, e.g. "UPDATE_COMPLETE".
+    * "Config Drift": a "yes" value means that the app's current deployment configuration is not in sync with the Cloudformation deployment.
 
 ---
 

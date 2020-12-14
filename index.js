@@ -165,27 +165,70 @@ async function main() {
 
   cli
     .command('apps')
+    .option('--full-status',
+      'show the full status of each app including CFN stack and config state')
     .description('list available app configurations')
     .action(async (cmd) => {
       const apps = await aws.getAppList(cmd.ssmRootPrefix);
-      const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
 
-      const tableData = apps.map((a) => {
-        const cfnStackName = cmd.getCfnStackName(a);
-        let cfnStackStatus;
-        try {
-          cfnStackStatus = cfnStacks.find((s) => {
+      if (!apps.length) {
+        bye(`No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
+      }
+
+      const appData = {};
+      const tableColumns = ['App'];
+
+      for (let i = 0; i < apps.length; i++) {
+        const app = apps[i];
+        appData[app] = [];
+      }
+
+      if (cmd.fullStatus) {
+        tableColumns.push('Infra Stack', 'Stack Status', 'Config Drift');
+        const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
+
+        for (let i = 0; i < apps.length; i++) {
+          const app = apps[i];
+          const cfnStackName = cmd.getCfnStackName(app);
+
+          const appPrefix = cmd.getAppPrefix(app);
+          const deployConfig = await DeployConfig
+            .fromSsmParams(appPrefix, true);
+          appData[app].push(deployConfig.infraStackName);
+
+          const cfnStack = cfnStacks.find((s) => {
             return s.StackName === cfnStackName && s.StackStatus !== 'DELETE_COMPLETE';
-          }).StackStatus;
-        } catch (err) {
-          cfnStackStatus = '';
+          });
+          if (!cfnStack) {
+            // config exists but cfn stack not deployed yet (or was destroyed)
+            appData[app].push('', '');
+            continue;
+          }
+
+          /**
+           * Compare a hash of the config used during stack deployment to the
+           * has of the current config
+           */
+          let configDrift = '?';
+          const cfnStackDeployConfigHashOutput = cfnStack.Outputs.find((o) => {
+            return o.OutputKey.startsWith('DeployConfigHash');
+          });
+
+          if (cfnStackDeployConfigHashOutput) {
+            const deployConfigHash = deployConfig.toHash();
+            const cfnOutputValue = cfnStackDeployConfigHashOutput.OutputValue;
+            configDrift = cfnOutputValue !== deployConfigHash ? 'yes' : 'no';
+          }
+          appData[app].push(cfnStack.StackStatus, configDrift);
         }
-        return [a, cfnStackStatus];
+      }
+      const tableData = Object.keys(appData).map((app) => {
+        return [app, ...appData[app]];
       });
 
-      console.log(apps.length
-        ? table([['App', 'CloudFormation Stack Status'], ...tableData])
-        : `No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
+      console.log(
+        table([tableColumns, ...tableData])
+      );
     });
 
   cli
@@ -286,6 +329,7 @@ async function main() {
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig(cmd.resolveSecrets);
       console.log(deployConfig.toString(true, cmd.flat));
+      console.log(`SHA1: ${deployConfig.toHash()}`);
     });
 
   cli
@@ -405,7 +449,11 @@ async function main() {
     .description('diff, deploy, or delete the app\'s AWS resources')
     .appOption()
     .action(async (cmd) => {
+      // get this without resolved secrets for passing to cdk
       const deployConfig = await cmd.getDeployConfig(false);
+      // get it again with resolved secrets so we can make our hash
+      const deployConfigHash = (await cmd.getDeployConfig()).toHash();
+
       const cfnStackName = cmd.getCfnStackName();
       const {
         vpcId,
@@ -418,6 +466,7 @@ async function main() {
         ecsClusterName,
         albLogBucketName,
         cacclDeployVersion,
+        deployConfigHash,
         stackName: cfnStackName,
         awsAccountId: await aws.getAccountId(),
         awsRegion: process.env.AWS_REGION || 'us-east-1',
