@@ -381,7 +381,7 @@ async function main() {
       'delete the named parameter instead of creating/updating'
     )
     .action(async (cmd) => {
-      const deployConfig = await cmd.getDeployConfig();
+      const deployConfig = await cmd.getDeployConfig(true);
 
       if (!await confirmProductionOp(cmd.yes)) {
         exitWithSuccess();
@@ -393,12 +393,10 @@ async function main() {
         }
         if (cmd.delete) {
           const [param] = cmd.args;
-          if (!validSSMParamName(param)) {
-            throw new Error(`Invalid param name: '${param}'`);
-          }
-          const paramPath = [cmd.getAppPrefix(), param].join('/');
-          await aws.deleteSsmParameters([paramPath]);
-          delete deployConfig[param];
+          await deployConfig.delete(
+            cmd.getAppPrefix(),
+            param
+          );
         } else {
           const [param, value] = cmd.args;
           if (!validSSMParamName(param)) {
