@@ -329,6 +329,21 @@ async function main() {
       const appPrefix = cmd.getAppPrefix();
 
       try {
+        const cfnStackName = cmd.getCfnStackName();
+
+        // this will thow a CfnStackNotFound unless a stack exists
+        await aws.getCfnStackExports(cfnStackName);
+
+        // if we get here it means the CloudFormation stack still exists
+        exitWithError([
+          `You must first run "caccl-deploy stack -a ${cmd.app} destroy" to delete`,
+          `the deployed ${cfnStackName} CloudFormation stack before deleting it's config.`,
+        ].join('\n'));
+      } catch (err) {
+        // no-op, all good, etc.
+      }
+
+      try {
         console.log(`This will delete all deployment configuation for ${cmd.app}`);
 
         if (!(cmd.yes || await confirm('Are you sure?'))) {
