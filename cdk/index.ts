@@ -45,7 +45,7 @@ const stackProps: CacclDeployStackProps = {
     logRetentionDays: deployConfig.logRetentionDays,
     gitRepoVolume: deployConfig.gitRepoVolume,
   },
-  taskCount: deployConfig.taskCount || 1,
+  taskCount: +(deployConfig.taskCount || 1),
   tags: {
     caccl_deploy_stack_name: stackName,
     ...deployConfig.tags,
