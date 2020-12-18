@@ -9,17 +9,45 @@ const chalk = require('chalk');
 const figlet = require('figlet');
 const yn = require('yn');
 const tempy = require('tempy');
+
 const aws = require('./lib/aws');
-const { promptAppName, confirm, confirmProductionOp } = require('./lib/configPrompts');
-const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const DeployConfig = require('./lib/deployConfig');
+const cacclDeployVersion = require('./lib/generateVersion')();
+const {
+  promptAppName,
+  confirm,
+  confirmProductionOp,
+} = require('./lib/configPrompts');
+const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const { description } = require('./package.json');
 const { looksLikeSemver, validSSMParamName } = require('./lib/helpers');
-const { UserCancel, AwsProfileNotFound } = require('./lib/errors');
-
-const cacclDeployVersion = require('./lib/generateVersion')();
+const {
+  UserCancel,
+  AwsProfileNotFound,
+  NoPromptChoices,
+} = require('./lib/errors');
 
 const { CACCL_DEPLOY_NON_INTERACTIVE = false } = process.env;
+
+const bye = (msg = 'bye!', exitCode = 0) => {
+  console.log(msg);
+  process.exit(exitCode);
+};
+
+const exitWithSuccess = (msg) => {
+  bye(msg);
+};
+
+const exitWithError = (msg) => {
+  bye(msg, 1);
+};
+
+const byeWithCredentialsError = () => {
+  exitWithError([
+    'Looks like there is a problem with your AWS credentials configuration.',
+    'Did you run `aws configure`? Did you set a region? Default profile?',
+  ].join('\n'));
+};
 
 const initAwsProfile = (profile) => {
   try {
@@ -27,24 +55,11 @@ const initAwsProfile = (profile) => {
     return profile;
   } catch (err) {
     if (err.name === AwsProfileNotFound.name) {
-      console.log(err.message);
-      process.exit(1);
+      exitWithError(err.message);
     } else {
       throw err;
     }
   }
-};
-
-const bye = (msg = 'bye!', code = 0) => {
-  console.log(msg);
-  process.exit(code);
-};
-
-const byeWithCredentialsError = () => {
-  bye([
-    'Looks like there is a problem with your AWS credentials configuration.',
-    'Did you run `aws configure`? Did you set a region? Default profile?',
-  ].join('\n'));
 };
 
 class CacclDeployCommander extends Command {
@@ -59,7 +74,7 @@ class CacclDeployCommander extends Command {
   getAppPrefix(appName) {
     const options = this.opts();
     if (options.ssmRootPrefix === undefined
-      || (options.app === undefined && appName === undefined)) {
+        || (options.app === undefined && appName === undefined)) {
       throw Error('Attempted to make an ssm prefix with undefined values');
     }
     return `${options.ssmRootPrefix}/${appName !== undefined ? appName : options.app}`;
@@ -78,17 +93,17 @@ class CacclDeployCommander extends Command {
     return `${options.cfnStackPrefix}${appName !== undefined ? appName : options.app}`;
   }
 
-  async getDeployConfig(resolveSecrets = true) {
+  async getDeployConfig(keepSecretArns) {
     const appPrefix = this.getAppPrefix();
     try {
       const deployConfig = await DeployConfig.fromSsmParams(
         appPrefix,
-        resolveSecrets
+        keepSecretArns
       );
       return deployConfig;
     } catch (err) {
       if (err.name === 'AppNotFound') {
-        bye(`${this.app} app configuration not found!`, 1);
+        exitWithError(`${this.app} app configuration not found!`);
       }
     }
   }
@@ -122,14 +137,14 @@ class CacclDeployCommander extends Command {
       );
   }
 
-  appOption(required = true) {
+  appOption(optional) {
     const args = [
       '-a --app <string>',
       'name of the app to work with',
     ];
-    return required
-      ? this.requiredOption(...args)
-      : this.option(...args);
+    return optional
+      ? this.option(...args)
+      : this.requiredOption(...args);
   }
 }
 
@@ -152,7 +167,7 @@ async function main() {
       'Please see the docs for explanations of these settings',
     ].join('\n'));
 
-    CACCL_DEPLOY_NON_INTERACTIVE || (await confirm('Continue?')) || bye();
+    CACCL_DEPLOY_NON_INTERACTIVE || (await confirm('Continue?', true)) || exitWithSuccess();
     setConfigDefaults();
   }
 
@@ -165,14 +180,16 @@ async function main() {
 
   cli
     .command('apps')
-    .option('--full-status',
-      'show the full status of each app including CFN stack and config state')
+    .option(
+      '--full-status',
+      'show the full status of each app including CFN stack and config state'
+    )
     .description('list available app configurations')
     .action(async (cmd) => {
       const apps = await aws.getAppList(cmd.ssmRootPrefix);
 
       if (!apps.length) {
-        bye(`No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
+        exitWithError(`No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
       }
 
       const appData = {};
@@ -193,7 +210,7 @@ async function main() {
 
           const appPrefix = cmd.getAppPrefix(app);
           const deployConfig = await DeployConfig
-            .fromSsmParams(appPrefix, true);
+            .fromSsmParams(appPrefix);
           appData[app].push(deployConfig.infraStackName);
 
           const cfnStack = cfnStacks.find((s) => {
@@ -226,7 +243,7 @@ async function main() {
         return [app, ...appData[app]];
       });
 
-      console.log(
+      exitWithSuccess(
         table([tableColumns, ...tableData])
       );
     });
@@ -234,9 +251,11 @@ async function main() {
   cli
     .command('new')
     .description('create a new app deploy config via import and/or prompts')
-    .appOption(false)
-    .option('-i --import <string>',
-      'import new deploy config from a json file or URL')
+    .appOption(true)
+    .option(
+      '-i --import <string>',
+      'import new deploy config from a json file or URL'
+    )
     .description('create a new app configuration')
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
@@ -246,12 +265,10 @@ async function main() {
 
       let appName;
       try {
-        appName = (cmd.app === undefined)
-          ? await promptAppName()
-          : cmd.app;
+        appName = (cmd.app || await promptAppName());
       } catch (err) {
-        if (err.name === UserCancel.name) {
-          bye();
+        if (err instanceof UserCancel) {
+          exitWithSuccess();
         }
         throw err;
       }
@@ -260,11 +277,13 @@ async function main() {
 
       if (existingApps.includes(appName)) {
         console.log(`Configuration for ${cmd.app} already exists`);
-        if (cmd.yes || await confirm('Overwrite?', false)) {
-          (await confirmProductionOp(cmd.yes)) || bye();
+        if (cmd.yes || await confirm('Overwrite?')) {
+          if (!await confirmProductionOp(cmd.yes)) {
+            exitWithSuccess();
+          }
           await DeployConfig.wipeExisting(appPrefix);
         } else {
-          bye();
+          exitWithSuccess();
         }
       }
 
@@ -279,15 +298,20 @@ async function main() {
       try {
         deployConfig = await DeployConfig.generate(importedConfig);
       } catch (err) {
-        if (err.name === 'UserCancel') {
-          bye(err.message, 1);
+        if (err instanceof UserCancel) {
+          exitWithSuccess();
+        } else if (err instanceof NoPromptChoices) {
+          exitWithError([
+            'Something went wrong trying to generate your config: ',
+            err.message,
+          ].join('\n'));
         }
         throw err;
       }
 
       await deployConfig.syncToSsm(appPrefix);
-      console.log(chalk.yellowBright(figlet.textSync(`${appName}!`)));
-      console.log([
+      exitWithSuccess([
+        chalk.yellowBright(figlet.textSync(`${appName}!`)),
         '',
         'Your new app deployment configuration is created!',
         'Next steps:',
@@ -306,14 +330,19 @@ async function main() {
 
       try {
         console.log(`This will delete all deployment configuation for ${cmd.app}`);
-        if (cmd.yes || await confirm('Are you sure?', false)) {
-          (await confirmProductionOp(cmd.yes)) || bye();
-          await DeployConfig.wipeExisting(appPrefix, false);
-          console.log(`${cmd.app} configuration deleted`);
+
+        if (!(cmd.yes || await confirm('Are you sure?'))) {
+          exitWithSuccess();
         }
+        // extra confirm if this is a production deployment
+        if (!await confirmProductionOp(cmd.yes)) {
+          exitWithSuccess();
+        }
+        await DeployConfig.wipeExisting(appPrefix, false);
+        exitWithSuccess(`${cmd.app} configuration deleted`);
       } catch (err) {
         if (err.name === 'AppNotFound') {
-          bye(`${cmd.app} app configuration not found!`, 1);
+          exitWithError(`${cmd.app} app configuration not found!`);
         }
       }
     });
@@ -322,29 +351,45 @@ async function main() {
     .command('show')
     .description('display an app\'s current configuration')
     .appOption()
-    .option('-f --flat',
-      'display the flattened, key: value form of the config')
-    .option('--no-resolve-secrets',
-      'show app environment secret value ARNs instead of dereferencing')
+    .option(
+      '-f --flat',
+      'display the flattened, key: value form of the config'
+    )
+    .option(
+      '-s --sha',
+      'output a sha1 hash of the current configuration'
+    )
+    .option(
+      '--keep-secret-arns',
+      'show app environment secret value ARNs instead of dereferencing'
+    )
     .action(async (cmd) => {
-      const deployConfig = await cmd.getDeployConfig(cmd.resolveSecrets);
-      console.log(deployConfig.toString(true, cmd.flat));
-      console.log(`SHA1: ${deployConfig.toHash()}`);
+      if (cmd.sha) {
+        exitWithSuccess((await cmd.getDeployConfig()).toHash());
+      }
+      exitWithSuccess(
+        (await cmd.getDeployConfig(cmd.keepSecretArns)).toString(true, cmd.flat)
+      );
     });
 
   cli
     .command('update')
     .description('update (or delete) a single deploy config setting')
     .appOption()
-    .option('-D --delete',
-      'delete the named parameter instead of creating/updating')
+    .option(
+      '-D --delete',
+      'delete the named parameter instead of creating/updating'
+    )
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig();
-      (await confirmProductionOp(cmd.yes)) || bye();
+
+      if (!await confirmProductionOp(cmd.yes)) {
+        exitWithSuccess();
+      }
+
       try {
         if (cmd.args.length > 2) {
-          console.log('Too many arguments!');
-          process.exit(1);
+          exitWithError('Too many arguments!');
         }
         if (cmd.delete) {
           const [param] = cmd.args;
@@ -366,8 +411,7 @@ async function main() {
           );
         }
       } catch (err) {
-        console.log(`Something went wrong: ${err.message}`);
-        process.exit(1);
+        exitWithError(`Something went wrong: ${err.message}`);
       }
     });
 
@@ -386,19 +430,22 @@ async function main() {
           ['Respository Name'],
           ...data,
         ]);
-        console.log(tableOutput);
-      } else {
-        console.log('No ECR repositories found');
+        exitWithSuccess(tableOutput);
       }
+      exitWithError('No ECR repositories found');
     });
 
   cli
     .command('images')
     .description('list the most recent available ECR images for an app')
-    .requiredOption('-r --repo <string>',
-      'the name of the ECR repo; use `caccl-deploy app repos` for available repos')
-    .option('-A --all',
-      'show all images; default is to show only semver-tagged releases')
+    .requiredOption(
+      '-r --repo <string>',
+      'the name of the ECR repo; use `caccl-deploy app repos` for available repos'
+    )
+    .option(
+      '-A --all',
+      'show all images; default is to show only semver-tagged releases'
+    )
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
@@ -438,10 +485,9 @@ async function main() {
           ['Pushed On', 'Tags', 'ARNs'],
           ...data,
         ]);
-        console.log(tableOutput);
-      } else {
-        console.log('No images found');
+        exitWithSuccess(tableOutput);
       }
+      exitWithError('No images found');
     });
 
   cli
@@ -450,7 +496,7 @@ async function main() {
     .appOption()
     .action(async (cmd) => {
       // get this without resolved secrets for passing to cdk
-      const deployConfig = await cmd.getDeployConfig(false);
+      const deployConfig = await cmd.getDeployConfig(true);
       // get it again with resolved secrets so we can make our hash
       const deployConfigHash = (await cmd.getDeployConfig()).toHash();
 
@@ -494,7 +540,9 @@ async function main() {
         }
 
         if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
-          (await confirmProductionOp(cmd.yes)) || bye();
+          if (!await confirmProductionOp(cmd.yes)) {
+            exitWithSuccess();
+          }
         }
 
         const execOpts = {
@@ -522,25 +570,34 @@ async function main() {
         cfnExports = await aws.getCfnStackExports(cfnStackName);
       } catch (err) {
         if (err.name === 'CfnStackNotFound') {
-          bye(err.message, 1);
+          exitWithError(err.message);
         }
         throw err;
       }
       const { clusterName, serviceName } = cfnExports;
       console.log(`Restarting service ${serviceName} on cluster ${clusterName}`);
-      (await confirmProductionOp(cmd.yes)) || bye();
+
+      if (!await confirmProductionOp(cmd.yes)) {
+        exitWithSuccess();
+      }
+
       // restart the service
-      await aws.restartEcsServcie(clusterName, serviceName);
+      await aws.restartEcsServcie(clusterName, serviceName, true);
+      exitWithSuccess('done');
     });
 
   cli
     .command('release')
     .description('release a new version of an app')
     .appOption()
-    .requiredOption('-i --image-tag <string>',
-      'the docker image version tag to release')
-    .option('--no-deploy',
-      'Update the Fargate Task Definition but don\' restart the service')
+    .requiredOption(
+      '-i --image-tag <string>',
+      'the docker image version tag to release'
+    )
+    .option(
+      '--no-deploy',
+      'Update the Fargate Task Definition but don\' restart the service'
+    )
     .action(async (cmd) => {
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
@@ -563,7 +620,7 @@ async function main() {
         });
       } catch (err) {
         if (err.name === 'CfnStackNotFound' || err.message.includes('Incomplete')) {
-          bye(err.message, 1);
+          exitWithError(err.message);
         }
         throw err;
       }
@@ -576,7 +633,7 @@ async function main() {
 
       if (repoArn.imageTag === cmd.imageTag && !cmd.yes) {
         const confirmMsg = `${cmd.app} is already using image tag ${cmd.imageTag}`;
-        (await confirm(`${confirmMsg}. Proceed?`, false)) || bye();
+        (await confirm(`${confirmMsg}. Proceed?`)) || exitWithSuccess();
       }
 
       // check that the specified image tag is legit
@@ -586,7 +643,7 @@ async function main() {
         cmd.imageTag
       );
       if (!imageTagExists) {
-        bye(`No image with tag ${cmd.imageTag} in ${repoArn.repoName}`, 1);
+        exitWithError(`No image with tag ${cmd.imageTag} in ${repoArn.repoName}`);
       }
 
       // check if it's the latest release and prompt if not
@@ -594,7 +651,7 @@ async function main() {
       const isLatestTag = await aws.isLatestTag(repoArn.repoName, cmd.imageTag);
       if (!isLatestTag && !cmd.yes) {
         console.log(`${cmd.imageTag} is not the most recent release`);
-        (await confirm('Proceed?')) || bye();
+        (await confirm('Proceed?')) || exitWithSuccess();
       }
 
       // generate the new repo image arn to be deployed
@@ -605,7 +662,9 @@ async function main() {
 
       const { taskDefName, clusterName, serviceName } = cfnExports;
 
-      (await confirmProductionOp(cmd.yes)) || bye();
+      if (!await confirmProductionOp(cmd.yes)) {
+        exitWithSuccess();
+      }
 
       console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImage);
@@ -617,19 +676,18 @@ async function main() {
       // restart the service
       if (cmd.deploy) {
         console.log(`Restarting the ${serviceName} service...`);
-        await aws.restartEcsServcie(clusterName, serviceName);
-      } else {
-        console.log('Redployment skipped');
-        console.log('WARNING: service is out-of-sync with stored deployment configuration');
+        await aws.restartEcsServcie(clusterName, serviceName, true);
+        exitWithSuccess('done.');
       }
+      exitWithSuccess([
+        'Redployment skipped',
+        'WARNING: service is out-of-sync with stored deployment configuration',
+      ].join('\n'));
     });
   await cli.parseAsync(process.argv);
 }
 
 main()
   .catch((err) => {
-    if (err.name === 'CredentialsError') {
-      byeWithCredentialsError();
-    }
     console.error(err);
   });

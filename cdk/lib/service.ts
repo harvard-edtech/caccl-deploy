@@ -2,6 +2,7 @@ import { Alarm } from '@aws-cdk/aws-cloudwatch';
 import { SecurityGroup } from '@aws-cdk/aws-ec2';
 import { Cluster, FargateService, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
+
 import { CacclTaskDef } from './taskdef';
 
 export interface CacclServiceProps {

@@ -1,6 +1,7 @@
 import { FargateTaskDefinition, LogDriver, ContainerDefinition } from '@aws-cdk/aws-ecs';
 import { LogGroup } from '@aws-cdk/aws-logs';
 import { Construct, Stack, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
+
 import { CacclAppEnvironment } from './appEnvironment';
 import { CacclContainerImageOptions, CacclContainerImage } from './image';
 import { CacclGitRepoVolumeContainer } from './volumeContainer';
@@ -34,8 +35,8 @@ export class CacclTaskDef extends Construct {
       appImage,
       proxyImage = DEFAULT_PROXY_REPO_NAME,
       appEnvironment,
-      taskCpu = 256,
-      taskMemory = 512,
+      taskCpu = 256, // in cpu units; 256 == .25 vCPU
+      taskMemory = 512, // in MiB
       logRetentionDays = 90,
     } = props;
 

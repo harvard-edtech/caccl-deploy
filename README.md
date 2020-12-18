@@ -25,11 +25,18 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 
 `caccl-deploy` lets you to do two main things:
 
-- create and manage the deployment configuration for containerized apps
-- provision, deploy and update those apps on ECS/Fargate
+- create and manage the deployment configuration for containerized web apps
+- provision, deploy and release updates to those apps on ECS/Fargate
 
-There are also a couple of subcommands for
-An "app" is considered to be a Nodejs/React app that has been packaged as a Docker image. The "deployment" of the app will consist of an Application Load Balancer, a Fargate Service, and a Fargate Task with, in most cases, two containers: an nginx reverse proxy and the app itself.
+An "app" is considered to be a Nodejs/React app that has been packaged as a Docker image. Once deployed, the AWS resources dedicated to the app will consist of:
+- an Application Load Balancer
+- an ECS Fargate Service
+- an ECS Fargate Task with (in most cases) two containers:
+    - an nginx reverse proxy (provided by [hdce/dce-ecs-nginx-proxy](https://github.com/harvard-edtech/dce-ecs-nginx-proxy))
+    - the app itself.
+- a CloudWatch dashboard containing widgets for monitoring metrics and alarms
+- an SNS topic capable of sending notifications via email or Slack
+- (optionally) a DocDB instance accessible to the app
 
 As part of this app deployment, `caccl-deploy` will create and manage a deployment configuration. This configuration will be stored in a combination of SSM Parameter Store entries and SecretsManager entries. The configuration consists of:
 
@@ -38,8 +45,8 @@ As part of this app deployment, `caccl-deploy` will create and manage a deployme
 - one of either
 	- the ARN of a Docker image in an ECR repository
 	- the name of an image in, e.g., DockerHub
-- a set of 0 or more environment variables your app needs
-- a set of 0 or more AWS resource tags
+- An optional set of environment variables your app needs
+- An optional set of AWS resource tags
 - various task provisioning settings, such as number of CPUs, memory, number of tasks, etc
 
 ### Install & Getting Started
@@ -184,7 +191,7 @@ First the required values.
 
 Now the optional stuff.
 
-`appEnvironment` - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--no-resolve-secrets` flag to see the actual ARN values.
+`appEnvironment` - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--keep-secret-arns` flag to see the actual ARN values.
 
 `notifications.slack` - a slack webhook URL. If configured this will result in a Lambda function being added to your stack and subscribed to the stack's SNS topic for alert notifications.
 
@@ -336,7 +343,7 @@ Let's say you had an existing app called "fooapp-stage" and you wanted to create
 Let's say your app had a couple of environment variables that needed to be changed, `API_KEY` and `API_SECRET`.
 
 1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
-    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--no-resolve-secrets` flag to the above command.
+    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--keep-secret-arns` flag to the above command.
 1. Update the `API_KEY` variable to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_KEY my-api-key`
 1. Update the `API_SECRET` variable to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_SECRET 12345abcdef`
 1. Run `caccl-deploy restart --app [your app name]`
@@ -348,7 +355,7 @@ Note that the final step is only a `restart` vs a `stack ... deploy`. This is be
 In this example we're going to add a new variable, `API_BASE_URL`, to an existing configuration.
 
 1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
-    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--no-resolve-secrets` flag to the above command.
+    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--keep-secret-arns` flag to the above command.
 1. Add the `API_BASE_URL` value to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_BASE_URL https://api.example.edu/v1`
 1. Review the app's stack changes `caccl-deploy stack --app [your app name] diff`
 1. Deploy the app's stack changes `caccl-deploy stack --app [your app name] deploy`. _**WARNING**_ this will restart the app.
@@ -442,7 +449,7 @@ Display the current deployment configuration for an app. The process fetches the
 
 - `-a`/`--app` (required) - the name of the app
 - `-f`/`--flat` - show the flattened version of the configuration data.
-- `--no-resolve-secrets` - by default the output will include the actual, dereferenced values of app environment variables stored in SecretsManager. Use this option to see the ARNs of the SecretsManger entries instead.
+- `--keep-secret-arns` - by default the output will include the actual, dereferenced values of app environment variables stored in SecretsManager. Use this option to see the ARNs of the SecretsManger entries instead.
 
 ---
 

@@ -5,6 +5,7 @@ import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
 import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
 import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
 import { CacclDocDb } from './docdb';
@@ -25,11 +26,11 @@ export class CacclNotifications extends Construct {
   constructor(scope: Construct, id: string, props: CacclNotificationsProps) {
     super(scope, id);
 
-    let { email = [] } = props;
-
-    if (typeof email === "string") {
-      email = [email];
-    }
+    const email = (
+      typeof props.email === 'string'
+        ? [props.email]
+        : props.email
+    );
 
     const { slack, service, loadBalancer } = props;
 
@@ -41,13 +42,15 @@ export class CacclNotifications extends Construct {
       grantPrincipal: new ServicePrincipal('cloudwatch.amazonaws.com'),
     });
 
-    email.forEach((emailAddr, idx) => {
-      new Subscription(this, `email-subscription-${idx}`, {
-        topic: this.topic,
-        protocol: SubscriptionProtocol.EMAIL,
-        endpoint: emailAddr,
+    if (email) {
+      email.forEach((emailAddr, idx) => {
+        new Subscription(this, `email-subscription-${idx}`, {
+          topic: this.topic,
+          protocol: SubscriptionProtocol.EMAIL,
+          endpoint: emailAddr,
+        });
       });
-    });
+    }
 
     if (slack !== undefined) {
       const slackFunction = new Function(this, 'SlackFunction', {

@@ -1,6 +1,7 @@
 import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
 import { Cluster, Secret } from '@aws-cdk/aws-ecs';
 import { Stack, Construct, StackProps } from '@aws-cdk/core';
+
 import { CacclAppEnvironment } from './appEnvironment';
 import { CacclMonitoring } from './dashboard';
 import { CacclDocDb } from './docdb';

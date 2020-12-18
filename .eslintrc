@@ -23,6 +23,7 @@
     "consistent-return": "off",
     "id-length": "off",
     "no-continue": "off",
+    "function-call-argument-newline": ["error", "consistent"],
     "max-len": [
       "error",
       {

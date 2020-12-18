@@ -2,9 +2,10 @@
 
 import 'source-map-support/register';
 import { App, CfnOutput } from '@aws-cdk/core';
-import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 import { readFileSync } from 'fs';
 const yn = require('yn');
+
+import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 
 if (process.env.CDK_STACK_PROPS_FILE_PATH === undefined) {
   throw new Error();
