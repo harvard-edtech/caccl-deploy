@@ -22,9 +22,11 @@ const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const { description } = require('./package.json');
 const { looksLikeSemver, validSSMParamName } = require('./lib/helpers');
 const {
+  AppNotFound,
   UserCancel,
   AwsProfileNotFound,
   NoPromptChoices,
+  CfnStackNotFound,
 } = require('./lib/errors');
 
 /**
@@ -63,7 +65,7 @@ const initAwsProfile = (profile) => {
     aws.initProfile(profile);
     return profile;
   } catch (err) {
-    if (err.name === AwsProfileNotFound.name) {
+    if (err instanceof AwsProfileNotFound) {
       exitWithError(err.message);
     } else {
       throw err;
@@ -138,7 +140,7 @@ class CacclDeployCommander extends Command {
       );
       return deployConfig;
     } catch (err) {
-      if (err.name === 'AppNotFound') {
+      if (err instanceof AppNotFound) {
         exitWithError(`${this.app} app configuration not found!`);
       }
     }
@@ -415,7 +417,7 @@ async function main() {
 
         exitWithSuccess(`${cmd.app} configuration deleted`);
       } catch (err) {
-        if (err.name === 'AppNotFound') {
+        if (err instanceof AppNotFound) {
           exitWithError(`${cmd.app} app configuration not found!`);
         }
       }
@@ -678,7 +680,7 @@ async function main() {
       try {
         cfnExports = await aws.getCfnStackExports(cfnStackName);
       } catch (err) {
-        if (err.name === 'CfnStackNotFound') {
+        if (err instanceof CfnStackNotFound) {
           exitWithError(err.message);
         }
         throw err;
@@ -729,7 +731,7 @@ async function main() {
           }
         });
       } catch (err) {
-        if (err.name === 'CfnStackNotFound' || err.message.includes('Incomplete')) {
+        if (err instanceof CfnStackNotFound || err.message.includes('Incomplete')) {
           exitWithError(err.message);
         }
         throw err;
