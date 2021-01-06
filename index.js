@@ -331,7 +331,13 @@ async function main() {
       const appPrefix = cmd.getAppPrefix(appName);
 
       if (existingApps.includes(appName)) {
-        console.log(`Configuration for ${cmd.app} already exists`);
+        const cfnStackName = cmd.getCfnStackName(appName);
+        if (await aws.cfnStackExists(cfnStackName)) {
+          exitWithError('A deployed app with that name already exists');
+        } else {
+          console.log(`Configuration for ${cmd.app} already exists`);
+        }
+
         if (cmd.yes || await confirm('Overwrite?')) {
           if (!await confirmProductionOp(cmd.yes)) {
             exitWithSuccess();
@@ -386,21 +392,12 @@ async function main() {
     .description('delete an app configuration')
     .appOption()
     .action(async (cmd) => {
-      const appPrefix = cmd.getAppPrefix();
-
-      try {
-        const cfnStackName = cmd.getCfnStackName();
-
-        // this will thow a CfnStackNotFound unless a stack exists
-        await aws.getCfnStackExports(cfnStackName);
-
-        // if we get here it means the CloudFormation stack still exists
+      const cfnStackName = cmd.getCfnStackName();
+      if (await aws.cfnStackExists(cfnStackName)) {
         exitWithError([
           `You must first run "caccl-deploy stack -a ${cmd.app} destroy" to delete`,
           `the deployed ${cfnStackName} CloudFormation stack before deleting it's config.`,
         ].join('\n'));
-      } catch (err) {
-        // no-op, all good, etc.
       }
 
       try {
@@ -413,7 +410,9 @@ async function main() {
         if (!await confirmProductionOp(cmd.yes)) {
           exitWithSuccess();
         }
-        await DeployConfig.wipeExisting(appPrefix, false);
+
+        await DeployConfig.wipeExisting(cmd.appPrefix(), false);
+
         exitWithSuccess(`${cmd.app} configuration deleted`);
       } catch (err) {
         if (err.name === 'AppNotFound') {
