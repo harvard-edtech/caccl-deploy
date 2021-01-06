@@ -27,6 +27,11 @@ const {
   NoPromptChoices,
 } = require('./lib/errors');
 
+/**
+ * Setting this env var is the equivalent of passing the `--yes` argument
+ * to any subcommand. It tells caccl-deploy to not prompt for confirmations.
+ * This includes production account failsafe prompts, so be careful.
+ */
 const { CACCL_DEPLOY_NON_INTERACTIVE = false } = process.env;
 
 const bye = (msg = 'bye!', exitCode = 0) => {
@@ -49,6 +54,10 @@ const byeWithCredentialsError = () => {
   ].join('\n'));
 };
 
+/**
+ * callback function for the `--profile` option
+ * @param {string} profile
+ */
 const initAwsProfile = (profile) => {
   try {
     aws.initProfile(profile);
@@ -62,37 +71,64 @@ const initAwsProfile = (profile) => {
   }
 };
 
+/**
+ * Extends the base commander.js class to add convenience methods
+ * and some common options
+ * @extends Command
+ */
 class CacclDeployCommander extends Command {
+  /**
+   * custom command creator
+   * @param {string} name
+   */
   createCommand(name) {
     const cmd = new CacclDeployCommander(name)
+      /**
+       * Enabling the following two command options allows our `action()` block
+       * to receive the command object as an argument and to reference command
+       * options as properties of that object, e.g. the value of `--app` can be
+       * accessed via `cmd.app`, or `this.app` in the added methods in this
+       * class
+       */
+      .passCommandToAction()
       .storeOptionsAsProperties()
-      .commonOptions()
-      .passCommandToAction();
+      // adds a bunch of options (mostly) common to all the subcommands
+      .commonOptions();
     return cmd;
   }
 
+  /**
+   * Convenience method for getting the combined root prefix plus app name
+   * used for the SSM Paramter Store parameter names
+   * @param {string} appName
+   */
   getAppPrefix(appName) {
-    const options = this.opts();
-    if (options.ssmRootPrefix === undefined
-        || (options.app === undefined && appName === undefined)) {
+    if (this.ssmRootPrefix === undefined
+        || (this.app === undefined && appName === undefined)) {
       throw Error('Attempted to make an ssm prefix with undefined values');
     }
-    return `${options.ssmRootPrefix}/${appName !== undefined ? appName : options.app}`;
+    return `${this.ssmRootPrefix}/${appName || this.app}`;
   }
 
-  getSsmParameterName(configName, appName) {
-    return `${this.getAppPrefix(appName)}/${configName}`;
-  }
-
+  /**
+   * Convenience method for getting the name of the app's CloudFormation stack
+   * @param {string} appName
+   */
   getCfnStackName(appName) {
-    const options = this.opts();
-    if (options.cfnStackPrefix === undefined
-      || (options.app === undefined && appName === undefined)) {
+    if (this.cfnStackPrefix === undefined
+      || (this.app === undefined && appName === undefined)) {
       throw Error('Attempted to make a cloudformation stack name with undefined values');
     }
-    return `${options.cfnStackPrefix}${appName !== undefined ? appName : options.app}`;
+    return `${this.cfnStackPrefix}${appName || this.app}`;
   }
 
+  /**
+   * Retruns the DeployConfig object representing the subcommand's
+   *
+   * @param {boolean} keepSecretArns - if true, for any parameter store values
+   * that reference secretsmanager entries, preserve the secretsmanager ARN
+   * value rather than dereferencing
+   */
   async getDeployConfig(keepSecretArns) {
     const appPrefix = this.getAppPrefix();
     try {
@@ -108,6 +144,12 @@ class CacclDeployCommander extends Command {
     }
   }
 
+  /**
+   * For assigning some common options to all commands
+   *
+   * @return {CacclDeployCommander}
+   * @memberof CacclDeployCommander
+   */
   commonOptions() {
     return this
       .option(
@@ -137,22 +179,35 @@ class CacclDeployCommander extends Command {
       );
   }
 
+  /**
+   * Add the `--app` option to a command
+   *
+   * @param {boolean} optional - unless true the resulting command option
+   *  will be required
+   * @return {CacclDeployCommander}
+   * @memberof CacclDeployCommander
+   */
   appOption(optional) {
     const args = [
       '-a --app <string>',
       'name of the app to work with',
     ];
-    return optional
+    return (optional
       ? this.option(...args)
-      : this.requiredOption(...args);
+      : this.requiredOption(...args));
   }
 }
 
 async function main() {
+  // confirm ASAP that the user's AWS creds/config is good to go
   if (!aws.isConfigured()) {
     byeWithCredentialsError();
   }
 
+  /*
+   * check if this is the first time running and if so create the
+   * config file with defaults
+   */
   if (!conf.get('ssmRootPrefix')) {
     console.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
     console.log([
@@ -287,6 +342,11 @@ async function main() {
         }
       }
 
+      /**
+       * Allow importing some or all of a deploy config.
+       * What gets imported will be passed to the `generate`
+       * operation to complete any missing settings
+       */
       let importedConfig;
       if (cmd.import !== undefined) {
         importedConfig = (/^http(s):\//.test(cmd.import))
@@ -379,6 +439,7 @@ async function main() {
       'show app environment secret value ARNs instead of dereferencing'
     )
     .action(async (cmd) => {
+      // we only want to see that sha1 hash (likely for debugging)
       if (cmd.sha) {
         exitWithSuccess((await cmd.getDeployConfig()).toHash());
       }
@@ -432,6 +493,7 @@ async function main() {
     .command('repos')
     .description('list the available ECR repositories')
     .action(async (cmd) => {
+      // see the README section on cross-account ECR access
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
@@ -460,12 +522,19 @@ async function main() {
       'show all images; default is to show only semver-tagged releases'
     )
     .action(async (cmd) => {
+      // see the README section on cross-account ECR access
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
       const images = await aws.getRepoImageList(cmd.repo, cmd.all);
       const region = aws.getCurrentRegion();
 
+      /**
+       * Function to filter for the image tags we want.
+       * If `--all` flag is provided this will return true for all tags.
+       * Otherwise only tags that look like e.g. "1.1.1" or master/stage
+       * will be included.
+       */
       const includeThisTag = (t) => {
         return cmd.all || looksLikeSemver(t) || ['master', 'stage'].includes(t);
       };
@@ -473,6 +542,10 @@ async function main() {
       const data = images.map((i) => {
         const imageTags = i.imageTags.filter(includeThisTag).join('\n');
 
+        /**
+         * Filter then list of image ids for just the ones that correspond
+         * to the image tags we want to include
+         */
         const imageArns = i.imageTags.reduce((collect, t) => {
           if (includeThisTag(t)) {
             collect.push(
@@ -510,9 +583,16 @@ async function main() {
     .action(async (cmd) => {
       // get this without resolved secrets for passing to cdk
       const deployConfig = await cmd.getDeployConfig(true);
+
       // get it again with resolved secrets so we can make our hash
       const deployConfigHash = (await cmd.getDeployConfig()).toHash();
 
+      /**
+       * Get the important ids/names from our infrastructure stack:
+       *   - id of the vpc
+       *   - name of the ECS cluster
+       *   - name of the S3 bucket where the load balancer will send logs
+       */
       const cfnStackName = cmd.getCfnStackName();
       const {
         vpcId,
@@ -520,6 +600,10 @@ async function main() {
         albLogBucketName,
       } = await aws.getCfnStackExports(deployConfig.infraStackName);
 
+      /**
+       * Create an object structure with all the info
+       * the CDK stack operation will need
+       */
       const cdkStackProps = {
         vpcId,
         ecsClusterName,
@@ -532,26 +616,37 @@ async function main() {
         deployConfig,
       };
 
+      /**
+       * Write out the stack properties to a temp json file for
+       * the CDK subprocess to pick up
+       */
       tempy.write.task(JSON.stringify(cdkStackProps), async (tempPath) => {
         const envAdditions = {
           AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+          // tell the CDK subprocess where to find the stack properties file
           CDK_STACK_PROPS_FILE_PATH: tempPath,
         };
 
+        // all args/options following the `stack` subcommand get passed to cdk
         const cdkArgs = [...cmd.args];
+
+        // default cdk operation is `list`
         if (!cdkArgs.length) {
           cdkArgs.push('list');
         }
 
+        // tell cdk to use the same profile
         if (cmd.profile !== undefined) {
           cdkArgs.push('--profile', cmd.profile);
           envAdditions.AWS_PROFILE = cmd.profile;
         }
 
+        // disable cdk prompting if user included `--yes` flag
         if (cdkArgs[0] === 'deploy' && cmd.yes) {
           cdkArgs.push('--require-approval-never');
         }
 
+        // production failsafe if we're actually changing anything
         if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
           if (!await confirmProductionOp(cmd.yes)) {
             exitWithSuccess();
@@ -560,7 +655,9 @@ async function main() {
 
         const execOpts = {
           stdio: 'inherit',
+          // exec the cdk process in the cdk directory
           cwd: path.join(__dirname, 'cdk'),
+          // inject our additional env vars
           env: { ...process.env, ...envAdditions },
         };
 
@@ -612,6 +709,7 @@ async function main() {
       'Update the Fargate Task Definition but don\' restart the service'
     )
     .action(async (cmd) => {
+      // see the README section on cross-account ECR access
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
@@ -644,6 +742,7 @@ async function main() {
        */
       const repoArn = aws.parseEcrArn(deployConfig.appImage);
 
+      // check that we're actually releasing a different image
       if (repoArn.imageTag === cmd.imageTag && !cmd.yes) {
         const confirmMsg = `${cmd.app} is already using image tag ${cmd.imageTag}`;
         (await confirm(`${confirmMsg}. Proceed?`)) || exitWithSuccess();
@@ -679,6 +778,7 @@ async function main() {
         exitWithSuccess();
       }
 
+      // create a new version of the taskdef with the updated image
       console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
       await aws.updateTaskDefAppImage(taskDefName, newAppImage);
 
