@@ -413,7 +413,7 @@ async function main() {
           exitWithSuccess();
         }
 
-        await DeployConfig.wipeExisting(cmd.appPrefix(), false);
+        await DeployConfig.wipeExisting(cmd.getAppPrefix(), false);
 
         exitWithSuccess(`${cmd.app} configuration deleted`);
       } catch (err) {
