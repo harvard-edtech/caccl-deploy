@@ -2,7 +2,7 @@ import { Dashboard, GraphWidget, TextWidget, Metric, Unit, AlarmStatusWidget } f
 import { HttpCodeTarget } from '@aws-cdk/aws-elasticloadbalancingv2';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
 
-import { CacclDocDb } from './docdb';
+import { CacclDb } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
 
@@ -180,15 +180,13 @@ export class CacclMonitoring extends Construct {
     );
   }
 
-  addDocDbSection(cacclDocDb: CacclDocDb): void {
+  addDbSection(db: CacclDb): void {
     const { region } = Stack.of(this);
-    const { dbCluster } = cacclDocDb;
-
-    const dbLink = `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${dbCluster.clusterIdentifier}`;
+    const { dbCluster } = db;
 
     this.dashboard.addWidgets(
       new TextWidget({
-        markdown: `### DocDB Cluster: [${dbCluster.clusterIdentifier}](${dbLink})`,
+        markdown: `### DocDB Cluster: [${dbCluster.clusterIdentifier}](${db.getDashboardLink()})`,
         width: 24,
         height: 1,
       }),
@@ -197,28 +195,28 @@ export class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       new GraphWidget({
         title: 'Read/Write IOPS',
-        left: [cacclDocDb.metrics.ReadIOPS],
-        right: [cacclDocDb.metrics.WriteIOPS],
+        left: [db.metrics.ReadIOPS],
+        right: [db.metrics.WriteIOPS],
         width: 8,
         height: 6,
       }),
       new GraphWidget({
         title: 'CPU & Memory',
-        left: [cacclDocDb.metrics.CPUUtilization],
-        right: [cacclDocDb.metrics.FreeableMemory],
+        left: [db.metrics.CPUUtilization],
+        right: [db.metrics.FreeableMemory],
         width: 8,
         height: 6,
       }),
       new GraphWidget({
         title: 'CursorsTimedOut',
-        left: [cacclDocDb.metrics.DatabaseCursorsTimedOut],
+        left: [db.metrics.DatabaseCursorsTimedOut],
         width: 8,
         height: 6,
       }),
     );
     this.dashboard.addWidgets(
       new AlarmStatusWidget({
-        alarms: cacclDocDb.alarms,
+        alarms: db.alarms,
         width: 24,
         height: 6,
         title: 'DocDb Alarm States',
@@ -226,18 +224,18 @@ export class CacclMonitoring extends Construct {
     );
     this.dashboard.addWidgets(
       new GraphWidget({
-        left: [cacclDocDb.metrics.BufferCacheHitRatio],
+        left: [db.metrics.BufferCacheHitRatio],
       }),
       new GraphWidget({
-        left: [cacclDocDb.metrics.DatabaseConnections],
+        left: [db.metrics.DatabaseConnections],
       }),
       new GraphWidget({
-        left: [cacclDocDb.metrics.DiskQueueDepth],
+        left: [db.metrics.DiskQueueDepth],
       }),
       new GraphWidget({
         title: 'Read/Write Latency',
-        left: [cacclDocDb.metrics.ReadLatency],
-        right: [cacclDocDb.metrics.WriteLatency],
+        left: [db.metrics.ReadLatency],
+        right: [db.metrics.WriteLatency],
       }),
     );
   };

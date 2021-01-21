@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+- CDK construct for deploying an Elasticache (redis) instance
+
+### Changed
+- `cdk/lib/db` now supports multiple db engines: currently docdb or aurora/myql.
+	**Note**: the previous deploy configuration for including a docdb instance,
+	`{ docDb: true, ... }`, is still supported, but new apps should use the new
+	format. See README for more info.
+
 ## [0.6.2] - 2021-05-21
 
 ### Changed
