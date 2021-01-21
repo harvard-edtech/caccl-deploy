@@ -5,17 +5,16 @@ import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
 import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
 import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
-
+import { CacclDb, CacclDocDb, CacclRdsDb } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
-import { CacclDocDb } from './docdb';
 
 export interface CacclNotificationsProps {
   email?: (string | string[]);
   slack?: string;
   service: CacclService;
   loadBalancer: CacclLoadBalancer;
-  docdb?: CacclDocDb;
+  db?: CacclDocDb | CacclRdsDb;
 }
 
 export class CacclNotifications extends Construct {
@@ -32,7 +31,7 @@ export class CacclNotifications extends Construct {
         : props.email
     );
 
-    const { slack, service, loadBalancer } = props;
+    const { slack, service, loadBalancer, db } = props;
 
     this.topic = new Topic(this, 'NotificationTopic', {
       displayName: `${Stack.of(this).stackName}-notifications`,
@@ -73,6 +72,10 @@ export class CacclNotifications extends Construct {
     service.alarms.forEach((alarm) => {
       alarm.addAlarmAction(new SnsAction(this.topic));
     });
+
+    db?.alarms.forEach((alarm) => {
+      alarm.addAlarmAction(new SnsAction(this.topic));
+    })
 
     new CfnOutput(this, 'TopicName', {
       exportName: `${Stack.of(this).stackName}-sns-topic-name`,

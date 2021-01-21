@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - bug fix: `helpers.fromJson` couldn't handle relative paths. Replaced use of `require.resolve`
   with `path.resolve` and added a couple of tests.
 
+### Added
+
+- CDK construct for deploying an Elasticache (redis) instance
+- new `exec` command for running one-off app tasks (e.g. a django `migrate`)
+
+### Changed
+
+- `cdk/lib/db` now supports multiple db engines: currently docdb or aurora/myql.
+	**Note**: the previous deploy configuration for including a docdb instance,
+	`{ docDb: true, ... }`, is still supported, but new apps should use the new
+	format. See README for more info.
+
 ## [0.6.4] - 2021-06-09
 
 ### Changed
@@ -21,7 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.3] - 2021-06-04
 
 ### Changed
-
 - allow a successful load balancer target health check for a 302 response
 - pin the fargate version to 1.3
 - pin docdb engine version to 3.6.0
