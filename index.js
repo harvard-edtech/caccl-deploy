@@ -617,42 +617,47 @@ async function main() {
         deployConfig,
       };
 
+      const envAdditions = {
+        AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+      };
+
+      // all args/options following the `stack` subcommand get passed to cdk
+      const cdkArgs = [...cmd.args];
+
+      // default cdk operation is `list`
+      if (!cdkArgs.length) {
+        cdkArgs.push('list');
+      }
+
+      if (cdkArgs[0] === 'dump') {
+        exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
+      }
+
+      // tell cdk to use the same profile
+      if (cmd.profile !== undefined) {
+        cdkArgs.push('--profile', cmd.profile);
+        envAdditions.AWS_PROFILE = cmd.profile;
+      }
+
+      // disable cdk prompting if user included `--yes` flag
+      if (cdkArgs[0] === 'deploy' && cmd.yes) {
+        cdkArgs.push('--require-approval-never');
+      }
+
+      // production failsafe if we're actually changing anything
+      if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
+        if (!await confirmProductionOp(cmd.yes)) {
+          exitWithSuccess();
+        }
+      }
+
       /**
        * Write out the stack properties to a temp json file for
        * the CDK subprocess to pick up
        */
       tempy.write.task(JSON.stringify(cdkStackProps), async (tempPath) => {
-        const envAdditions = {
-          AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-          // tell the CDK subprocess where to find the stack properties file
-          CDK_STACK_PROPS_FILE_PATH: tempPath,
-        };
-
-        // all args/options following the `stack` subcommand get passed to cdk
-        const cdkArgs = [...cmd.args];
-
-        // default cdk operation is `list`
-        if (!cdkArgs.length) {
-          cdkArgs.push('list');
-        }
-
-        // tell cdk to use the same profile
-        if (cmd.profile !== undefined) {
-          cdkArgs.push('--profile', cmd.profile);
-          envAdditions.AWS_PROFILE = cmd.profile;
-        }
-
-        // disable cdk prompting if user included `--yes` flag
-        if (cdkArgs[0] === 'deploy' && cmd.yes) {
-          cdkArgs.push('--require-approval-never');
-        }
-
-        // production failsafe if we're actually changing anything
-        if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
-          if (!await confirmProductionOp(cmd.yes)) {
-            exitWithSuccess();
-          }
-        }
+        // tell the CDK subprocess where to find the stack properties file
+        envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
 
         const execOpts = {
           stdio: 'inherit',
@@ -664,8 +669,9 @@ async function main() {
 
         try {
           execSync(['npx cdk', ...cdkArgs].join(' '), execOpts);
+          exitWithSuccess('done!');
         } catch (err) {
-          console.error(err);
+          exitWithError(err.msg);
         }
       });
     });
