@@ -4,12 +4,21 @@
     "browser": true,
     "node": true
   },
+  "plugins": [
+    "cdk"
+  ],
   "rules": {
     "max-classes-per-file": 0,
     "class-methods-use-this": 0,
     "no-console": 0,
-    "arrow-body-style": ["warn", "always"],
-    "arrow-parens": ["warn", "always"],
+    "arrow-body-style": [
+      "warn",
+      "always"
+    ],
+    "arrow-parens": [
+      "warn",
+      "always"
+    ],
     "comma-dangle": [
       "error",
       {
@@ -23,7 +32,10 @@
     "consistent-return": "off",
     "id-length": "off",
     "no-continue": "off",
-    "function-call-argument-newline": ["error", "consistent"],
+    "function-call-argument-newline": [
+      "error",
+      "consistent"
+    ],
     "max-len": [
       "error",
       {
@@ -39,7 +51,12 @@
         "ignoreChainWithDepth": 2
       }
     ],
-    "no-plusplus": ["warn", { "allowForLoopAfterthoughts": true }],
+    "no-plusplus": [
+      "warn",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
     "prefer-template": "off",
     "prefer-destructuring": [
       "error",
@@ -62,7 +79,12 @@
     "react/jsx-filename-extension": "off",
     "no-underscore-dangle": "off",
     "no-await-in-loop": "off",
-    "max-params": ["warn", { "max": 3 }],
+    "max-params": [
+      "warn",
+      {
+        "max": 3
+      }
+    ],
     "no-unused-expressions": "off"
   }
 }

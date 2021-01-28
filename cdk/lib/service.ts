@@ -33,6 +33,9 @@ export class CacclService extends Construct {
       desiredCount: taskCount,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
+      circuitBreaker: {
+        rollback: true,
+      },
     });
 
     // this is the thing that gets handed off to the load balancer
