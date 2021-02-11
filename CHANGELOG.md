@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+- utility script, `bin/perms.sh` for examining IAM user permissions
+
 ## [0.6.0] - 2021-02-05
 
 ### Added
