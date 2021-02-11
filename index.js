@@ -713,7 +713,7 @@ async function main() {
     )
     .option(
       '--no-deploy',
-      'Update the Fargate Task Definition but don\' restart the service'
+      'Update the Fargate Task Definition but don\'t restart the service'
     )
     .action(async (cmd) => {
       // see the README section on cross-account ECR access

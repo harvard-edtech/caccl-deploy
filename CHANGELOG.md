@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - update our github action npm publish workflow to run on push to master & use
   [JS-DevTools/npm-publish](https://github.com/marketplace/actions/npm-publish)
+- Fix task definition registration to exclude invalid parameters
 
 ## [0.6.0] - 2021-02-05
 
