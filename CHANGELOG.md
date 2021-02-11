@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - utility script, `bin/perms.sh` for examining IAM user permissions
 
+### Changed
+- update our github action npm publish workflow to run on push to master & use
+  [JS-DevTools/npm-publish](https://github.com/marketplace/actions/npm-publish)
+
 ## [0.6.0] - 2021-02-05
 
 ### Added
