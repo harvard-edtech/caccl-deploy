@@ -699,7 +699,7 @@ async function main() {
       }
 
       // restart the service
-      await aws.restartEcsServcie(clusterName, serviceName, true);
+      await aws.restartEcsServcie(clusterName, serviceName, { wait: true });
       exitWithSuccess('done');
     });
 
@@ -779,6 +779,12 @@ async function main() {
         imageTag: cmd.imageTag,
       });
 
+      /**
+       * Note that the app's current in-use task def name has to be registered
+       * as a cloudformation stack output value because it's too painful to try
+       * to get/extract it via the api. `taskDefName` here is also known as the
+       * "family" and doesn't include the task def revision/version number
+       */
       const { taskDefName, clusterName, serviceName } = cfnExports;
 
       if (!await confirmProductionOp(cmd.yes)) {
@@ -787,7 +793,10 @@ async function main() {
 
       // create a new version of the taskdef with the updated image
       console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
-      await aws.updateTaskDefAppImage(taskDefName, newAppImage);
+      const newTaskDefArn = await aws.updateTaskDefAppImage(
+        taskDefName,
+        newAppImage
+      );
 
       // update the ssm parameter
       console.log('Updating stored deployment configuration');
@@ -796,7 +805,14 @@ async function main() {
       // restart the service
       if (cmd.deploy) {
         console.log(`Restarting the ${serviceName} service...`);
-        await aws.restartEcsServcie(clusterName, serviceName, true);
+        await aws.restartEcsServcie(
+          clusterName,
+          serviceName,
+          {
+            newTaskDefArn,
+            wait: true,
+          }
+        );
         exitWithSuccess('done.');
       }
       exitWithSuccess([
