@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix task definition registration to exclude invalid parameters
 - Fix the `release` command process so that the Fargate service uses the newly
   created task definition
+- rename default git branch to "main"
 
 ## [0.6.0] - 2021-02-05
 
