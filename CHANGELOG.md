@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.1] - 2021-02-19
+
 ### Added
 - utility script, `bin/perms.sh` for examining IAM user permissions
 
 ### Changed
-- update our github action npm publish workflow to run on push to master & use
+- update our github action npm publish workflow to run on push to main & use
   [JS-DevTools/npm-publish](https://github.com/marketplace/actions/npm-publish)
 - Fix task definition registration to exclude invalid parameters
 - Fix the `release` command process so that the Fargate service uses the newly
@@ -38,7 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.5.4...v0.6.0
 [0.5.4]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.5.2...v0.5.3
