@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - CDK construct for deploying an Elasticache (redis) instance
+- new `exec` command for running one-off app tasks (e.g. a django `migrate`)
 
 ### Changed
 - `cdk/lib/db` now supports multiple db engines: currently docdb or aurora/myql.
