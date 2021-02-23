@@ -819,6 +819,63 @@ async function main() {
         'WARNING: service is out-of-sync with stored deployment configuration',
       ].join('\n'));
     });
+
+  cli
+    .command('exec')
+    .description('execute a one-off task using the app image')
+    .appOption()
+    .requiredOption(
+      '-c, --command <string>',
+      'the app task command to run'
+    )
+    .option(
+      '-t, --timeout <number>',
+      'number of seconds to allow the task to complete',
+      20
+    )
+    .option(
+      '-e, --env <value>',
+      'add or override container environment variables',
+      (e, collected) => {
+        const [k, v] = e.split('=');
+        return collected.concat([
+          {
+            name: k,
+            value: v,
+          },
+        ]);
+      },
+      []
+    )
+    .action(async (cmd) => {
+      const cfnStackName = cmd.getCfnStackName();
+      const {
+        taskDefName,
+        clusterName,
+        serviceName,
+      } = await aws.getCfnStackExports(cfnStackName);
+
+      if (!await confirmProductionOp(cmd.yes)) {
+        exitWithSuccess();
+      }
+
+      console.log(
+        `Running command "${cmd.command}" `
+        + `on service ${serviceName} using task def ${taskDefName}`
+      );
+      const taskArn = await aws.execTask(
+        clusterName,
+        serviceName,
+        taskDefName,
+        {
+          command: cmd.command,
+          environment: cmd.env,
+          timeOut: cmd.timeout,
+        }
+      );
+      exitWithSuccess(`Task ${taskArn} started`);
+    });
+
   await cli.parseAsync(process.argv);
 }
 
