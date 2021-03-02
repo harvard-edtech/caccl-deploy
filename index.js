@@ -8,6 +8,7 @@ const chalk = require('chalk');
 const figlet = require('figlet');
 const yn = require('yn');
 const tempy = require('tempy');
+const untildify = require('untildify');
 
 const aws = require('./lib/aws');
 const DeployConfig = require('./lib/deployConfig');
@@ -863,17 +864,118 @@ async function main() {
         `Running command "${cmd.command}" `
         + `on service ${serviceName} using task def ${taskDefName}`
       );
-      const taskArn = await aws.execTask(
+      const taskArn = await aws.execTask({
         clusterName,
         serviceName,
         taskDefName,
-        {
-          command: cmd.command,
-          environment: cmd.env,
-          timeOut: cmd.timeout,
-        }
-      );
+        command: cmd.command,
+        environment: cmd.env,
+        timeOut: cmd.timeout,
+      });
       exitWithSuccess(`Task ${taskArn} started`);
+    });
+
+  cli
+    .command('connect')
+    .description('connect to an app\'s peripheral services (db, redis, etc)')
+    .appOption()
+    .option('-l, --list', 'list the things to connect to')
+    .option(
+      '-s, --service <string>',
+      'service to connect to; use `--list` to see what is available'
+    )
+    .option(
+      '-k, --public-key <string>',
+      'path to the ssh public key file to use',
+      untildify('~/.ssh/id_rsa.pub')
+    )
+    .option('--local-port <string>', 'attach tunnel to a non-default local port')
+    .action(async (cmd) => {
+      const deployConfig = await cmd.getDeployConfig();
+
+      const services = new Set();
+      ['dbOptions', 'cacheOptions'].forEach((optsKey) => {
+        if (deployConfig[optsKey]) {
+          services.add(deployConfig[optsKey].engine);
+        }
+      });
+      if (yn(deployConfig.docDb)) {
+        exitWithError([
+          'Deployment configuration is out-of-date',
+          'Replace `docDb*` with `dbOptions: {...}`',
+        ].join('\n'));
+      }
+
+      if (cmd.list) {
+        exitWithSuccess([
+          'Valid `--service=` options:',
+          ...services,
+        ].join('\n  '));
+      }
+
+      if (!services.has(cmd.service)) {
+        exitWithError(`'${cmd.service}' is not a valid option`);
+      }
+
+      const cfnStackName = cmd.getCfnStackName();
+      const cfnStackExports = await aws.getCfnStackExports(cfnStackName);
+
+      const {
+        bastionHostAz,
+        bastionHostId,
+        bastionHostIp,
+        dbPasswordSecretArn,
+
+      } = cfnStackExports;
+
+      try {
+        await aws.sendSSHPublicKey({
+          instanceAz: bastionHostAz,
+          instanceId: bastionHostId,
+          sshKeyPath: cmd.publicKey,
+        });
+      } catch (err) {
+        exitWithError(err.message);
+      }
+
+      let endpoint;
+      let localPort;
+      let clientCommand;
+
+      if (['mysql', 'docdb'].includes(cmd.service)) {
+        endpoint = cfnStackExports.dbClusterEndpoint;
+        const password = await aws.resolveSecret(dbPasswordSecretArn);
+        if (cmd.service === 'mysql') {
+          localPort = cmd.localPort || '3306';
+          clientCommand = `mysql -uroot -p${password} --port ${localPort}`;
+        } else {
+          localPort = cmd.localPort || '27017';
+          const tlsOpts = '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
+          clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
+        }
+      } else if (cmd.service === 'redis') {
+        endpoint = cfnStackExports.cacheEndpoint;
+        localPort = cmd.localPort || '6379';
+        clientCommand = `redis-cli -p ${localPort}`;
+      } else {
+        exitWithError(`not sure what to do with ${cmd.service}`);
+      }
+
+      const tunnelCommand = [
+        'ssh -f -L',
+        `${cmd.localPort || localPort}:${endpoint}`,
+        '-o StrictHostKeyChecking=no',
+        `${aws.EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
+        'sleep 60',
+      ].join(' ');
+
+      exitWithSuccess([
+        `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
+        'You have ~60s to establish the ssh tunnel',
+        '',
+        `# tunnel command:\n${tunnelCommand}`,
+        `# ${cmd.service} client command:\n${clientCommand}`,
+      ].join('\n'));
     });
 
   await cli.parseAsync(process.argv);

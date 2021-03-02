@@ -1,4 +1,4 @@
-import { Construct, Stack } from '@aws-cdk/core';
+import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
 import { CfnCacheCluster, CfnSubnetGroup } from '@aws-cdk/aws-elasticache';
 import { Alarm, Metric } from '@aws-cdk/aws-cloudwatch';
 import { Peer, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
@@ -51,5 +51,11 @@ export class CacclCache extends Construct {
 
     appEnv.addEnvironmentVar('REDIS_HOST', this.cache.attrRedisEndpointAddress);
     appEnv.addEnvironmentVar('REDIS_PORT', this.cache.attrRedisEndpointPort);
+
+    new CfnOutput(this, 'CacheClusterEndpoint', {
+      exportName: `${Stack.of(this).stackName}-cache-endpoint`,
+      value: `${this.cache.attrRedisEndpointAddress}:6379`,
+    });
+
   }
 };
