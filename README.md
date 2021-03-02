@@ -346,7 +346,9 @@ For apps that require a database you must set `dbOptions.engine` to either "mysq
 
 By default you will get a single instance of type "t3.medium". We turn slow query profiling on by default.
 
-A shell script, `bin/docdb.sh` is provided to assist in accessing a DocumentDb instance via a bastion host. It might work out of the box or at least be useful as a starting point.
+Including either type of database in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the database.
+
+A shell script, `bin/docdb.sh` is provided to assist in accessing a DocumentDb instance via the bastion host. It might work out of the box or at least be useful as a starting point.
 
 ##### Common db options
 
@@ -393,6 +395,8 @@ If your app needs an instance of Elasticache (redis flavor) you must set `cacheO
 `caccl-deploy update -a [app name] cacheOptions.engine redis`
 
 By default you will get a single cache node instance of type "cache.t3.medium".
+
+Including a cache in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the cache instance.
 
 ##### Cache options
 

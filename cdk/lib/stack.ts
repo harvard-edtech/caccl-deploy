@@ -10,6 +10,7 @@ import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
+import { CacclSshBastion } from './bastion';
 
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
@@ -32,6 +33,10 @@ export class CacclDeployStack extends Stack {
 
     let vpc;
     let cluster;
+
+    // should we create an ssh bastion for access to db/cache/etc
+    let createBastion = false;
+    let bastion;
 
     if (props.vpcId !== undefined) {
       vpc = Vpc.fromLookup(this, 'Vpc', {
@@ -61,6 +66,7 @@ export class CacclDeployStack extends Stack {
      */
     let db = null;
     if (props.dbOptions) {
+      createBastion = true;
       db = CacclDb.createDbConstruct(this, {
         vpc,
         options: props.dbOptions,
@@ -70,6 +76,7 @@ export class CacclDeployStack extends Stack {
 
     let cache = null;
     if (props.cacheOptions) {
+      createBastion = true;
       cache = new CacclCache(this, 'Cache', {
         vpc,
         sg,
@@ -132,6 +139,10 @@ export class CacclDeployStack extends Stack {
 
     if (db) {
       dashboard.addDbSection(db);
+    }
+
+    if (createBastion) {
+      bastion = new CacclSshBastion(this, 'SshBastion', { vpc });
     }
   }
 }

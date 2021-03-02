@@ -1,5 +1,5 @@
 import { Alarm, Metric, Unit, ComparisonOperator, TreatMissingData } from '@aws-cdk/aws-cloudwatch';
-import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
+import { Vpc, SecurityGroup, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { Secret as EcsSecret } from '@aws-cdk/aws-ecs';
 import { Construct, Stack, CfnOutput, SecretValue, Duration } from '@aws-cdk/core';
@@ -45,8 +45,6 @@ export interface CacclDbProps {
 export class CacclDb extends Construct {
   host: string;
 
-  bastion: BastionHostLinux;
-
   dbPasswordSecret: Secret;
 
   clusterParameterGroupParams: { [key: string]: string } = {};
@@ -77,17 +75,6 @@ export class CacclDb extends Construct {
 
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id);
-
-    const { vpc } = props;
-    const bastionSg = new SecurityGroup(this, 'BastionSecurityGroup', { vpc });
-    bastionSg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
-
-    this.bastion = new BastionHostLinux(this, 'SshBastionHost', {
-      vpc,
-      subnetSelection: { subnetType: SubnetType.PUBLIC },
-      instanceName: `${Stack.of(this).stackName}-bastion`,
-      securityGroup: bastionSg,
-    });
 
     this.dbPasswordSecret = new Secret(this, 'DbPasswordSecret', {
       description: `docdb master user password for ${Stack.of(this).stackName}`,
@@ -165,21 +152,6 @@ export class CacclDb extends Construct {
     new CfnOutput(this, 'DbSecretArn', {
       exportName: `${Stack.of(this).stackName}-docdb-password-secret-arn`,
       value: this.dbPasswordSecret.secretArn,
-    });
-
-    new CfnOutput(this, 'DbBastionHostIp', {
-      exportName: `${Stack.of(this).stackName}-docdb-bastion-host-ip`,
-      value: this.bastion.instancePublicIp,
-    });
-
-    new CfnOutput(this, 'DbBastionHostId', {
-      exportName: `${Stack.of(this).stackName}-docdb-bastion-host-id`,
-      value: this.bastion.instanceId,
-    });
-
-    new CfnOutput(this, 'DbBastionHostAZ', {
-      exportName: `${Stack.of(this).stackName}-docdb-bastion-host-az`,
-      value: this.bastion.instanceAvailabilityZone,
     });
   }
 
