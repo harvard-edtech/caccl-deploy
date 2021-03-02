@@ -145,12 +145,12 @@ export class CacclDb extends Construct {
 
   createOutputs() {
     new CfnOutput(this, 'DbClusterEndpoint', {
-      exportName: `${Stack.of(this).stackName}-docdb-cluster-endpoint`,
+      exportName: `${Stack.of(this).stackName}-db-cluster-endpoint`,
       value: this.host,
     });
 
     new CfnOutput(this, 'DbSecretArn', {
-      exportName: `${Stack.of(this).stackName}-docdb-password-secret-arn`,
+      exportName: `${Stack.of(this).stackName}-db-password-secret-arn`,
       value: this.dbPasswordSecret.secretArn,
     });
   }
@@ -301,7 +301,7 @@ export class CacclRdsDb extends CacclDb {
       }
     });
 
-    this.host = this.dbCluster.clusterEndpoint.hostname;
+    this.host = `${this.dbCluster.clusterEndpoint.hostname}:3306`;
 
     // add an ingress rule to the db security group
     this.dbCluster.connections.allowDefaultPortInternally();
