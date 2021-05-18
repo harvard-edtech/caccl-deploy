@@ -1,5 +1,5 @@
 {
-  "app": "npx --no-install ts-node index.ts",
+  "app": "npx --no-install ts-node cdk/index.ts",
   "context": {
     "aws-cdk:enableDiffNoFail": "true"
   }

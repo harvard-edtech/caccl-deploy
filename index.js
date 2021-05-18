@@ -3,7 +3,6 @@
 const { Command } = require('commander');
 const { execSync } = require('child_process');
 const { table } = require('table');
-const path = require('path');
 const moment = require('moment');
 const chalk = require('chalk');
 const figlet = require('figlet');
@@ -662,7 +661,7 @@ async function main() {
         const execOpts = {
           stdio: 'inherit',
           // exec the cdk process in the cdk directory
-          cwd: path.join(__dirname, 'cdk'),
+          cwd: __dirname, // path.join(__dirname, 'cdk'),
           // inject our additional env vars
           env: { ...process.env, ...envAdditions },
         };

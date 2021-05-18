@@ -3,7 +3,7 @@
 import 'source-map-support/register';
 import { App, CfnOutput } from '@aws-cdk/core';
 import { readFileSync } from 'fs';
-const yn = require('yn');
+import yn from 'yn';
 
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
 
@@ -60,7 +60,7 @@ if (yn(deployConfig.docDb)) {
   stackProps.docDbOptions = {
     instanceType: deployConfig.docDbInstanceType || 't3.medium',
     instanceCount: deployConfig.docDbInstanceCount || 1,
-    profiler: yn(deployConfig.docDbProfiler),
+    profiler: yn(deployConfig.docDbProfiler) || false,
   };
 }
 
