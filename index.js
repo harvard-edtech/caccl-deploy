@@ -201,7 +201,7 @@ class CacclDeployCommander extends Command {
 
 async function main() {
   // confirm ASAP that the user's AWS creds/config is good to go
-  if (!aws.isConfigured()) {
+  if (!aws.isConfigured() && process.env.NODE_ENV !== 'test') {
     byeWithCredentialsError();
   }
 
