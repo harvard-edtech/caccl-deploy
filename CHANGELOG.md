@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.6.2] - 2021-05-21
+
 ### Changed
 
+- added 2 (two!) jest tests
 - `./cdk` no longer has it's own `package.json`
 - switched from `package-lock.json` to `npm-shrinkwrap.json` to ensure that published
   releases install with the expected dependency versions
@@ -46,7 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.1...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.5.4...v0.6.0
 [0.5.4]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.5.3...v0.5.4
