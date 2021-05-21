@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Changed
+
+- `./cdk` no longer has it's own `package.json`
+- switched from `package-lock.json` to `npm-shrinkwrap.json` to ensure that published
+  releases install with the expected dependency versions
+
 ## [0.6.1] - 2021-02-19
 
 ### Added
