@@ -1,6 +1,6 @@
 import { Alarm } from '@aws-cdk/aws-cloudwatch';
 import { SecurityGroup } from '@aws-cdk/aws-ec2';
-import { Cluster, FargateService, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
+import { Cluster, FargatePlatformVersion, FargateService, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
 
 import { CacclTaskDef } from './taskdef';
@@ -28,6 +28,7 @@ export class CacclService extends Construct {
     this.ecsService = new FargateService(this, 'FargateService', {
       cluster,
       serviceName,
+      platformVersion: FargatePlatformVersion.VERSION1_3,
       securityGroup: sg,
       taskDefinition: taskDef.taskDef,
       desiredCount: taskCount,

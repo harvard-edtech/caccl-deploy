@@ -81,6 +81,10 @@ export class CacclLoadBalancer extends Construct {
       deregistrationDelay: Duration.seconds(30),
       targetType: TargetType.IP,
       targets: [loadBalancerTarget],
+      healthCheck: {
+        // allow a redirect to indicate service is operational
+        healthyHttpCodes: '200,302',
+      },
     });
 
     httpsListener.addTargetGroups('AppTargetGroup', {

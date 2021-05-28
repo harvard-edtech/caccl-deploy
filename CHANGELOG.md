@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Changed
+
+- allow a successful load balancer target health check for a 302 response
+- pin the fargate version to 1.3
+
 ## [0.6.2] - 2021-05-21
 
 ### Changed
