@@ -215,6 +215,8 @@ export class CacclDocDb extends CacclDb {
         retention: Duration.days(14),
       },
     });
+
+    // for docdb/mongo we include the port as part of the host value
     this.host = `${this.dbCluster.clusterEndpoint.hostname}:${this.dbCluster.clusterEndpoint.portAsString()}`;
 
     // add an ingress rule to the db security group
@@ -301,13 +303,15 @@ export class CacclRdsDb extends CacclDb {
       }
     });
 
-    this.host = `${this.dbCluster.clusterEndpoint.hostname}:3306`;
+    // for rds/mysql we do NOT include the port as part of the host value
+    this.host = `${this.dbCluster.clusterEndpoint.hostname}`;
 
     // add an ingress rule to the db security group
     this.dbCluster.connections.allowDefaultPortInternally();
     this.dbCluster.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
 
     appEnv.addEnvironmentVar('DATABASE_USER', 'root');
+    appEnv.addEnvironmentVar('DATABASE_PORT', '3306');
     appEnv.addEnvironmentVar('DATABASE_HOST', this.host);
     appEnv.addEnvironmentVar('DATABASE_NAME', databaseName || '');
     appEnv.addSecret('DATABASE_PASSWORD', EcsSecret.fromSecretsManager(this.dbPasswordSecret));

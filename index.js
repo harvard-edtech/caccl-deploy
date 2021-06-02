@@ -963,7 +963,7 @@ async function main() {
 
       const tunnelCommand = [
         'ssh -f -L',
-        `${cmd.localPort || localPort}:${endpoint}`,
+        `${cmd.localPort || localPort}:${endpoint}:3306`,
         '-o StrictHostKeyChecking=no',
         `${aws.EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
         'sleep 60',
