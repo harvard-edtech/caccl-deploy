@@ -59,6 +59,7 @@ export class CacclDeployStack extends Stack {
     const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
       envVars: props.appEnvironment,
     });
+    appEnv.addEnvironmentVar('CIDR_NET', vpc.vpcCidrBlock);
 
     /**
      * create the docdb if needed so we can add it's endpoint url
