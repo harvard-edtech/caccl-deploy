@@ -75,6 +75,7 @@ export class CacclDocDb extends Construct {
       backup: {
         retention: Duration.days(14),
       },
+      engineVersion: '3.6.0',
     });
     this.host = `${this.dbCluster.clusterEndpoint.hostname}:${this.dbCluster.clusterEndpoint.portAsString()}`;
 
