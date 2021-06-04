@@ -947,7 +947,7 @@ async function main() {
         const password = await aws.resolveSecret(dbPasswordSecretArn);
         if (cmd.service === 'mysql') {
           localPort = cmd.localPort || '3306';
-          clientCommand = `mysql -uroot -p${password} --port ${localPort}`;
+          clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;
         } else {
           localPort = cmd.localPort || '27017';
           const tlsOpts = '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
