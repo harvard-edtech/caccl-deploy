@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- bug fix: `helpers.fromJson` couldn't handle relative paths. Replaced use of `require.resolve`
+  with `path.resolve` and added a couple of tests.
+
 ## [0.6.4] - 2021-06-09
 
 ### Changed
