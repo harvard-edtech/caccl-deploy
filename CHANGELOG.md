@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+- bug fix, require.resolve behavior change in node 12+ <https://github.com/nodejs/node/issues/27583>
 ## [0.6.4] - 2021-06-09
 
 ### Changed
