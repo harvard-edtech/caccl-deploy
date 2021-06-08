@@ -481,6 +481,8 @@ Commands:
   stack [options]    diff, deploy, or delete the app's AWS resources
   restart [options]  no changes; just force a restart
   release [options]  release a new version of an app
+  exec [options]     execute a one-off task using the app image
+  connect [options]  connect to an app's peripheral services (db, redis, etc)
   help [command]     display help for command
 ```
 
@@ -651,8 +653,36 @@ One noteable bit of awkwardness in this setup is the fact that our Fargate task 
 
 ##### example
 
+This will run the django `migrate` operation using the `my-app` image with an extra (or overridden) environment variable `MY_EXTRA_ENV_VAR`. The proxy container will be told to `sleep 120`, after which it will exit and the task will be stopped.
+
 ```
-caccl-deploy exec -a my-app -c 'python manage.py migrate' -e 'MY_EXTRA_ENV_VAR=1'
+caccl-deploy exec -a my-app -c 'python manage.py migrate' -t 120 -e 'MY_EXTRA_ENV_VAR=1'
+```
+
+---
+
+#### connect
+
+For connecting to peripheral services, like the DocumentDb or RDS/Mysql database via the app's ec2 ssh bastion host. It first uses the AWS API To copy your ssh public key to the bastion host using the [EC2 Instance Connect](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Connect-using-EC2-Instance-Connect.html) feature. Then it outputs the necessary shell commands to establish an ssh tunnel through the bastion host.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+- `-l`/`--list` - list the services available to connect to
+- `-s` / `--service` - service to connect to; use `--list` to see what is available
+- `-k` / `--public-key` - path to the ssh public key file to use (default: "~/.ssh/id_rsa.pub")
+- `--local-port` - attach tunnel to a non-default local port
+
+##### example
+
+You want to see what services are available to connect to, and then connect to MySQL. You already have MySQL running locally, so for this example we will bind the tunnel to the local port, 3307 (instead of the default 3306):
+
+```
+$ caccl-deploy connect -a my-app --list
+Valid `--service=` options:
+  mysql
+  redis
+$ caccl-deploy connect -a my-app -s mysql --local-port 3307
 ```
 
 ---

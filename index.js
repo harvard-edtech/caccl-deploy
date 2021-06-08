@@ -891,6 +891,10 @@ async function main() {
     )
     .option('--local-port <string>', 'attach tunnel to a non-default local port')
     .action(async (cmd) => {
+      if (!cmd.list && !cmd.service) {
+        exitWithError("One of `--list` or `--service` is required");
+      }
+
       const deployConfig = await cmd.getDeployConfig();
 
       const services = new Set();
@@ -963,7 +967,7 @@ async function main() {
 
       const tunnelCommand = [
         'ssh -f -L',
-        `${cmd.localPort || localPort}:${endpoint}:3306`,
+        `${cmd.localPort || localPort}:${endpoint}`,
         '-o StrictHostKeyChecking=no',
         `${aws.EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
         'sleep 60',

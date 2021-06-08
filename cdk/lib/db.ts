@@ -45,6 +45,8 @@ export interface CacclDbProps {
 export class CacclDb extends Construct {
   host: string;
 
+  port: string;
+
   dbPasswordSecret: Secret;
 
   clusterParameterGroupParams: { [key: string]: string } = {};
@@ -146,13 +148,19 @@ export class CacclDb extends Construct {
   createOutputs() {
     new CfnOutput(this, 'DbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-db-cluster-endpoint`,
-      value: this.host,
+      value: `${this.host}:${this.port}`,
     });
 
     new CfnOutput(this, 'DbSecretArn', {
       exportName: `${Stack.of(this).stackName}-db-password-secret-arn`,
       value: this.dbPasswordSecret.secretArn,
     });
+  }
+
+  addSecurityGroupIngress(vpc: Vpc) {
+    this.dbCluster.connections.allowDefaultPortInternally();
+    this.dbCluster.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
+
   }
 
   makeClusterMetric(metricName: string, extraProps = {}): Metric {
@@ -216,20 +224,22 @@ export class CacclDocDb extends CacclDb {
       },
     });
 
-    // for docdb/mongo we include the port as part of the host value
-    this.host = `${this.dbCluster.clusterEndpoint.hostname}:${this.dbCluster.clusterEndpoint.portAsString()}`;
+    this.host = this.dbCluster.clusterEndpoint.hostname;
+    this.port = this.dbCluster.clusterEndpoint.portAsString();
 
     // add an ingress rule to the db security group
-    const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', this.dbCluster.securityGroupId);
-    dbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(27017));
+    // const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', this.dbCluster.securityGroupId);
+    // const ingressPort = Port.tcp(+this.port)
+    // dbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), ingressPort);
 
     appEnv.addEnvironmentVar('MONGO_USER', 'root');
-    appEnv.addEnvironmentVar('MONGO_HOST', this.host);
+    appEnv.addEnvironmentVar('MONGO_HOST', `${this.host}:${this.port}`);
     appEnv.addEnvironmentVar('MONGO_OPTIONS', 'tls=true&tlsAllowInvalidCertificates=true');
     appEnv.addSecret('MONGO_PASS', EcsSecret.fromSecretsManager(this.dbPasswordSecret));
 
     this.createMetricsAndAlarms();
     this.createOutputs();
+    this.addSecurityGroupIngress(vpc);
 
     this.getDashboardLink = () => {
       const { region } = Stack.of(this);
@@ -304,20 +314,22 @@ export class CacclRdsDb extends CacclDb {
     });
 
     // for rds/mysql we do NOT include the port as part of the host value
-    this.host = `${this.dbCluster.clusterEndpoint.hostname}`;
+    this.host = this.dbCluster.clusterEndpoint.hostname;
+    this.port = '3306';
 
     // add an ingress rule to the db security group
     this.dbCluster.connections.allowDefaultPortInternally();
     this.dbCluster.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
 
     appEnv.addEnvironmentVar('DATABASE_USER', 'root');
-    appEnv.addEnvironmentVar('DATABASE_PORT', '3306');
+    appEnv.addEnvironmentVar('DATABASE_PORT', this.port);
     appEnv.addEnvironmentVar('DATABASE_HOST', this.host);
     appEnv.addEnvironmentVar('DATABASE_NAME', databaseName || '');
     appEnv.addSecret('DATABASE_PASSWORD', EcsSecret.fromSecretsManager(this.dbPasswordSecret));
 
     this.createMetricsAndAlarms();
     this.createOutputs();
+    this.addSecurityGroupIngress(vpc);
 
     this.getDashboardLink = () => {
       const { region } = Stack.of(this);
