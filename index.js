@@ -785,17 +785,25 @@ async function main() {
        * to get/extract it via the api. `taskDefName` here is also known as the
        * "family" and doesn't include the task def revision/version number
        */
-      const { taskDefName, clusterName, serviceName } = cfnExports;
+      const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } = cfnExports;
 
       if (!await confirmProductionOp(cmd.yes)) {
         exitWithSuccess();
       }
 
       // create a new version of the taskdef with the updated image
-      console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
+      console.log(`Updating ${cmd.app} task definitions to use ${newAppImage}`);
+      // the app's service task def
       const newTaskDefArn = await aws.updateTaskDefAppImage(
         taskDefName,
-        newAppImage
+        newAppImage,
+        'AppContainer',
+      );
+      // the app-only one-off task definition
+      await aws.updateTaskDefAppImage(
+        appOnlyTaskDefName,
+        newAppImage,
+        'AppOnlyContainer',
       );
 
       // update the ssm parameter
@@ -830,11 +838,6 @@ async function main() {
       'the app task command to run'
     )
     .option(
-      '-t, --timeout <number>',
-      'number of seconds to allow the task to complete',
-      20
-    )
-    .option(
       '-e, --env <value>',
       'add or override container environment variables',
       (e, collected) => {
@@ -851,7 +854,7 @@ async function main() {
     .action(async (cmd) => {
       const cfnStackName = cmd.getCfnStackName();
       const {
-        taskDefName,
+        appOnlyTaskDefName,
         clusterName,
         serviceName,
       } = await aws.getCfnStackExports(cfnStackName);
@@ -862,15 +865,14 @@ async function main() {
 
       console.log(
         `Running command "${cmd.command}" `
-        + `on service ${serviceName} using task def ${taskDefName}`
+        + `on service ${serviceName} using task def ${appOnlyTaskDefName}`
       );
       const taskArn = await aws.execTask({
         clusterName,
         serviceName,
-        taskDefName,
+        taskDefName: appOnlyTaskDefName,
         command: cmd.command,
         environment: cmd.env,
-        timeOut: cmd.timeout,
       });
       exitWithSuccess(`Task ${taskArn} started`);
     });

@@ -97,7 +97,7 @@ These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy ne
 
 `restart` - restart an app's Fargate service
 
-`exec` - run a one-off fargate task using the app's task definition (e.g. a django `migrate`)
+`exec` - run a one-off fargate task using app's docker image (e.g. a django `migrate`)
 
 ---
 
@@ -640,23 +640,20 @@ The `-i` input value is validated against the list of tags available in the repo
 
 Some app frameworks, like Django, require additional management commands to be run during or post deployment. An example would be Django's `manage.py migrate` operation, which applies any necessary SQL migrations to your app's database. ECS Fargate, being a Docker-based platform, doesn't provide the kind of typical host environment you would have when running an app on EC2, i.e., you can't simply ssh into the "machine" and run your shell commands. If your app's Docker image is built in the proper way, however, you can run arbitrary commands _in the context_ of your app's container environment. Think of the container like any compiled binary program that can be run any number of concurrent times but with different _internal_ commands. Sticking with the Django example, in one container you can run your `gunicorn` process, and in another you can run `python manage.py migrate`. Both containers have your apps complete environment: project code, `settings.py`, environment variables, etc. In AWS, so long as both of the containers are run within the same VPC, Fargate service, etc., they will have access to same RDS database, cache, EBS volumes, whatever.
 
-When `caccl-deploy` creates your Fargate service, the default 'AppContainer' instance in each task is where `gunicorn` is running (or `express` in the case of a nodejs app). The `caccl-deploy exec` command allows running those other, one-off tasks using the same Docker image and Fargate task definition.
-
-One noteable bit of awkwardness in this setup is the fact that our Fargate task definitions also include a 'ProxyContainer' instance, and it is not possible to run only the 'AppContainer' part of the task independent of the nginx proxy. The way we get around this is to _also_ pass a command override to our nginx proxy image. Instead of the default `nginx -s ...` command, we tell the container to run a `sleep` command for `--timeout` seconds and then exit. So essentially we're starting the proxy image alongside the app but telling it to do nothing for some number of seconds. In the task definition configuration the proxy container is considered "essential", so if it exits before your one-off command is finished executing the whole task will potentially fail. Therefore, be sure to set your `--timeout` to some number 2x greater than you expect your command to run.
+When `caccl-deploy` creates your Fargate service, the default 'AppContainer' instance in each task is where `gunicorn` is running (or `express` in the case of a nodejs app). The `caccl-deploy exec` command allows running those other, one-off tasks using the same Docker image and copy of the Fargate task definition, with all the same env vars and secrets, but minus the nginx proxy container.
 
 ##### options
 
 - `-a`/`--app` (required) - the name of the app
 - `-c`/`--command` (required) - the command to run
-- `-t`/`--timeout` - how long in seconds to allow the command to run (default: 20)
 - `-e`/`--env` (repeatable) - add or override container environment variables
 
 ##### example
 
-This will run the django `migrate` operation using the `my-app` image with an extra (or overridden) environment variable `MY_EXTRA_ENV_VAR`. The proxy container will be told to `sleep 120`, after which it will exit and the task will be stopped.
+This will run the django `migrate` operation using the `my-app` image with an extra (or overridden) environment variable `MY_EXTRA_ENV_VAR`.
 
 ```
-caccl-deploy exec -a my-app -c 'python manage.py migrate' -t 120 -e 'MY_EXTRA_ENV_VAR=1'
+caccl-deploy exec -a my-app -c 'python manage.py migrate' -e 'MY_EXTRA_ENV_VAR=1'
 ```
 
 ---

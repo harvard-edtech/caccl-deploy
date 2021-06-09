@@ -40,19 +40,26 @@ export class CacclTaskDef extends Construct {
       logRetentionDays = 90,
     } = props;
 
+    const appContainerImage = new CacclContainerImage(this, 'AppImage', {
+      appImage,
+    });
+
+    // this is the task def that our fargate service will run
     this.taskDef = new FargateTaskDefinition(this, 'Task', {
       cpu: taskCpu,
       memoryLimitMiB: taskMemory,
     });
 
-    const appContainerImage = new CacclContainerImage(this, 'AppImage', {
-      appImage,
+    // this task def will have only the app container and be used for one-off tasks
+    const appOnlyTaskDef = new FargateTaskDefinition(this, 'AppOnlyTask', {
+      cpu: taskCpu,
+      memoryLimitMiB: taskMemory,
     });
 
-    // this container gets our app
-    this.appContainer = new ContainerDefinition(this, 'AppContainer', {
+    // params for the fargate service's app container
+    const appContainerParams = {
       image: appContainerImage.image,
-      taskDefinition: this.taskDef,
+      taskDefinition: this.taskDef, // using the standard task def
       essential: true,
       environment: appEnvironment?.env,
       secrets: appEnvironment?.secrets,
@@ -64,12 +71,22 @@ export class CacclTaskDef extends Construct {
           retention: logRetentionDays,
         }),
       }),
-    });
+    };
 
+    // the container definition associated with our fargate service task def
+    this.appContainer = new ContainerDefinition(this, 'AppContainer', appContainerParams);
     this.appContainer.addPortMappings({
       containerPort: 8080,
       hostPort: 8080,
     });
+
+    // now create a copy of the container params but use the one-off app only task def
+    const appOnlyContainerParams = {
+      ...appContainerParams,
+      taskDefinition: appOnlyTaskDef,
+    };
+    // and a 2nd container definition used by the one-off app only task deff
+    const appOnlyContainer = new ContainerDefinition(this, 'AppOnlyContainer', appOnlyContainerParams);
 
     const proxyContainerImage = new CacclContainerImage(this, 'ProxyImage', {
       appImage: proxyImage,
@@ -116,6 +133,12 @@ export class CacclTaskDef extends Construct {
       exportName: `${Stack.of(this).stackName}-task-def-name`,
       // "family" is synonymous with "name", or at least aws frequently treats it that way
       value: this.taskDef.family,
+    });
+
+    new CfnOutput(this, 'AppOnlyTaskDefinitionArn', {
+      exportName: `${Stack.of(this).stackName}-app-only-task-def-name`,
+      // "family" is synonymous with "name", or at least aws frequently treats it that way
+      value: appOnlyTaskDef.family,
     });
 
     /**
