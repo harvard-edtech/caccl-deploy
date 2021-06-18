@@ -46,6 +46,8 @@ const stackProps: CacclDeployStackProps = {
     gitRepoVolume: deployConfig.gitRepoVolume,
   },
   taskCount: +(deployConfig.taskCount || 1),
+  cacheOptions: deployConfig.cacheOptions,
+  dbOptions: deployConfig.dbOptions,
   tags: {
     caccl_deploy_stack_name: stackName,
     ...deployConfig.tags,
@@ -56,11 +58,15 @@ const stackProps: CacclDeployStackProps = {
   },
 };
 
+/**
+ * docDb config backwards compatibility
+ */
 if (yn(deployConfig.docDb)) {
-  stackProps.docDbOptions = {
-    instanceType: deployConfig.docDbInstanceType || 't3.medium',
-    instanceCount: deployConfig.docDbInstanceCount || 1,
-    profiler: yn(deployConfig.docDbProfiler) || false,
+  stackProps.dbOptions = {
+    engine: 'docdb',
+    instanceCount: deployConfig.docDbInstanceCount,
+    instanceType: deployConfig.docDbInstanceType,
+    profiler: deployConfig.docDbProfiler
   };
 }
 

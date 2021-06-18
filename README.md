@@ -19,7 +19,12 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
   - SNS
   - SSM Parameter Store
   - SecretsManager
+  - DocumentDb (optional)
+  - RDS (optional)
+  - Elasticache (optional)
   - Lambda (if using slack notifications)
+
+---
 
 ### How does it work? / What does it do?
 
@@ -28,7 +33,7 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 - create and manage the deployment configuration for containerized web apps
 - provision, deploy and release updates to those apps on ECS/Fargate
 
-An "app" is considered to be a Nodejs/React app that has been packaged as a Docker image. Once deployed, the AWS resources dedicated to the app will consist of:
+An "app" is assumed to be an application that has been packaged as a Docker image. Currently only Nodejs/React is supported (Django coming soon!). Once deployed, the AWS resources dedicated to the app will consist of:
 - an Application Load Balancer
 - an ECS Fargate Service
 - an ECS Fargate Task with (in most cases) two containers:
@@ -36,7 +41,7 @@ An "app" is considered to be a Nodejs/React app that has been packaged as a Dock
     - the app itself.
 - a CloudWatch dashboard containing widgets for monitoring metrics and alarms
 - an SNS topic capable of sending notifications via email or Slack
-- (optionally) a DocDB instance accessible to the app
+- (optionally) either a DocumentDb or Mysql database cluster accessible to the app
 
 As part of this app deployment, `caccl-deploy` will create and manage a deployment configuration. This configuration will be stored in a combination of SSM Parameter Store entries and SecretsManager entries. The configuration consists of:
 
@@ -48,6 +53,9 @@ As part of this app deployment, `caccl-deploy` will create and manage a deployme
 - An optional set of environment variables your app needs
 - An optional set of AWS resource tags
 - various task provisioning settings, such as number of CPUs, memory, number of tasks, etc
+- database cluster options, such as engine type (mysql or docdb), instance type, number of instances
+
+---
 
 ### Install & Getting Started
 
@@ -62,7 +70,9 @@ If you are developing `caccl-deploy` you'll want to `git clone` the repo and do:
 ##### awscli
 
 If you have not already, make sure to install [awscli](https://aws.amazon.com/cli/) and run `aws configure` to configure your AWS credentials. Otherwise `caccl-deploy` will complain and refuse to run.
-`
+
+---
+
 ### Quick command summary
 
 These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy new`. Execute `caccl-deploy` with no options or with the `-h|--help` flag to show the list of subcommands. Use the `-h|--help` flag on any of the subcommands to show the options available.
@@ -86,6 +96,10 @@ These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy ne
 `release` - update an app's Docker image and restart the Fargate service
 
 `restart` - restart an app's Fargate service
+
+`exec` - run a one-off fargate task using app's docker image (e.g. a django `migrate`)
+
+---
 
 ### Configuring `caccl-deploy`
 
@@ -117,6 +131,8 @@ There are four possible settings in the `config.json`:
 - `cfnStackPrefix` (string) - this determines the prefix for all CloudFormation stacks controlled by `caccl-deploy`. For example, if you create an app called "foo-app" it will be provisioned with the CFn stack "CacclDeploy-foo-app".
 - `ecrAccessRoleArn` (string) - the ARN of an IAM role for allowing cross-account access to ECR repositories and images. This setting is necessary for situations in which you have multiple AWS accounts but only use ECR repos/images in one of them. See the section below on ECR Repositories.
 - `productionAccouts` (array) - if you want an additional, loud warning prompt when performing operations on a production account, include its account id (as a string) here.
+
+---
 
 ### Deployment configuration
 
@@ -167,14 +183,30 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
   "taskCount": "1",
   "taskCpu": "256",
   "taskMemory": "512",
-  "docDb": "false",
-  "docDbInstanceCount": "1",
-  "docDbInstanceType": "t3.medium",
-  "docDbProfiler": "true",
   "gitRepoVolume": {
     "appContainerPath": "/app/volume",
     "repoUrlSecretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:/caccl-deploy/my-app/git-repo-url"
+  },
+  "dbOptions": {
+    "engine": "mysql",
+    "instanceCount": 1,
+    "instanceType": "t3.medium",
+  },
+  "cacheOptions": {
+    "engine": "redis",
+    "numCacheNodes": 1,
+    "cacheNodeType": "cache.t3.medium"
   }
+}
+```
+
+The following DocumentDb configuration was used by caccl-deploy prior to version 0.7.0 and is still supported (but should not be used in new deployments).
+```
+{
+  "docDb": "true",
+  "docDbInstanceCount": "1",
+  "docDbInstanceType": "t3.medium",
+  "docDbProfiler": "true"
 }
 
 ```
@@ -217,15 +249,14 @@ _**Important**_: The configured address(es) will redceive a confirmation message
 
 `taskMemory` - memory in MB assigned to each task. Default is "512". See note below.
 
-`docDb` - does the app need a DocumentDB cluster? If "true" one will be provisioned and its connection details and credentials injected into the container environment. See the DocumentDB section below for more info.
-
-`docDbInstanceCount` - Default is "1". Production apps should use "2" to allow for multi-az replication.
-
-`docDbInstanceType` - Default should be fine for dev/stage apps. Consider a "db.r5.large" for production.
-
-`docDbProfiler` - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
-
 `gitRepoVolume` - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
+
+Database && cache options
+
+`dbOptions.engine` - Allowed values are "mysql" and "docdb". If set, a cluster of the specified type will be provisioned and its connection details and credentials injected into the container environment. See the Database section below for more info.
+
+`cacheOptions.engine` - "redis" is the only supported value. If set, an Elasticache instance will be provisioned and its connection details injected into the container environment. See the Cache section below for more info.
+
 
 ##### A note about `taskCpu` and `taskMemory`
 
@@ -233,11 +264,15 @@ These values are closely related, and setting one affects the set of valid choic
 
 For dev/staging apps the defaults are almost always going to be fine. An exception might be if you're trying to load test something, in which case it's going to depend on what you're trying to test. As a general rule it's typical to have a 1:2 ratio of cpu:memory. For instance, a production app might have "2048" for `taskCpu` and "4096" for `taskMemory`.
 
+---
+
 ### Parameters & appEnvironment Secrets
 
 `caccl-deploy` stores app deployment configurations in AWS Parameter Store as a set of individual parameters using a namespace hierarchy. This is fairly common approach and has been [written](https://medium.com/nordcloud-engineering/ssm-parameter-store-for-keeping-secrets-in-a-structured-way-53a25d48166a) up in [various](https://aws.amazon.com/blogs/mt/organize-parameters-by-hierarchy-tags-or-amazon-cloudwatch-events-with-amazon-ec2-systems-manager-parameter-store/) places.
 
 The exception is values that are part of your `appEnvironment` settings. For each variable defined in `appEnvironment`, `caccl-deploy` creates a corresponding SecretsManager entry and then stores the ARN of the secret as the value of the Parameter store entry. Yes, this is a bit convoluted, but the creation, updating and deletion of these settings should be handled seamlessly by the program.
+
+---
 
 ### ECR Repositories
 
@@ -301,15 +336,75 @@ There are two parts to setting this up. For the purposes of this README lets ass
 
 Once this role is created its ARN should be added to your `caccl-deploy` configuration file. See "Configuring caccl-deploy" above.
 
-### DocumentDB
+---
 
-For apps that require a DocumentDB instance include `"docDb": "true"` int your deploy configuration. You can add to an existing configuration using the `update` command.
+### Database
 
-`caccl-deploy update -a [app name] docDb true`
+For apps that require a database you must set `dbOptions.engine` to either "mysql" or "docdb" in your deploy configuration. You can add to an existing configuration using the `update` command.
+
+`caccl-deploy update -a [app name] dbOptions.engine mysql`
 
 By default you will get a single instance of type "t3.medium". We turn slow query profiling on by default.
 
-A shell script, `bin/docdb.sh` is provided to assist in accessing the resulting database. It might work out of the box or at least be useful as a starting point.
+Including either type of database in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the database.
+
+A shell script, `bin/docdb.sh` is provided to assist in accessing a DocumentDb instance via the bastion host. It might work out of the box or at least be useful as a starting point.
+
+##### Common db options
+
+`dbOptions.engine` - either "mysql" or "docdb"
+
+`dbOptions.instanceType` - default is "t3.medium". Consider at least "r5.large" for production.
+
+`dbOptions.instanceCount` - Default is "1". Production apps should use "2" to enable multi-az replication.
+
+`dbOptions.engineVersion` - use a specific version of the docdb or aurora/mysql engine. You probably don't need to set this.
+
+##### DocumentDb only
+
+`dbOptions.profiler` - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
+
+##### Mysql only
+
+`dbOptions.databaseName` - Set this if you want a database to be automatically created during provisioning.
+
+##### DocumentDb environment variables
+
+If your deployment includes a DocumentDb cluster, the following environment variables will be injected into the app container's runtime:
+
+- MONGO_HOST - this is the full connection endpoint, including hostname and port
+- MONGO_USER - this will always be 'root'
+- MONGO_OPTIONS - somea necessary tls parameters
+- MONGO_PASS - value stored in secrets manager; the fargate task definition only gets the secret's ARN
+
+##### Mysql environment variables
+
+Likewise, if you're deploying a Mysql cluster, your container environment will get the following variables:
+
+- DATABASE_HOST - the full connection endpoint, including hostname and port
+- DATABASE_USER - this will always be 'root'
+- DATABASE_PASSWORD - value stored in secrets manager; the fargate task definition only gets the secret's ARN
+- DATABASE_NAME - whatever you set `dbOptions.databaseName` to, otherwise an empty string
+
+---
+
+### Cache
+
+If your app needs an instance of Elasticache (redis flavor) you must set `cacheOptions.engine` to "redis". You can add to an existing configuration using the `update` command.
+
+`caccl-deploy update -a [app name] cacheOptions.engine redis`
+
+By default you will get a single cache node instance of type "cache.t3.medium".
+
+Including a cache in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the cache instance.
+
+##### Cache options
+
+`cacheOptions.engine` - currently the only choice is "redis"
+
+`cacheOptions.numCacheNodes` - Default is "1". Production apps should use "2" to enable multi-az replication.
+
+`cacheOptions.cacheNodeType` - Default is "cache.t3.medium". Consider "cache.r5.large" for production.
 
 ---
 
@@ -386,6 +481,8 @@ Commands:
   stack [options]    diff, deploy, or delete the app's AWS resources
   restart [options]  no changes; just force a restart
   release [options]  release a new version of an app
+  exec [options]     execute a one-off task using the app image
+  connect [options]  connect to an app's peripheral services (db, redis, etc)
   help [command]     display help for command
 ```
 
@@ -536,6 +633,54 @@ The `-i` input value is validated against the list of tags available in the repo
 
 - `-a`/`--app` (required) - the name of the app
 - `-i`/`--image-tag` (required) - the new image release tag. This can be any value shown in the output of the `images` subcommand.
+
+---
+
+#### exec
+
+Some app frameworks, like Django, require additional management commands to be run during or post deployment. An example would be Django's `manage.py migrate` operation, which applies any necessary SQL migrations to your app's database. ECS Fargate, being a Docker-based platform, doesn't provide the kind of typical host environment you would have when running an app on EC2, i.e., you can't simply ssh into the "machine" and run your shell commands. If your app's Docker image is built in the proper way, however, you can run arbitrary commands _in the context_ of your app's container environment. Think of the container like any compiled binary program that can be run any number of concurrent times but with different _internal_ commands. Sticking with the Django example, in one container you can run your `gunicorn` process, and in another you can run `python manage.py migrate`. Both containers have your apps complete environment: project code, `settings.py`, environment variables, etc. In AWS, so long as both of the containers are run within the same VPC, Fargate service, etc., they will have access to same RDS database, cache, EBS volumes, whatever.
+
+When `caccl-deploy` creates your Fargate service, the default 'AppContainer' instance in each task is where `gunicorn` is running (or `express` in the case of a nodejs app). The `caccl-deploy exec` command allows running those other, one-off tasks using the same Docker image and copy of the Fargate task definition, with all the same env vars and secrets, but minus the nginx proxy container.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+- `-c`/`--command` (required) - the command to run
+- `-e`/`--env` (repeatable) - add or override container environment variables
+
+##### example
+
+This will run the django `migrate` operation using the `my-app` image with an extra (or overridden) environment variable `MY_EXTRA_ENV_VAR`.
+
+```
+caccl-deploy exec -a my-app -c 'python manage.py migrate' -e 'MY_EXTRA_ENV_VAR=1'
+```
+
+---
+
+#### connect
+
+For connecting to peripheral services, like the DocumentDb or RDS/Mysql database via the app's ec2 ssh bastion host. It first uses the AWS API To copy your ssh public key to the bastion host using the [EC2 Instance Connect](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Connect-using-EC2-Instance-Connect.html) feature. Then it outputs the necessary shell commands to establish an ssh tunnel through the bastion host.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+- `-l`/`--list` - list the services available to connect to
+- `-s` / `--service` - service to connect to; use `--list` to see what is available
+- `-k` / `--public-key` - path to the ssh public key file to use (default: "~/.ssh/id_rsa.pub")
+- `--local-port` - attach tunnel to a non-default local port
+
+##### example
+
+You want to see what services are available to connect to, and then connect to MySQL. You already have MySQL running locally, so for this example we will bind the tunnel to the local port, 3307 (instead of the default 3306):
+
+```
+$ caccl-deploy connect -a my-app --list
+Valid `--service=` options:
+  mysql
+  redis
+$ caccl-deploy connect -a my-app -s mysql --local-port 3307
+```
 
 ---
 

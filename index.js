@@ -8,6 +8,7 @@ const chalk = require('chalk');
 const figlet = require('figlet');
 const yn = require('yn');
 const tempy = require('tempy');
+const untildify = require('untildify');
 
 const aws = require('./lib/aws');
 const DeployConfig = require('./lib/deployConfig');
@@ -784,17 +785,25 @@ async function main() {
        * to get/extract it via the api. `taskDefName` here is also known as the
        * "family" and doesn't include the task def revision/version number
        */
-      const { taskDefName, clusterName, serviceName } = cfnExports;
+      const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } = cfnExports;
 
       if (!await confirmProductionOp(cmd.yes)) {
         exitWithSuccess();
       }
 
       // create a new version of the taskdef with the updated image
-      console.log(`Updating ${cmd.app} task definition to use ${newAppImage}`);
+      console.log(`Updating ${cmd.app} task definitions to use ${newAppImage}`);
+      // the app's service task def
       const newTaskDefArn = await aws.updateTaskDefAppImage(
         taskDefName,
-        newAppImage
+        newAppImage,
+        'AppContainer',
+      );
+      // the app-only one-off task definition
+      await aws.updateTaskDefAppImage(
+        appOnlyTaskDefName,
+        newAppImage,
+        'AppOnlyContainer',
       );
 
       // update the ssm parameter
@@ -819,6 +828,162 @@ async function main() {
         'WARNING: service is out-of-sync with stored deployment configuration',
       ].join('\n'));
     });
+
+  cli
+    .command('exec')
+    .description('execute a one-off task using the app image')
+    .appOption()
+    .requiredOption(
+      '-c, --command <string>',
+      'the app task command to run'
+    )
+    .option(
+      '-e, --env <value>',
+      'add or override container environment variables',
+      (e, collected) => {
+        const [k, v] = e.split('=');
+        return collected.concat([
+          {
+            name: k,
+            value: v,
+          },
+        ]);
+      },
+      []
+    )
+    .action(async (cmd) => {
+      const cfnStackName = cmd.getCfnStackName();
+      const {
+        appOnlyTaskDefName,
+        clusterName,
+        serviceName,
+      } = await aws.getCfnStackExports(cfnStackName);
+
+      if (!await confirmProductionOp(cmd.yes)) {
+        exitWithSuccess();
+      }
+
+      console.log(
+        `Running command "${cmd.command}" `
+        + `on service ${serviceName} using task def ${appOnlyTaskDefName}`
+      );
+      const taskArn = await aws.execTask({
+        clusterName,
+        serviceName,
+        taskDefName: appOnlyTaskDefName,
+        command: cmd.command,
+        environment: cmd.env,
+      });
+      exitWithSuccess(`Task ${taskArn} started`);
+    });
+
+  cli
+    .command('connect')
+    .description('connect to an app\'s peripheral services (db, redis, etc)')
+    .appOption()
+    .option('-l, --list', 'list the things to connect to')
+    .option(
+      '-s, --service <string>',
+      'service to connect to; use `--list` to see what is available'
+    )
+    .option(
+      '-k, --public-key <string>',
+      'path to the ssh public key file to use',
+      untildify('~/.ssh/id_rsa.pub')
+    )
+    .option('--local-port <string>', 'attach tunnel to a non-default local port')
+    .action(async (cmd) => {
+      if (!cmd.list && !cmd.service) {
+        exitWithError("One of `--list` or `--service` is required");
+      }
+
+      const deployConfig = await cmd.getDeployConfig();
+
+      const services = new Set();
+      ['dbOptions', 'cacheOptions'].forEach((optsKey) => {
+        if (deployConfig[optsKey]) {
+          services.add(deployConfig[optsKey].engine);
+        }
+      });
+      if (yn(deployConfig.docDb)) {
+        exitWithError([
+          'Deployment configuration is out-of-date',
+          'Replace `docDb*` with `dbOptions: {...}`',
+        ].join('\n'));
+      }
+
+      if (cmd.list) {
+        exitWithSuccess([
+          'Valid `--service=` options:',
+          ...services,
+        ].join('\n  '));
+      }
+
+      if (!services.has(cmd.service)) {
+        exitWithError(`'${cmd.service}' is not a valid option`);
+      }
+
+      const cfnStackName = cmd.getCfnStackName();
+      const cfnStackExports = await aws.getCfnStackExports(cfnStackName);
+
+      const {
+        bastionHostAz,
+        bastionHostId,
+        bastionHostIp,
+        dbPasswordSecretArn,
+
+      } = cfnStackExports;
+
+      try {
+        await aws.sendSSHPublicKey({
+          instanceAz: bastionHostAz,
+          instanceId: bastionHostId,
+          sshKeyPath: cmd.publicKey,
+        });
+      } catch (err) {
+        exitWithError(err.message);
+      }
+
+      let endpoint;
+      let localPort;
+      let clientCommand;
+
+      if (['mysql', 'docdb'].includes(cmd.service)) {
+        endpoint = cfnStackExports.dbClusterEndpoint;
+        const password = await aws.resolveSecret(dbPasswordSecretArn);
+        if (cmd.service === 'mysql') {
+          localPort = cmd.localPort || '3306';
+          clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;
+        } else {
+          localPort = cmd.localPort || '27017';
+          const tlsOpts = '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
+          clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
+        }
+      } else if (cmd.service === 'redis') {
+        endpoint = cfnStackExports.cacheEndpoint;
+        localPort = cmd.localPort || '6379';
+        clientCommand = `redis-cli -p ${localPort}`;
+      } else {
+        exitWithError(`not sure what to do with ${cmd.service}`);
+      }
+
+      const tunnelCommand = [
+        'ssh -f -L',
+        `${cmd.localPort || localPort}:${endpoint}`,
+        '-o StrictHostKeyChecking=no',
+        `${aws.EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
+        'sleep 60',
+      ].join(' ');
+
+      exitWithSuccess([
+        `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
+        'You have ~60s to establish the ssh tunnel',
+        '',
+        `# tunnel command:\n${tunnelCommand}`,
+        `# ${cmd.service} client command:\n${clientCommand}`,
+      ].join('\n'));
+    });
+
   await cli.parseAsync(process.argv);
 }
 

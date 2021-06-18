@@ -1,20 +1,16 @@
 import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
-import { Cluster, Secret } from '@aws-cdk/aws-ecs';
+import { Cluster } from '@aws-cdk/aws-ecs';
 import { Stack, Construct, StackProps } from '@aws-cdk/core';
 
 import { CacclAppEnvironment } from './appEnvironment';
 import { CacclMonitoring } from './dashboard';
-import { CacclDocDb } from './docdb';
+import { CacclDbOptions, CacclDb } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclNotifications, CacclNotificationsProps } from './notify';
+import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
-
-export interface CacclDocDbOptions {
-  instanceType: string;
-  instanceCount: number;
-  profiler: boolean;
-}
+import { CacclSshBastion } from './bastion';
 
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
@@ -25,9 +21,10 @@ export interface CacclDeployStackProps extends StackProps {
   appEnvironment: { [key: string]: string; };
   taskDefProps: CacclTaskDefProps;
   taskCount: number;
-  docDbOptions?: CacclDocDbOptions;
   notifications: CacclNotificationsProps;
   albLogBucketName?: string;
+  cacheOptions?: CacclCacheOptions;
+  dbOptions?: CacclDbOptions;
 }
 
 export class CacclDeployStack extends Stack {
@@ -36,6 +33,10 @@ export class CacclDeployStack extends Stack {
 
     let vpc;
     let cluster;
+
+    // should we create an ssh bastion for access to db/cache/etc
+    let createBastion = false;
+    let bastion;
 
     if (props.vpcId !== undefined) {
       vpc = Vpc.fromLookup(this, 'Vpc', {
@@ -50,24 +51,39 @@ export class CacclDeployStack extends Stack {
       throw new Error('deployConfig must define either cidrBlock or vpcId');
     }
 
+    const sg = new SecurityGroup(this, 'SecurityGroup', {
+      allowAllOutbound: true,
+      vpc,
+    });
+
     const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
       envVars: props.appEnvironment,
     });
+    appEnv.addEnvironmentVar('CIDR_NET', vpc.vpcCidrBlock);
 
     /**
      * create the docdb if needed so we can add it's endpoint url
      * to the app container's env
      */
-    let docdb = null;
-    if (props.docDbOptions !== undefined) {
-      docdb = new CacclDocDb(this, 'DocDb', {
-        ...props.docDbOptions,
+    let db = null;
+    if (props.dbOptions) {
+      createBastion = true;
+      db = CacclDb.createDbConstruct(this, {
         vpc,
+        options: props.dbOptions,
+        appEnv,
       });
-      appEnv.addEnvironmentVar('MONGO_USER', 'root');
-      appEnv.addEnvironmentVar('MONGO_HOST', docdb.host);
-      appEnv.addEnvironmentVar('MONGO_OPTIONS', 'tls=true&tlsAllowInvalidCertificates=true');
-      appEnv.addSecret('MONGO_PASS', Secret.fromSecretsManager(docdb.dbPasswordSecret));
+    }
+
+    let cache = null;
+    if (props.cacheOptions) {
+      createBastion = true;
+      cache = new CacclCache(this, 'Cache', {
+        vpc,
+        sg,
+        options: props.cacheOptions,
+        appEnv,
+      });
     }
 
     if (props.ecsClusterName !== undefined) {
@@ -83,11 +99,6 @@ export class CacclDeployStack extends Stack {
         vpc,
       });
     }
-
-    const sg = new SecurityGroup(this, 'SecurityGroup', {
-      allowAllOutbound: true,
-      vpc,
-    });
 
     const taskDef = new CacclTaskDef(this, 'TaskDef', {
       vpcCidrBlock: vpc.vpcCidrBlock,
@@ -115,14 +126,24 @@ export class CacclDeployStack extends Stack {
       cacclService: service,
     });
 
-    new CacclNotifications(this, 'Notifications', {
+    const notifyProps: CacclNotificationsProps = {
       ...props.notifications,
       service,
       loadBalancer,
-    });
+    };
 
-    if (docdb !== null) {
-      dashboard.addDocDbSection(docdb);
+    if (db) {
+      notifyProps.db = db;
+    }
+
+    new CacclNotifications(this, 'Notifications', notifyProps);
+
+    if (db) {
+      dashboard.addDbSection(db);
+    }
+
+    if (createBastion) {
+      bastion = new CacclSshBastion(this, 'SshBastion', { vpc });
     }
   }
 }
