@@ -17,7 +17,7 @@ import { CacclAppEnvironment } from './appEnvironment';
 
 const DEFAULT_DB_INSTANCE_TYPE = 't3.medium';
 const DEFAULT_AURORA_MYSQL_ENGINE_VERSION = '5.7.mysql_aurora.2.04.9'; // current LTS
-const DEFAULT_DOCDB_ENGINE_VERSION = 'docdb3.6';
+const DEFAULT_DOCDB_ENGINE_VERSION = '3.6';
 
 export interface CacclDbOptions {
   // currently either 'docdb' or 'mysql'
@@ -198,9 +198,11 @@ export class CacclDocDb extends CacclDb {
       this.clusterParameterGroupParams.profiler_threshold_ms = '500';
     }
 
+    const paramterGroupFamily = `docdb${engineVersion}`;
+
     const parameterGroup = new DocDbClusterParameterGroup(this, 'ClusterParameterGroup', {
       dbClusterParameterGroupName: `${Stack.of(this).stackName}-param-group`,
-      family: engineVersion,
+      family: paramterGroupFamily,
       description: `Cluster parameter group for ${Stack.of(this).stackName}`,
       parameters: this.clusterParameterGroupParams,
     });
@@ -211,6 +213,7 @@ export class CacclDocDb extends CacclDb {
         password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
       },
       parameterGroup,
+      engineVersion,
       instances: instanceCount,
       instanceProps: {
         vpc,
