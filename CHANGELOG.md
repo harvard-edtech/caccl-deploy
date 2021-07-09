@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - new `stack` subcommand, `info`, which just prints out all the cloudformation stack exports
+- new `stack` subscommand, `changeset`, like deploy but generates a CloudFormation changeset that must be manually inspected and approved
 
 ### Fixed
 

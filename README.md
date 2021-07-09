@@ -604,6 +604,7 @@ This subcommand acts as a wrapper for the `cdk` program (part of the [aws-cdk](h
 - `list` - just prints out the name of the cfn stack; useful for sanity checking
 - `diff` - show what would be added, deleted or modified during a deploy
 - `deploy` - execute the stack update
+- `changeset` - like `deploy` but creates a CloudFormation changeset that must be manually approved via the aws cli or web console
 - `destroy` - delete everything; you must first disable deletion protection for the stack via the aws cli or web console
 - `info` - prints out the cloudformation stack's exported values
 - `dump` - debugging; dumps the deployment config plus other bits of data used to build the stack

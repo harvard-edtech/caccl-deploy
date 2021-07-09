@@ -635,6 +635,9 @@ async function main() {
         }
         const stackExports = await aws.getCfnStackExports(cfnStackName);
         exitWithSuccess(JSON.stringify(stackExports, null, '  '));
+      } else if (cdkArgs[0] === 'changeset') {
+        cdkArgs.shift();
+        cdkArgs.unshift('deploy', '--no-execute');
       }
 
       // tell cdk to use the same profile
