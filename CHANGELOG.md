@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - docdb engine version wasn't being pinned properly for the cluster or parameter group
 
+### Added
+
+- new `stack` subcommand, `info`, which just prints out all the cloudformation stack exports
+
 ### Fixed
 
 - bug fix: `helpers.fromJson` couldn't handle relative paths. Replaced use of `require.resolve`

@@ -627,10 +627,14 @@ async function main() {
       // default cdk operation is `list`
       if (!cdkArgs.length) {
         cdkArgs.push('list');
-      }
-
-      if (cdkArgs[0] === 'dump') {
+      } else if (cdkArgs[0] === 'dump') {
         exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
+      } else if (cdkArgs[0] === 'info') {
+        if (!await aws.cfnStackExists(cfnStackName)) {
+          exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
+        }
+        const stackExports = await aws.getCfnStackExports(cfnStackName);
+        exitWithSuccess(JSON.stringify(stackExports, null, '  '));
       }
 
       // tell cdk to use the same profile

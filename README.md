@@ -601,6 +601,13 @@ _The commands below all perform operations on the actual deployed resources_
 
 This subcommand acts as a wrapper for the `cdk` program (part of the [aws-cdk](https://aws.amazon.com/cdk/) library), which it spawns as a subprocess after setting up several variables in the process execution environment. Any valild `cdk` subcommand can be used, the default being `cdk list`. The most common operations will be `list`, `diff`, `deploy`, and `destroy`.
 
+- `list` - just prints out the name of the cfn stack; useful for sanity checking
+- `diff` - show what would be added, deleted or modified during a deploy
+- `deploy` - execute the stack update
+- `destroy` - delete everything; you must first disable deletion protection for the stack via the aws cli or web console
+- `info` - prints out the cloudformation stack's exported values
+- `dump` - debugging; dumps the deployment config plus other bits of data used to build the stack
+
 ##### options
 
 - `-a`/`--app` (required) - the name of the app
