@@ -7,24 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
-### Fixed
-
-- docdb engine version wasn't being pinned properly for the cluster or parameter group
-
-### Added
-
-- new `stack` subcommand, `info`, which just prints out all the cloudformation stack exports
-- new `stack` subscommand, `changeset`, like deploy but generates a CloudFormation changeset that must be manually inspected and approved
+## [0.7.0] - 2021-08-11, porta deployment changes
 
 ### Fixed
 
 - bug fix: `helpers.fromJson` couldn't handle relative paths. Replaced use of `require.resolve`
   with `path.resolve` and added a couple of tests.
+- docdb engine version wasn't being pinned properly for the cluster or parameter group
+- ec2 ami for bastion hosts is now pinned to prevent surprise replacements
 
 ### Added
 
 - CDK construct for deploying an Elasticache (redis) instance
 - new `exec` command for running one-off app tasks (e.g. a django `migrate`)
+- new `stack` subcommand, `info`, which just prints out all the cloudformation stack exports
+- new `stack` subscommand, `changeset`, like deploy but generates a CloudFormation changeset that must be manually inspected and approved
+- extra confirmation if the deployed stack version differs from the cli version by more than a patch level
 
 ### Changed
 
@@ -32,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	**Note**: the previous deploy configuration for including a docdb instance,
 	`{ docDb: true, ... }`, is still supported, but new apps should use the new
 	format. See README for more info.
+- nginx proxy image now pulled with `latest` tag
 
 ## [0.6.4] - 2021-06-09
 
@@ -88,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.4...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.1...v0.6.2
