@@ -48,6 +48,7 @@ const stackProps: CacclDeployStackProps = {
   taskCount: +(deployConfig.taskCount || 1),
   cacheOptions: deployConfig.cacheOptions,
   dbOptions: deployConfig.dbOptions,
+  bastionAmiMap: deployConfig.bastionAmiMap || {},
   tags: {
     caccl_deploy_stack_name: stackName,
     ...deployConfig.tags,

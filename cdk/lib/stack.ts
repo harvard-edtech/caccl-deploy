@@ -25,6 +25,7 @@ export interface CacclDeployStackProps extends StackProps {
   albLogBucketName?: string;
   cacheOptions?: CacclCacheOptions;
   dbOptions?: CacclDbOptions;
+  bastionAmiMap?: { [key: string]: string; };
 }
 
 export class CacclDeployStack extends Stack {
@@ -36,7 +37,6 @@ export class CacclDeployStack extends Stack {
 
     // should we create an ssh bastion for access to db/cache/etc
     let createBastion = false;
-    let bastion;
 
     if (props.vpcId !== undefined) {
       vpc = Vpc.fromLookup(this, 'Vpc', {
@@ -143,7 +143,7 @@ export class CacclDeployStack extends Stack {
     }
 
     if (createBastion) {
-      bastion = new CacclSshBastion(this, 'SshBastion', { vpc });
+      new CacclSshBastion(this, 'SshBastion', { vpc });
     }
   }
 }
