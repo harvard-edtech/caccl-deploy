@@ -20,7 +20,11 @@ const {
 } = require('./lib/configPrompts');
 const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const { description } = require('./package.json');
-const { looksLikeSemver, validSSMParamName } = require('./lib/helpers');
+const {
+  looksLikeSemver,
+  validSSMParamName,
+  warnAboutVersionDiff,
+} = require('./lib/helpers');
 const {
   AppNotFound,
   UserCancel,
@@ -138,12 +142,32 @@ class CacclDeployCommander extends Command {
         appPrefix,
         keepSecretArns
       );
+
       return deployConfig;
     } catch (err) {
       if (err instanceof AppNotFound) {
         exitWithError(`${this.app} app configuration not found!`);
       }
     }
+  }
+
+  /**
+   * Will add another confirm prompt that warns if the deployed stack's
+   * version is more than a patch version different from the cli tool.
+   *
+   * @return {CacclDeployCommander}
+   * @memberof CacclDeployCommander
+   */
+  async stackVersionDiffCheck() {
+    const cfnStackName = this.getCfnStackName();
+    const cfnExports = await aws.getCfnStackExports(cfnStackName);
+    const stackVersion = cfnExports.cacclDeployVersion;
+    const cliVersion = cacclDeployVersion;
+    if (cliVersion === stackVersion || !warnAboutVersionDiff(stackVersion, cliVersion)) {
+      return true;
+    }
+    const confirmMsg = `Stack deployed with ${chalk.redBright(stackVersion)}; you are using ${chalk.redBright(cliVersion)}. Proceed?`;
+    return await confirm(confirmMsg, false);
   }
 
   /**
@@ -647,12 +671,16 @@ async function main() {
       }
 
       // disable cdk prompting if user included `--yes` flag
-      if (cdkArgs[0] === 'deploy' && cmd.yes) {
+      if (cdkArgs.includes('deploy') && cmd.yes) {
         cdkArgs.push('--require-approval-never');
       }
 
-      // production failsafe if we're actually changing anything
       if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
+        // check that we're not using a wildly different version of the cli
+        if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
+          exitWithSuccess();
+        }
+        // production failsafe if we're actually changing anything
         if (!await confirmProductionOp(cmd.yes)) {
           exitWithSuccess();
         }
@@ -794,6 +822,11 @@ async function main() {
        */
       const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } = cfnExports;
 
+      // check that we're not using a wildly different version of the cli
+      if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
+        exitWithSuccess();
+      }
+
       if (!await confirmProductionOp(cmd.yes)) {
         exitWithSuccess();
       }
@@ -866,6 +899,10 @@ async function main() {
         serviceName,
       } = await aws.getCfnStackExports(cfnStackName);
 
+      // check that we're not using a wildly different version of the cli
+      if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
+        exitWithSuccess();
+      }
       if (!await confirmProductionOp(cmd.yes)) {
         exitWithSuccess();
       }
