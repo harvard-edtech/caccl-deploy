@@ -33,7 +33,7 @@ export class CacclTaskDef extends Construct {
 
     const {
       appImage,
-      proxyImage = DEFAULT_PROXY_REPO_NAME,
+      proxyImage = `${DEFAULT_PROXY_REPO_NAME}:latest`,
       appEnvironment,
       taskCpu = 256, // in cpu units; 256 == .25 vCPU
       taskMemory = 512, // in MiB

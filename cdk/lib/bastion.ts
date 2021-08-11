@@ -21,7 +21,7 @@ export class CacclSshBastion extends Construct {
       vpc,
       subnetSelection: { subnetType: SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
-      securityGroup: this.sg
+      securityGroup: this.sg,
     });
 
     new CfnOutput(this, 'DbBastionHostIp', {
