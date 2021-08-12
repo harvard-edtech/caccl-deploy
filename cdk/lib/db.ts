@@ -18,6 +18,7 @@ import { CacclAppEnvironment } from './appEnvironment';
 const DEFAULT_DB_INSTANCE_TYPE = 't3.medium';
 const DEFAULT_AURORA_MYSQL_ENGINE_VERSION = '5.7.mysql_aurora.2.04.9'; // current LTS
 const DEFAULT_DOCDB_ENGINE_VERSION = '3.6';
+const DEFAULT_DOCDB_PARAM_GROUP_FAMILY = 'docdb3.6';
 
 export interface CacclDbOptions {
   // currently either 'docdb' or 'mysql'
@@ -28,6 +29,8 @@ export interface CacclDbOptions {
   instanceCount?: number,
   // use a non-default engine version (shouldn't be necessary)
   engineVersion?: string,
+  // use a non-default parameter group family (also unnecessary)
+  parameterGroupFamily?: string,
   // only used by docdb; turns on extra profiling
   profiler?: boolean,
   // only used by mysql; provisioning will create the named database
@@ -190,6 +193,7 @@ export class CacclDocDb extends CacclDb {
       instanceCount = 1,
       instanceType = DEFAULT_DB_INSTANCE_TYPE,
       engineVersion = DEFAULT_DOCDB_ENGINE_VERSION,
+      parameterGroupFamily = DEFAULT_DOCDB_PARAM_GROUP_FAMILY,
       profiler = false,
     } = props.options;
 
@@ -198,11 +202,9 @@ export class CacclDocDb extends CacclDb {
       this.clusterParameterGroupParams.profiler_threshold_ms = '500';
     }
 
-    const paramterGroupFamily = `docdb${engineVersion}`;
-
     const parameterGroup = new DocDbClusterParameterGroup(this, 'ClusterParameterGroup', {
       dbClusterParameterGroupName: `${Stack.of(this).stackName}-param-group`,
-      family: paramterGroupFamily,
+      family: parameterGroupFamily,
       description: `Cluster parameter group for ${Stack.of(this).stackName}`,
       parameters: this.clusterParameterGroupParams,
     });
