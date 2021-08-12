@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.7.1] - 2021-08-12
+
+### Fixed
+
+- version generation incorrectly detecting if programming running from a git repo
+
 ## [0.7.0] - 2021-08-11, porta deployment changes
 
 ### Fixed
@@ -87,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.0...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.4...v0.7.0
 [0.6.4]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.6.2...v0.6.3
