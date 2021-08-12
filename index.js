@@ -619,6 +619,7 @@ async function main() {
        *   - name of the S3 bucket where the load balancer will send logs
        */
       const cfnStackName = cmd.getCfnStackName();
+      const stackExists = await aws.cfnStackExists(cfnStackName);
       const {
         vpcId,
         ecsClusterName,
@@ -654,7 +655,7 @@ async function main() {
       } else if (cdkArgs[0] === 'dump') {
         exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
       } else if (cdkArgs[0] === 'info') {
-        if (!await aws.cfnStackExists(cfnStackName)) {
+        if (!stackExists) {
           exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
         }
         const stackExports = await aws.getCfnStackExports(cfnStackName);
@@ -677,7 +678,7 @@ async function main() {
 
       if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
         // check that we're not using a wildly different version of the cli
-        if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
+        if (stackExists && !this.yes && !(await cmd.stackVersionDiffCheck())) {
           exitWithSuccess();
         }
         // production failsafe if we're actually changing anything
