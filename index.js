@@ -282,7 +282,7 @@ async function main() {
       }
 
       if (cmd.fullStatus) {
-        tableColumns.push('Infra Stack', 'Stack Status', 'Config Drift');
+        tableColumns.push('Infra Stack', 'Stack Status', 'Config Drift', 'caccl-deploy Version');
         const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
 
         for (let i = 0; i < apps.length; i++) {
@@ -299,7 +299,7 @@ async function main() {
           });
           if (!cfnStack) {
             // config exists but cfn stack not deployed yet (or was destroyed)
-            appData[app].push('', '');
+            appData[app].push('', '', '');
             continue;
           }
 
@@ -318,6 +318,11 @@ async function main() {
             configDrift = cfnOutputValue !== deployConfigHash ? 'yes' : 'no';
           }
           appData[app].push(cfnStack.StackStatus, configDrift);
+
+          const cfnStackCacclDeployVersion = cfnStack.Outputs.find((o) => {
+            return o.OutputKey.startsWith('CacclDeployVersion');
+          })
+          appData[app].push(cfnStackCacclDeployVersion.OutputValue);
         }
       }
       const tableData = Object.keys(appData).map((app) => {
