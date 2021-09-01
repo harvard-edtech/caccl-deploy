@@ -22,6 +22,8 @@ export interface CacclTaskDefProps {
 export class CacclTaskDef extends Construct {
   taskDef: FargateTaskDefinition;
 
+  appOnlyTaskDef: FargateTaskDefinition;
+
   proxyContainer: ContainerDefinition;
 
   appContainer: ContainerDefinition;
@@ -51,7 +53,7 @@ export class CacclTaskDef extends Construct {
     });
 
     // this task def will have only the app container and be used for one-off tasks
-    const appOnlyTaskDef = new FargateTaskDefinition(this, 'AppOnlyTask', {
+    this.appOnlyTaskDef = new FargateTaskDefinition(this, 'AppOnlyTask', {
       cpu: taskCpu,
       memoryLimitMiB: taskMemory,
     });
@@ -83,7 +85,7 @@ export class CacclTaskDef extends Construct {
     // now create a copy of the container params but use the one-off app only task def
     const appOnlyContainerParams = {
       ...appContainerParams,
-      taskDefinition: appOnlyTaskDef,
+      taskDefinition: this.appOnlyTaskDef,
     };
     // and a 2nd container definition used by the one-off app only task deff
     const appOnlyContainer = new ContainerDefinition(this, 'AppOnlyContainer', appOnlyContainerParams);
@@ -138,7 +140,7 @@ export class CacclTaskDef extends Construct {
     new CfnOutput(this, 'AppOnlyTaskDefinitionArn', {
       exportName: `${Stack.of(this).stackName}-app-only-task-def-name`,
       // "family" is synonymous with "name", or at least aws frequently treats it that way
-      value: appOnlyTaskDef.family,
+      value: this.appOnlyTaskDef.family,
     });
 
     /**

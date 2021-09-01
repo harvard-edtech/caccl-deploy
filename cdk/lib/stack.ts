@@ -11,6 +11,7 @@ import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 import { CacclSshBastion } from './bastion';
+import { CacclScheduledTask, CacclScheduledTasks } from './scheduledTasks';
 
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
@@ -26,6 +27,7 @@ export interface CacclDeployStackProps extends StackProps {
   cacheOptions?: CacclCacheOptions;
   dbOptions?: CacclDbOptions;
   bastionAmiMap?: { [key: string]: string; };
+  scheduledTasks?: { [key: string]: CacclScheduledTask };
 }
 
 export class CacclDeployStack extends Stack {
@@ -144,6 +146,17 @@ export class CacclDeployStack extends Stack {
 
     if (createBastion) {
       new CacclSshBastion(this, 'SshBastion', { vpc });
+    }
+
+    if (props.scheduledTasks) {
+      const scheduledTasks = new CacclScheduledTasks(this, 'ScheduledTasks', {
+        vpc,
+        scheduledTasks: props.scheduledTasks,
+        clusterName: cluster.clusterName,
+        serviceName: service.ecsService.serviceName,
+        taskDefinition: taskDef.appOnlyTaskDef,
+      });
+      dashboard.addScheduledTasksSection(scheduledTasks);
     }
   }
 }
