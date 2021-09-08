@@ -22,7 +22,8 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
   - DocumentDb (optional)
   - RDS (optional)
   - Elasticache (optional)
-  - Lambda (if using slack notifications)
+  - Lambda (if using slack notifications or scheduled tasks)
+  - Cloudwatch Events (if using scheduled tasks)
 
 ---
 
@@ -98,6 +99,8 @@ These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy ne
 `restart` - restart an app's Fargate service
 
 `exec` - run a one-off fargate task using app's docker image (e.g. a django `migrate`)
+
+`schedule` - add a scheduled execution of your app with an overridden container command, for instance, running django's `clearsessions` task on a regular basis
 
 ---
 
@@ -196,6 +199,13 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
     "engine": "redis",
     "numCacheNodes": 1,
     "cacheNodeType": "cache.t3.medium"
+  },
+  "scheduledTasks": {
+    "my-task-id": {
+      "schedule": "0 4 * * ? *",
+      "command": "python manage.py some_task",
+      "description": "run some_task every day at 4AM GMT"
+    }
   }
 }
 ```
@@ -256,7 +266,6 @@ Database && cache options
 `dbOptions.engine` - Allowed values are "mysql" and "docdb". If set, a cluster of the specified type will be provisioned and its connection details and credentials injected into the container environment. See the Database section below for more info.
 
 `cacheOptions.engine` - "redis" is the only supported value. If set, an Elasticache instance will be provisioned and its connection details injected into the container environment. See the Cache section below for more info.
-
 
 ##### A note about `taskCpu` and `taskMemory`
 
@@ -483,6 +492,7 @@ Commands:
   release [options]  release a new version of an app
   exec [options]     execute a one-off task using the app image
   connect [options]  connect to an app's peripheral services (db, redis, etc)
+  schedule [options] create a scheduled task using the app image
   help [command]     display help for command
 ```
 
@@ -688,6 +698,37 @@ Valid `--service=` options:
   mysql
   redis
 $ caccl-deploy connect -a my-app -s mysql --local-port 3307
+```
+
+---
+
+#### schedule
+
+List, create and/or delete scheduled tasks (think cron jobs) that execute your app container with an overridden command.
+
+##### options
+
+- `-a`/`--app` (required) - the name of the app
+- `-l`/`--list` - list the existing scheduled tasks
+- `-d`/`--delete` - in combination with `--task-id`, delete an existing scheduled task
+- `-t` / `--task-id` - a string/shortname id for your task. Will be a randomly generated id if not specified
+- `-d` / `--task-description` - describe what the task does
+- `-s` / `--task-schedule` - a six-field cron expression, e.g. '0 12 * * ? *'. See [Scheedule Expressions for Rules](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html) for details.
+- `-c` / `--task-command` - the override command to use when starting the container (the `CMD` value).
+
+##### example
+
+You want to run a django command once a day at 3am. The cron expression will need to be in GMT, so for the schedule you'll add five hours and enter "0 8 * * ? *". Why the "?"? According to the docs:
+
+> You can't specify the Day-of-month and Day-of-week fields in the same cron expression. If you specify a value (or a *) in one of the fields, you must use a ? (question mark) in the other.
+
+```
+$ caccl-deploy schedule -a my-app \
+    --task-id daily-foo \
+    --task-description "do the foo every day" \
+    --task-schedule "0 8 * * ? *"
+    --task-command "python manage.py foo"
+
 ```
 
 ---

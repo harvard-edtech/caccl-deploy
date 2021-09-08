@@ -493,10 +493,11 @@ async function main() {
         exitWithSuccess();
       }
 
+      if (cmd.args.length > 2) {
+        exitWithError('Too many arguments!');
+      }
+
       try {
-        if (cmd.args.length > 2) {
-          exitWithError('Too many arguments!');
-        }
         if (cmd.delete) {
           const [param] = cmd.args;
           await deployConfig.delete(
@@ -1032,6 +1033,96 @@ async function main() {
         `# tunnel command:\n${tunnelCommand}`,
         `# ${cmd.service} client command:\n${clientCommand}`,
       ].join('\n'));
+    });
+
+  cli
+    .command('schedule')
+    .description('create a scheduled task that executes the app image with a custom command')
+    .appOption()
+    .option('-l, --list', 'list the existing scheduled tasks')
+    .option(
+      '-t, --task-id <string>',
+      'give the taska a string id; by default one will be generated',
+    )
+    .option(
+      '-d, --task-description <string>',
+      'description of what the task does',
+    )
+    .option(
+      '-D, --delete <string>',
+      'delete a scheduled task'
+    )
+    .option(
+      '-s, --task-schedule <string>',
+      'a cron expression, e.g. "0 4 * * *"',
+    )
+    .option(
+      '-c, --task-command <string>',
+      'the app task command to run'
+    )
+    .action(async (cmd) => {
+
+      const deployConfig = await cmd.getDeployConfig();
+      const existingTasks = deployConfig.scheduledTasks || {};
+      const existingTaskIds = Object.keys(existingTasks);
+
+      if (cmd.list) {
+        // format existing as a table and exitWithSuccess
+        if (existingTaskIds.length) {
+          const tableRows = existingTaskIds.map((id) => {
+            const taskSettings = existingTasks[id];
+            const { command, schedule, description } = taskSettings;
+            return [id, schedule, command, description];
+          })
+          const tableOutput = table([
+            ['ID', 'Schedule', 'Command', 'Description'],
+            ...tableRows,
+          ]);
+          exitWithSuccess(tableOutput);
+        }
+        exitWithSuccess('No scheduled tasks configured');
+      } else if (cmd.delete) {
+        // delete the existing entry
+        if (!existingTaskIds.includes(cmd.delete)) {
+          exitWithError(`No scheduled task with id ${cmd.delete}`);
+        }
+        const existingTask = existingTasks[cmd.delete];
+        if (!(cmd.yes || await confirm(`Delete scheduled task ${cmd.delete}?`))) {
+          exitWithSuccess();
+        }
+        const existingTaskParams = Object.keys(existingTask);
+        for (let i = 0; i < existingTaskParams.length; i++) {
+          await deployConfig.delete(
+            cmd.getAppPrefix(),
+            `scheduledTasks/${cmd.delete}/${existingTaskParams[i]}`,
+          );
+        }
+        exitWithSuccess(`Scheduled task ${cmd.delete} deleted`);
+      } else if (!(cmd.taskSchedule && cmd.taskCommand)) {
+        exitWithError("Invalid options. See `--help` output");
+      }
+
+      const taskId = cmd.taskId || Math.random().toString(36).substr(2, 16);
+      const taskDescription = cmd.taskDescription || '';
+      const taskSchedule = cmd.taskSchedule;
+      const taskComman = cmd.taskCommand;
+
+      if (!validSSMParamName(taskId)) {
+        exitWithError(`Invalid ${taskId} value; '/^([a-z0-9:/_-]+)$/i' allowed only`)
+      }
+
+      if (existingTaskIds.some((t) => t.id === taskId)) {
+        exitWithError(`A schedule task with id ${taskId} already exists for ${cmd.app}`);
+      }
+
+      const params = {
+        [`scheduledTasks/${taskId}/description`]: taskDescription,
+        [`scheduledTasks/${taskId}/schedule`]: taskSchedule,
+        [`scheduledTasks/${taskId}/command`]: taskComman,
+      };
+
+      await deployConfig.syncToSsm(cmd.getAppPrefix(), params);
+      exitWithSuccess('task scheduled');
     });
 
   await cli.parseAsync(process.argv);

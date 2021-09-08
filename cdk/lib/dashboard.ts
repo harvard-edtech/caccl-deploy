@@ -4,6 +4,7 @@ import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
 
 import { CacclDb } from './db';
 import { CacclLoadBalancer } from './lb';
+import { CacclScheduledTasks } from './scheduledTasks';
 import { CacclService } from './service';
 
 export interface CacclMonitoringProps {
@@ -239,4 +240,46 @@ export class CacclMonitoring extends Construct {
       }),
     );
   };
+
+  addScheduledTasksSection(scheduledTasks: CacclScheduledTasks): void {
+    const func = scheduledTasks.taskExecFunction;
+    const functionUrl = `https://console.aws.amazon.com/lambda/home?region=${Stack.of(this).region}#/functions/${func.functionName}`;
+
+    this.dashboard.addWidgets(
+      new TextWidget({
+        markdown: `###  Scheduled Tasks Function: [${func.functionName}](${functionUrl})`,
+        width: 24,
+        height: 1,
+      }),
+    );
+
+    this.dashboard.addWidgets(
+      new GraphWidget({
+        title: 'Duration',
+        left: [func.metricDuration()],
+        width: 8,
+        height: 6,
+      }),
+      new GraphWidget({
+        title: 'Invocations',
+        left: [func.metricInvocations()],
+        width: 8,
+        height: 6,
+      }),
+      new GraphWidget({
+        title: 'Errors',
+        left: [func.metricErrors()],
+        width: 8,
+        height: 6,
+      }),
+    );
+    this.dashboard.addWidgets(
+      new AlarmStatusWidget({
+        alarms: scheduledTasks.alarms,
+        width: 24,
+        height: 6,
+        title: 'Scheduled Tasks Function Alarm States',
+      }),
+    );
+  }
 }
