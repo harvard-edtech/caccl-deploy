@@ -686,18 +686,31 @@ For connecting to peripheral services, like the DocumentDb or RDS/Mysql database
 - `-l`/`--list` - list the services available to connect to
 - `-s` / `--service` - service to connect to; use `--list` to see what is available
 - `-k` / `--public-key` - path to the ssh public key file to use (default: "~/.ssh/id_rsa.pub")
+- `-q` / `--quiet` - restrict output to only the ssh tunnel command
+- `-S` / `--sleep` - sleep for this many seconds as the tunnel "keepalive" command (default: 60)
 - `--local-port` - attach tunnel to a non-default local port
 
 ##### example
 
-You want to see what services are available to connect to, and then connect to MySQL. You already have MySQL running locally, so for this example we will bind the tunnel to the local port, 3307 (instead of the default 3306):
+You want to see what services are available to connect to, and then connect to MySQL. You already have MySQL running locally, so for this example we will bind the tunnel to the local port, 3307 (instead of the default 3306). You also want to give yourself several minutes to establish a client connection, so bump the "sleep" value to 300 seconds.
 
 ```
 $ caccl-deploy connect -a my-app --list
 Valid `--service=` options:
   mysql
   redis
-$ caccl-deploy connect -a my-app -s mysql --local-port 3307
+$ caccl-deploy connect -a my-app -s mysql --local-port 3307 --sleep 300
+```
+
+Output:
+```
+Your public key, /home/foo/.ssh/id_rsa.pub, has temporarily been placed on the bastion instance
+You have ~60s to establish the ssh tunnel
+
+# tunnel command:
+ssh -f -L 3307:my-app-db-cluster.cluster-cnrqypmjblyx.us-east-1.rds.amazonaws.com:3306 -o StrictHostKeyChecking=no ec2-user@12.34.56.78 sleep 300
+# mysql client command:
+mysql -uroot -pxxxxxxxxxx --port 3307 -h 127.0.0.1
 ```
 
 ---

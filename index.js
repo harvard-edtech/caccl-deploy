@@ -943,6 +943,12 @@ async function main() {
       untildify('~/.ssh/id_rsa.pub')
     )
     .option('--local-port <string>', 'attach tunnel to a non-default local port')
+    .option('-q, --quiet', 'output only the ssh tunnel command')
+    .option(
+      '-S, --sleep <string>',
+      'keep the tunnel alive for this long without activity',
+      60
+    )
     .action(async (cmd) => {
       if (!cmd.list && !cmd.service) {
         exitWithError("One of `--list` or `--service` is required");
@@ -1023,8 +1029,12 @@ async function main() {
         `${cmd.localPort || localPort}:${endpoint}`,
         '-o StrictHostKeyChecking=no',
         `${aws.EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
-        'sleep 60',
+        `sleep ${cmd.sleep}`,
       ].join(' ');
+
+      if (cmd.quiet) {
+        exitWithSuccess(tunnelCommand);
+      }
 
       exitWithSuccess([
         `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
