@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- scheduled tasks: managed with new `schedule` subcommand, and executed using CloudWatch Events and a Lambda function
+
 ## [0.7.4] - 2021-08-13
 
 ### Added
