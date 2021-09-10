@@ -8,22 +8,7 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 - a docker image that runs your app on port 8080
 - the [awscli tool](https://aws.amazon.com/cli/) installed and configured
 - an AWS Certificate Manager certificate. You probably want one that matches the hostname you have in mind for the app.
-- an AWS account with create/update privileges for the following services and/or resources:
-  - VPC
-  - Elastic Load Balancer
-  - ECS
-  - IAM Role
-  - Cloudwatch Logs
-  - Cloudformation
-  - S3
-  - SNS
-  - SSM Parameter Store
-  - SecretsManager
-  - DocumentDb (optional)
-  - RDS (optional)
-  - Elasticache (optional)
-  - Lambda (if using slack notifications or scheduled tasks)
-  - Cloudwatch Events (if using scheduled tasks)
+- an AWS account with create/update/delete privileges for the relevant services. There is an example IAM policy document provided at [examples/iam-policy.json](examples/iam-policy.json).
 
 ---
 

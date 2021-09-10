@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - new `connect` subcommand options:
     - `-q` / `--quiet` - only output the ssh tunnel command (suitable for wrapping in a shell script)
     - `-S` / `--sleep` - increase/decrease the amount of time the tunnel will stay open waiting for activity (e.g. a client connection)
+- an example iam policy that should cover all needed aws permissions
 
 ### Changed
 
