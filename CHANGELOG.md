@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `-q` / `--quiet` - only output the ssh tunnel command (suitable for wrapping in a shell script)
     - `-S` / `--sleep` - increase/decrease the amount of time the tunnel will stay open waiting for activity (e.g. a client connection)
 
+### Changed
+
+- the aws-sdk and all aws-cdk packages updated to the latest release
+
 ## [0.7.4] - 2021-08-13
 
 ### Added

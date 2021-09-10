@@ -217,12 +217,10 @@ export class CacclDocDb extends CacclDb {
       parameterGroup,
       engineVersion,
       instances: instanceCount,
-      instanceProps: {
-        vpc,
-        instanceType: new InstanceType(instanceType),
-        vpcSubnets: {
-          subnetType: SubnetType.PRIVATE,
-        },
+      vpc,
+      instanceType: new InstanceType(instanceType),
+      vpcSubnets: {
+        subnetType: SubnetType.PRIVATE,
       },
       backup: {
         retention: Duration.days(14),
