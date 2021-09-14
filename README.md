@@ -8,7 +8,7 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 - a docker image that runs your app on port 8080
 - the [awscli tool](https://aws.amazon.com/cli/) installed and configured
 - an AWS Certificate Manager certificate. You probably want one that matches the hostname you have in mind for the app.
-- an AWS account with create/update/delete privileges for the relevant services. There is an example IAM policy document provided at [examples/iam-policy.json](examples/iam-policy.json).
+- an AWS account with create/update/delete privileges for the relevant services. There is an example IAM policy document provided at [examples/iam-policy.json](https://github.com/harvard-edtech/caccl-deploy/examples/iam-policy.json).
 
 ---
 
@@ -19,7 +19,7 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 - create and manage the deployment configuration for containerized web apps
 - provision, deploy and release updates to those apps on ECS/Fargate
 
-An "app" is assumed to be an application that has been packaged as a Docker image. Currently only Nodejs/React is supported (Django coming soon!). Once deployed, the AWS resources dedicated to the app will consist of:
+An "app" is assumed to be an application that has been packaged as a Docker image. Currently both Nodejs/React and Django apps are supported. Once deployed, the AWS resources dedicated to the app will consist of:
 - an Application Load Balancer
 - an ECS Fargate Service
 - an ECS Fargate Task with (in most cases) two containers:
@@ -40,6 +40,7 @@ As part of this app deployment, `caccl-deploy` will create and manage a deployme
 - An optional set of AWS resource tags
 - various task provisioning settings, such as number of CPUs, memory, number of tasks, etc
 - database cluster options, such as engine type (mysql or docdb), instance type, number of instances
+- an optional set of scheduled tasks to be executed via CloudWatch Events and a Lambda function.
 
 ---
 
@@ -210,7 +211,7 @@ The following DocumentDb configuration was used by caccl-deploy prior to version
 
 First the required values.
 
-`infraStackName` - this tells `caccl-deploy` what set of shared infrastructure resources your app will be deployed into. For this setting you just want the string value of the CloudFormation stack name. The companion project, [dce-ecs-infra]() is what we use to build out that infrastructure.
+`infraStackName` - this tells `caccl-deploy` what set of shared infrastructure resources your app will be deployed into. For this setting you just want the string value of the CloudFormation stack name. The companion project, [dce-ecs-infra](https://github.com/harvard-edtech/dce-ecs-infra) is what we use to build out that infrastructure.
 
 `appImage` - this tells `caccl-deploy` where to find your app's Docker image. This value should be the ARN of an ECR repo plus an image tag. It's also possible to use a DockerHub name:tag combo, but some of the `caccl-deploy` subcommands (`release` for example) are not compatible with that use.
 
@@ -246,7 +247,7 @@ _**Important**_: The configured address(es) will redceive a confirmation message
 
 `gitRepoVolume` - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
 
-Database && cache options
+**Database & cache options**
 
 `dbOptions.engine` - Allowed values are "mysql" and "docdb". If set, a cluster of the specified type will be provisioned and its connection details and credentials injected into the container environment. See the Database section below for more info.
 
@@ -328,7 +329,7 @@ There are two parts to setting this up. For the purposes of this README lets ass
 }
 ```
 
-Once this role is created its ARN should be added to your `caccl-deploy` configuration file. See "Configuring caccl-deploy" above.
+Once this role is created its ARN should be added to your `caccl-deploy` configuration file. See "Configuring caccl-deploy" above. Note that the AWS logins of caccl-deploy users must have the "sts:AssumeRole" permission for this role resource.
 
 ---
 
@@ -342,7 +343,7 @@ By default you will get a single instance of type "t3.medium". We turn slow quer
 
 Including either type of database in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the database.
 
-A shell script, `bin/docdb.sh` is provided to assist in accessing a DocumentDb instance via the bastion host. It might work out of the box or at least be useful as a starting point.
+The `caccl-deploy connect ...` command can be used for creating ssh port-forwarding tunnels via the bastion host to the db instances. A shell script, `bin/docdb.sh` is also included. It might work out of the box or at least be useful as a starting point.
 
 ##### Common db options
 
@@ -714,11 +715,11 @@ List, create and/or delete scheduled tasks (think cron jobs) that execute your a
 - `-s` / `--task-schedule` - a six-field cron expression, e.g. '0 12 * * ? *'. See [Scheedule Expressions for Rules](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html) for details.
 - `-c` / `--task-command` - the override command to use when starting the container (the `CMD` value).
 
+**Important**: the `schedule` subcommand only modifies your app's deployment configuration; you must still run a `stack ... deploy` for the resource additions/changes to be provisioned.
+
 ##### example
 
-You want to run a django command once a day at 3am. The cron expression will need to be in GMT, so for the schedule you'll add five hours and enter "0 8 * * ? *". Why the "?"? According to the docs:
-
-> You can't specify the Day-of-month and Day-of-week fields in the same cron expression. If you specify a value (or a *) in one of the fields, you must use a ? (question mark) in the other.
+You want to run a django command once a day at 3am.
 
 ```
 $ caccl-deploy schedule -a my-app \
@@ -726,18 +727,44 @@ $ caccl-deploy schedule -a my-app \
     --task-description "do the foo every day" \
     --task-schedule "0 8 * * ? *"
     --task-command "python manage.py foo"
+$ caccl-deploy stack -a my-app [diff|deploy]
 
 ```
 
+Note that the cron expression will need to be in GMT, so for the schedule you'll add five hours and enter "0 8 * * ? *". Why the "?"? According to the docs:
+
+> You can't specify the Day-of-month and Day-of-week fields in the same cron expression. If you specify a value (or a *) in one of the fields, you must use a ? (question mark) in the other.
+
 ---
 
-### Development
+## Development
+
+### Release process
+
+1. Confirm all updates have been merged into `devel`
+1. Update `CHANGELOG.md` with release name and date
+1. Run `npm version [version tag] --no-git-tag-version`
+1. Commit the last two changes with a message like "[release tag] release prep"
+1. `git push devel origin`
+1. `git tag [version tag]`
+1. `git push [version tag] origin`
+1. `git checkout main`
+1. `git merge [version tag]`
+1. `git push main origin`
+
+The final push to `main` will trigger a Github action that executes an `npm publish` for you.
+
+### Code layout
 
 As for the code here's an overview of what's where and what does what.
 
 ##### `index.js`
 
 This is the main cli script that defines the `caccl-deploy` command and subcommands. It uses the [commander.js](https://github.com/tj/commander.js) library, making use of some of the provided hooks and overrides to customize how the command actions and options are implemented.
+
+##### `./lib`
+
+Utility functions for the cli. Most important here is `aws.js`, the collection of methods that execute the aws api calls, and `deployConfig.js` which defines the interface for manipulating an app's deploy configuration.
 
 ##### `./cdk/*`
 
