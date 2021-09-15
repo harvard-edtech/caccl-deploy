@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.8.1] - 2021-09-15
+
 ### Changed
 
 - no longer assigning a name to the Fargate Service as it would in some cases cause name collision errors when CloudFormation needed to replace the resource. As a result the service names will be something like:
