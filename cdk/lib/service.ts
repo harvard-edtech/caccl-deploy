@@ -23,11 +23,9 @@ export class CacclService extends Construct {
     super(scope, id);
 
     const { sg, cluster, taskDef, taskCount } = props;
-    const serviceName = `${Stack.of(this).stackName}-service`;
 
     this.ecsService = new FargateService(this, 'FargateService', {
       cluster,
-      serviceName,
       platformVersion: FargatePlatformVersion.VERSION1_3,
       securityGroup: sg,
       taskDefinition: taskDef.taskDef,
@@ -54,7 +52,7 @@ export class CacclService extends Construct {
 
     new CfnOutput(this, 'ServiceName', {
       exportName: `${Stack.of(this).stackName}-service-name`,
-      value: serviceName,
+      value: this.ecsService.serviceName,
     });
   }
 }
