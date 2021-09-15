@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Changed
+
+- no longer assigning a name to the Fargate Service as it would in some cases cause name collision errors when CloudFormation needed to replace the resource. As a result the service names will be something like:
+     - "CacclDeploy-foo-app-EcsServiceFargateServiceF382E1EB-pbHI10hubZdS"
+     - instead of "CacclDeploy-foo-app-service"
+
 ## [0.8.0] - 2021-09-14
 
 ### Added
