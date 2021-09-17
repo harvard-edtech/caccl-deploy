@@ -1,8 +1,8 @@
 import { Alarm, Metric, Unit, ComparisonOperator, TreatMissingData } from '@aws-cdk/aws-cloudwatch';
-import { Vpc, SecurityGroup, SubnetType, Peer, Port, InstanceType } from '@aws-cdk/aws-ec2';
+import { Vpc, SubnetType, Peer, InstanceType, SecurityGroup, Port } from '@aws-cdk/aws-ec2';
 import { Secret } from '@aws-cdk/aws-secretsmanager';
 import { Secret as EcsSecret } from '@aws-cdk/aws-ecs';
-import { Construct, Stack, CfnOutput, SecretValue, Duration } from '@aws-cdk/core';
+import { Construct, Stack, CfnOutput, SecretValue, Duration, RemovalPolicy } from '@aws-cdk/core';
 import {
   DatabaseCluster as DocDbDatabaseCluster,
   ClusterParameterGroup as DocDbClusterParameterGroup,
@@ -19,6 +19,7 @@ const DEFAULT_DB_INSTANCE_TYPE = 't3.medium';
 const DEFAULT_AURORA_MYSQL_ENGINE_VERSION = '5.7.mysql_aurora.2.04.9'; // current LTS
 const DEFAULT_DOCDB_ENGINE_VERSION = '3.6';
 const DEFAULT_DOCDB_PARAM_GROUP_FAMILY = 'docdb3.6';
+const DEFAULT_REMOVAL_POLICY = 'DESTROY';
 
 export interface CacclDbOptions {
   // currently either 'docdb' or 'mysql'
@@ -35,6 +36,8 @@ export interface CacclDbOptions {
   profiler?: boolean,
   // only used by mysql; provisioning will create the named database
   databaseName?: string,
+  // removal policy controls what happens to the db if it's replaced or otherwise stops being managed by CloudFormation
+  removalPolicy?: string,
 }
 
 export interface CacclDbProps {
@@ -66,6 +69,13 @@ export class CacclDb extends Construct {
 
   getDashboardLink: Function;
 
+  removalPolicy: RemovalPolicy;
+
+  dbSg: SecurityGroup;
+
+  // the "etcetera" policy for the parameter group(s) and security group
+  etcRemovalPolicy: RemovalPolicy;
+
   static createDbConstruct(scope: Construct, props: CacclDbProps) {
     const { options } = props;
     switch (options.engine.toLowerCase()) {
@@ -81,6 +91,20 @@ export class CacclDb extends Construct {
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id);
 
+    const { vpc } = props;
+    const {
+      removalPolicy = DEFAULT_REMOVAL_POLICY,
+    } = props.options;
+
+    // removal policy for the cluster & instances
+    this.removalPolicy = (<any>RemovalPolicy)[removalPolicy];
+    // if we're keeping the dbs we have to keep the parameter group
+    // and security group or cloudformation will barf. Also there's no
+    // "SNAPSHOT" option for these resources so it's either "RETAIN" or "DESTROY"
+    this.etcRemovalPolicy = this.removalPolicy === RemovalPolicy.RETAIN
+      ? RemovalPolicy.RETAIN
+      : RemovalPolicy.DESTROY;
+
     this.dbPasswordSecret = new Secret(this, 'DbPasswordSecret', {
       description: `docdb master user password for ${Stack.of(this).stackName}`,
       generateSecretString: {
@@ -88,6 +112,27 @@ export class CacclDb extends Construct {
         excludePunctuation: true,
       },
     });
+
+    /**
+     * the database needs it's own security group so that we can apply
+     * a removal policy to it. if we re-used the main stack's security group
+     * then we wouldn't be able to treat it separately from the rest of the
+     * stack resources
+     */
+    this.dbSg = new SecurityGroup(this, 'DbSecurityGroup', {
+      vpc,
+      description: 'security group for the db cluster',
+      allowAllOutbound: false,
+    });
+
+    this.dbSg.applyRemovalPolicy(this.etcRemovalPolicy);
+
+    /**
+     * why do we `allowAllOutbound: false` just above and then undo it here?
+     * because CDK complains if we don't. something about allowAllOutbound
+     * not allowing IPv6 traffic so they had to add a warning?
+     */
+    this.dbSg.addEgressRule(Peer.anyIpv4(), Port.allTcp());
   }
 
   createMetricsAndAlarms() {
@@ -197,6 +242,7 @@ export class CacclDocDb extends CacclDb {
       profiler = false,
     } = props.options;
 
+
     if (profiler) {
       this.clusterParameterGroupParams.profiler = 'enabled';
       this.clusterParameterGroupParams.profiler_threshold_ms = '500';
@@ -222,18 +268,18 @@ export class CacclDocDb extends CacclDb {
       vpcSubnets: {
         subnetType: SubnetType.PRIVATE,
       },
+      securityGroup: this.dbSg,
       backup: {
         retention: Duration.days(14),
       },
+      removalPolicy: this.removalPolicy,
     });
+
+    // this needs to happen after the parameter group has been associated with the cluster
+    parameterGroup.applyRemovalPolicy(this.etcRemovalPolicy);
 
     this.host = this.dbCluster.clusterEndpoint.hostname;
     this.port = this.dbCluster.clusterEndpoint.portAsString();
-
-    // add an ingress rule to the db security group
-    // const dbSg = SecurityGroup.fromSecurityGroupId(this, 'DocDbSecurityGroup', this.dbCluster.securityGroupId);
-    // const ingressPort = Port.tcp(+this.port)
-    // dbSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), ingressPort);
 
     appEnv.addEnvironmentVar('MONGO_USER', 'root');
     appEnv.addEnvironmentVar('MONGO_HOST', `${this.host}:${this.port}`);
@@ -310,19 +356,21 @@ export class CacclRdsDb extends CacclDb {
         vpcSubnets: {
           subnetType: SubnetType.PRIVATE,
         },
+        securityGroups: [this.dbSg],
       },
       backup: {
         retention: Duration.days(14),
-      }
+      },
+      removalPolicy: this.removalPolicy,
     });
+
+    // this needs to happen after the parameter group has been associated with the cluster
+    clusterParameterGroup.applyRemovalPolicy(this.etcRemovalPolicy);
+    instanceParameterGroup.applyRemovalPolicy(this.etcRemovalPolicy);
 
     // for rds/mysql we do NOT include the port as part of the host value
     this.host = this.dbCluster.clusterEndpoint.hostname;
     this.port = '3306';
-
-    // add an ingress rule to the db security group
-    this.dbCluster.connections.allowDefaultPortInternally();
-    this.dbCluster.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
 
     appEnv.addEnvironmentVar('DATABASE_USER', 'root');
     appEnv.addEnvironmentVar('DATABASE_PORT', this.port);
