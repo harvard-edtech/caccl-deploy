@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- New deployment configuration setting to control database removal policy: `dbOptions.removalPolicy`. 
+
 ## [0.8.1] - 2021-09-15
 
 ### Changed

@@ -355,6 +355,8 @@ The `caccl-deploy connect ...` command can be used for creating ssh port-forward
 
 `dbOptions.engineVersion` - use a specific version of the docdb or aurora/mysql engine. You probably don't need to set this.
 
+`dbOptions.removalPolicy` - **IMPORTANT** can be one of "RETAIN", "SNAPSHOT" or "DELETE". See the section just below on what this does.
+
 ##### DocumentDb only
 
 `dbOptions.profiler` - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
@@ -380,6 +382,31 @@ Likewise, if you're deploying a Mysql cluster, your container environment will g
 - DATABASE_USER - this will always be 'root'
 - DATABASE_PASSWORD - value stored in secrets manager; the fargate task definition only gets the secret's ARN
 - DATABASE_NAME - whatever you set `dbOptions.databaseName` to, otherwise an empty string
+
+##### IMPORTANT: Database removal policies
+
+A removal policy tells cloudformation what you want it to do when it removes your resource, whether through a deletion or replacement. There are three options: **RETAIN**, **SNAPSHOT** and **DESTROY**.
+
+- **DESTROY** - this one is pretty obvious. essentially it means you don't care, just delete the thing. This is the caccl-deploy default for both DocumentDb and Mysql database clusters, with one exception.
+- **SNAPSHOT** - delete the db but first take a snapshot.
+- **RETAIN** - don't delete the database. it will still be removed from the cloudformation stack, but will keep it's existing data, name, configuration, etc. This is the default **IF** your aws account is configured in the `productionAccouts` in your `config.json` (see the configuration section above). A setting of "RETAIN" will also, automatically enable deletion protection for your db cluster.
+
+You can explicitly set any app's database resources to "RETAIN" (or "SNAPSHOT") by including it in the `dbOptions` deployment config block, like so:
+
+```
+    ...
+    "dbOptions": {
+      "engine": "mysql",
+      "removalPolicy": "RETAIN"
+    }
+    ...
+```
+
+Keep in mind the "RETAIN" setting will leave orphaned db clusters/instances and parameter groups around if overused. Also, with the "SNAPSHOT" setting, caccl-deploy doesn't have a mechanism for restoring a db into an existing or new app stack.
+
+**Recommendation**: use the defaults, assuming your `productionAccounts` is set correctly. This will mean "DESTROY" for any app databases in the test account, and "RETAIN" for any in a production account. Consider setting it to "RETAIN" (or maybe "SNAPSHOT") for a staging app where the data in the db has some value or is difficult to reproduce.
+
+**Note about CDK/CloudFormation**: CloudFormation resources have both a `DeletionPolicy` and `UpdateReplacePolicy` setting. The CDK combines these into `removalPolicy`. For caccl-deploy purposes, the setting will determine what happens to the resources when they are removed from the stack, whether as a result of a stack `destroy` or an update/replace operation.
 
 ---
 

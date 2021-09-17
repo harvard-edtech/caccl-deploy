@@ -77,6 +77,12 @@ const initAwsProfile = (profile) => {
   }
 };
 
+const isProdAccount = async () => {
+  const prodAccounts = conf.get('productionAccounts');
+  const accountId = await aws.getAccountId();
+  return prodAccounts.includes(accountId);
+};
+
 /**
  * Extends the base commander.js class to add convenience methods
  * and some common options
@@ -691,6 +697,11 @@ async function main() {
         if (!await confirmProductionOp(cmd.yes)) {
           exitWithSuccess();
         }
+      }
+
+      // Set some default removal policy options depending on if this is a "prod" account
+      if (cdkStackProps.deployConfig.dbOptions && !cdkStackProps.deployConfig.dbOptions.removalPolicy) {
+        cdkStackProps.deployConfig.dbOptions.removalPolicy = await isProdAccount() ? 'RETAIN' : 'DESTROY';
       }
 
       /**
