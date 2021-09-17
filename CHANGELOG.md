@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.9.0] - 2021-09-17
+
 ### Added
 
 - New deployment configuration setting to control database removal policy: `dbOptions.removalPolicy`.
@@ -138,7 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.4...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.8.1...v0.9.0
+[0.8.1]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.4...v0.8.1
 [0.7.4]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.7.1...v0.7.2
