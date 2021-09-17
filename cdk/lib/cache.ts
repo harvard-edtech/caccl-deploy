@@ -47,7 +47,7 @@ export class CacclCache extends Construct {
       vpcSecurityGroupIds: [sg.securityGroupId],
     });
 
-    sg.addIngressRule(Peer.anyIpv4(), Port.tcp(6379));
+    sg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(6379), 'elasticache instance');
 
     appEnv.addEnvironmentVar('REDIS_HOST', this.cache.attrRedisEndpointAddress);
     appEnv.addEnvironmentVar('REDIS_PORT', this.cache.attrRedisEndpointPort);

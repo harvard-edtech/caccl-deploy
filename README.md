@@ -402,7 +402,7 @@ You can explicitly set any app's database resources to "RETAIN" (or "SNAPSHOT") 
     ...
 ```
 
-Keep in mind the "RETAIN" setting will leave orphaned db clusters/instances and parameter groups around if overused. Also, with the "SNAPSHOT" setting, caccl-deploy doesn't have a mechanism for restoring a db into an existing or new app stack.
+Keep in mind the "RETAIN" setting will leave orphaned db clusters/instances, parameter groups, and the db's secruity group around if overused. Also, with the "SNAPSHOT" setting, caccl-deploy doesn't have a mechanism for restoring a db into an existing or new app stack.
 
 **Recommendation**: use the defaults, assuming your `productionAccounts` is set correctly. This will mean "DESTROY" for any app databases in the test account, and "RETAIN" for any in a production account. Consider setting it to "RETAIN" (or maybe "SNAPSHOT") for a staging app where the data in the db has some value or is difficult to reproduce.
 
