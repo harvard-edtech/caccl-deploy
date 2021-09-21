@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- "main" is now considered a primary branch name when fetching a list of available ECR images
+- during the `new` command process, the error thrown when there are no valid image tags has a more informative message
+
 ## [0.9.0] - 2021-09-17
 
 ### Added
