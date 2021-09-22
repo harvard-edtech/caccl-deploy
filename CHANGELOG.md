@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Changed
+
+- `stack` subcommand now uses explicit path to the `cdk` executable instead of `npx`
+- `cdk.json` app configuration now uses explicit path to `ts-node` executable instead of `npx`
+
+### Added
+
+- `stack` subcommand now sets `CDK_DISABLE_VERSION_CHECK` to supress the "newer version available" messages.
+
 ## [0.9.1] - 2021-09-21
 
 ### Fixed
