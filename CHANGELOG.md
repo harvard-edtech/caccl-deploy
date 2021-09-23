@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `stack` subcommand now sets `CDK_DISABLE_VERSION_CHECK` to supress the "newer version available" messages.
+- enabled performance insights (free tier) on rds mysql db instances
 
 ## [0.9.1] - 2021-09-21
 
