@@ -656,6 +656,7 @@ async function main() {
 
       const envAdditions = {
         AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+        CDK_DISABLE_VERSION_CHECK: true,
       };
 
       // all args/options following the `stack` subcommand get passed to cdk
@@ -721,7 +722,7 @@ async function main() {
         };
 
         try {
-          execSync(['npx cdk', ...cdkArgs].join(' '), execOpts);
+          execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
           exitWithSuccess('done!');
         } catch (err) {
           exitWithError(err.msg);
