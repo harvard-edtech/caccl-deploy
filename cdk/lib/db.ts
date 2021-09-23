@@ -352,6 +352,7 @@ export class CacclRdsDb extends CacclDb {
       instanceProps: {
         vpc,
         instanceType: new InstanceType(instanceType),
+        enablePerformanceInsights: true,
         parameterGroup: instanceParameterGroup,
         vpcSubnets: {
           subnetType: SubnetType.PRIVATE,
