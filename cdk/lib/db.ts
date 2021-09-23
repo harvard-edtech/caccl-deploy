@@ -319,6 +319,9 @@ export class CacclRdsDb extends CacclDb {
         version: AuroraMysqlEngineVersion.of(engineVersion),
       });
 
+    // performance insights for rds mysql not supported on t3 instances
+    const enablePerformanceInsights = !instanceType.startsWith('t3');
+
     this.clusterParameterGroupParams.lower_case_table_names = "1";
     this.clusterParameterGroupParams.aurora_enable_repl_bin_log_filtering = "1";
 
@@ -352,7 +355,7 @@ export class CacclRdsDb extends CacclDb {
       instanceProps: {
         vpc,
         instanceType: new InstanceType(instanceType),
-        enablePerformanceInsights: true,
+        enablePerformanceInsights,
         parameterGroup: instanceParameterGroup,
         vpcSubnets: {
           subnetType: SubnetType.PRIVATE,

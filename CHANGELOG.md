@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.9.3] - 2021-09-23
+
+- fixing an issue with the last release: performance insights isn't supported on all instance types
+
 ## [0.9.2] - 2021-09-23
 
 ### Changed
