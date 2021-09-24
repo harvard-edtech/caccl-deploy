@@ -4,7 +4,7 @@ import { Stack, Construct, StackProps } from '@aws-cdk/core';
 
 import { CacclAppEnvironment } from './appEnvironment';
 import { CacclMonitoring } from './dashboard';
-import { CacclDbOptions, CacclDb } from './db';
+import { CacclDbOptions, CacclDbBase } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclCache, CacclCacheOptions } from './cache';
@@ -70,7 +70,7 @@ export class CacclDeployStack extends Stack {
     let db = null;
     if (props.dbOptions) {
       createBastion = true;
-      db = CacclDb.createDbConstruct(this, {
+      db = CacclDbBase.createDbConstruct(this, {
         vpc,
         options: props.dbOptions,
         appEnv,

@@ -5,7 +5,7 @@ import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
 import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
 import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
 import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
-import { CacclDb, CacclDocDb, CacclRdsDb } from './db';
+import { CacclDocDb, CacclRdsDb } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
 

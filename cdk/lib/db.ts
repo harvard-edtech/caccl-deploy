@@ -48,29 +48,23 @@ export interface CacclDbProps {
   appEnv: CacclAppEnvironment,
 }
 
-export class CacclDb extends Construct {
+interface ICacclDb {
+  createMetricsAndAlarms(): void;
+  getDashboardLink(): string;
+}
+
+export abstract class CacclDbBase extends Construct implements ICacclDb {
+
   host: string;
-
   port: string;
-
   dbPasswordSecret: Secret;
-
   clusterParameterGroupParams: { [key: string]: string } = {};
-
   instanceParameterGroupParams: { [key: string]: string } = {};
-
   dbCluster: DocDbDatabaseCluster | RdsDatabaseCluster;
-
   metricNamespace: string;
-
-  metrics: { [key: string]: Metric };
-
+  metrics: { [key: string]: Metric[] };
   alarms: Alarm[];
-
-  getDashboardLink: Function;
-
   removalPolicy: RemovalPolicy;
-
   dbSg: SecurityGroup;
 
   // the "etcetera" policy for the parameter group(s) and security group
@@ -135,64 +129,6 @@ export class CacclDb extends Construct {
     this.dbSg.addEgressRule(Peer.anyIpv4(), Port.allTcp());
   }
 
-  createMetricsAndAlarms() {
-    this.metrics = {
-      ReadIOPS: this.makeClusterMetric('ReadIOPS'),
-      WriteIOPS: this.makeClusterMetric('WriteIOPS'),
-      CPUUtilization: this.makeClusterMetric('CPUUtilization', { unit: Unit.PERCENT }),
-      FreeableMemory: this.makeClusterMetric('FreeableMemory'),
-      BufferCacheHitRatio: this.makeClusterMetric('BufferCacheHitRatio', { unit: Unit.PERCENT }),
-      DatabaseConnections: this.makeClusterMetric('DatabaseConnections'),
-      DiskQueueDepth: this.makeClusterMetric('DiskQueueDepth'),
-      ReadLatency: this.makeClusterMetric('ReadLatency', { unit: Unit.MILLISECONDS }),
-      WriteLatency: this.makeClusterMetric('WriteLatency', { unit: Unit.MILLISECONDS }),
-      DatabaseCursorsTimedOut: this.makeClusterMetric('DatabaseCursorsTimedOut', { statistic: 'sum' }),
-    };
-
-    this.alarms = [
-      new Alarm(this, 'CPUUtilizationAlarm', {
-        metric: this.metrics.CPUUtilization,
-        threshold: 50,
-        period: Duration.minutes(5),
-        evaluationPeriods: 3,
-        alarmDescription: `${Stack.of(this).stackName} docdb cpu utilization alarm`,
-      }),
-      new Alarm(this, 'BufferCacheHitRatioAlarm', {
-        metric: this.metrics.BufferCacheHitRatio,
-        threshold: 90,
-        evaluationPeriods: 3,
-        comparisonOperator: ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
-        alarmDescription: `${Stack.of(this).stackName} docdb buffer cache hit ratio alarm`,
-      }),
-      new Alarm(this, 'DiskQueueDepth', {
-        metric: this.metrics.DiskQueueDepth,
-        threshold: 1,
-        evaluationPeriods: 3,
-        alarmDescription: `${Stack.of(this).stackName} docdb disk queue depth`,
-      }),
-      new Alarm(this, 'ReadLatency', {
-        metric: this.metrics.ReadLatency,
-        threshold: 20,
-        evaluationPeriods: 3,
-        treatMissingData: TreatMissingData.IGNORE,
-        alarmDescription: `${Stack.of(this).stackName} docdb read latency alarm`,
-      }),
-      new Alarm(this, 'WriteLatency', {
-        metric: this.metrics.WriteLatency,
-        threshold: 100,
-        evaluationPeriods: 3,
-        treatMissingData: TreatMissingData.IGNORE,
-        alarmDescription: `${Stack.of(this).stackName} docdb write latency alarm`,
-      }),
-      new Alarm(this, 'DatabaseCursorsTimedOutAlarm', {
-        metric: this.metrics.DatabaseCursorsTimedOut,
-        threshold: 1,
-        evaluationPeriods: 1,
-        alarmDescription: `${Stack.of(this).stackName} docdb cursors timed out alarm`,
-      }),
-    ];
-  }
-
   createOutputs() {
     new CfnOutput(this, 'DbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-db-cluster-endpoint`,
@@ -205,28 +141,17 @@ export class CacclDb extends Construct {
     });
   }
 
-  addSecurityGroupIngress(vpc: Vpc) {
+  addSecurityGroupIngress(vpcCidrBlock: string) {
     this.dbCluster.connections.allowDefaultPortInternally();
-    this.dbCluster.connections.allowDefaultPortFrom(Peer.ipv4(vpc.vpcCidrBlock));
+    this.dbCluster.connections.allowDefaultPortFrom(Peer.ipv4(vpcCidrBlock));
 
   }
 
-  makeClusterMetric(metricName: string, extraProps = {}): Metric {
-    const metric = new Metric({
-      metricName,
-      namespace: this.metricNamespace,
-      period: Duration.minutes(1),
-      dimensions: {
-        DBClusterIdentifier: this.dbCluster.clusterIdentifier,
-      },
-      ...extraProps,
-    });
-    metric.attachTo(this.dbCluster);
-    return metric;
-  }
+  abstract createMetricsAndAlarms(): void;
+  abstract getDashboardLink(): string;
 }
 
-export class CacclDocDb extends CacclDb {
+export class CacclDocDb extends CacclDbBase {
 
   metricNamespace = 'AWS/DocDB';
 
@@ -288,17 +213,90 @@ export class CacclDocDb extends CacclDb {
 
     this.createMetricsAndAlarms();
     this.createOutputs();
-    this.addSecurityGroupIngress(vpc);
+    this.addSecurityGroupIngress(vpc.vpcCidrBlock);
 
-    this.getDashboardLink = () => {
-      const { region } = Stack.of(this);
-      const dbClusterId = this.dbCluster.clusterIdentifier;
-      return `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${dbClusterId}`;
-    }
+  }
+
+  makeDocDbMetric(metricName: string, extraProps = {}): Metric {
+    const metric = new Metric({
+      metricName,
+      namespace: this.metricNamespace,
+      period: Duration.minutes(1),
+      dimensions: { DBClusterIdentifier: this.dbCluster.clusterIdentifier },
+      ...extraProps,
+    });
+
+    return metric.attachTo(this.dbCluster);
+  }
+
+  createMetricsAndAlarms(): void {
+    this.metrics = {
+      ReadIOPS: [this.makeDocDbMetric('ReadIOPS')],
+      WriteIOPS: [this.makeDocDbMetric('WriteIOPS')],
+      CPUUtilization: [this.makeDocDbMetric('CPUUtilization', { unit: Unit.PERCENT })],
+      FreeableMemory: [this.makeDocDbMetric('FreeableMemory')],
+      BufferCacheHitRatio: [this.makeDocDbMetric('BufferCacheHitRatio', { unit: Unit.PERCENT })],
+      DatabaseConnections: [this.makeDocDbMetric('DatabaseConnections')],
+      DiskQueueDepth: [this.makeDocDbMetric('DiskQueueDepth')],
+      ReadLatency: [this.makeDocDbMetric('ReadLatency', { unit: Unit.MILLISECONDS })],
+      WriteLatency: [this.makeDocDbMetric('WriteLatency', { unit: Unit.MILLISECONDS })],
+      DatabaseCursorsTimedOut: [this.makeDocDbMetric('DatabaseCursorsTimedOut', { statistic: 'sum' })],
+      Transactions: [this.makeDocDbMetric('TransactionsOpen')],
+      Queries: [this.makeDocDbMetric('OpcountersQuery')],
+    };
+
+    this.alarms = [
+      new Alarm(this, 'CPUUtilizationAlarm', {
+        metric: this.metrics.CPUUtilization[0],
+        threshold: 50,
+        period: Duration.minutes(5),
+        evaluationPeriods: 3,
+        alarmDescription: `${Stack.of(this).stackName} docdb cpu utilization alarm`,
+      }),
+      new Alarm(this, 'BufferCacheHitRatioAlarm', {
+        metric: this.metrics.BufferCacheHitRatio[0],
+        threshold: 90,
+        evaluationPeriods: 3,
+        comparisonOperator: ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
+        alarmDescription: `${Stack.of(this).stackName} docdb buffer cache hit ratio alarm`,
+      }),
+      new Alarm(this, 'DiskQueueDepth', {
+        metric: this.metrics.DiskQueueDepth[0],
+        threshold: 1,
+        evaluationPeriods: 3,
+        alarmDescription: `${Stack.of(this).stackName} docdb disk queue depth`,
+      }),
+      new Alarm(this, 'ReadLatency', {
+        metric: this.metrics.ReadLatency[0],
+        threshold: 20,
+        evaluationPeriods: 3,
+        treatMissingData: TreatMissingData.IGNORE,
+        alarmDescription: `${Stack.of(this).stackName} docdb read latency alarm`,
+      }),
+      new Alarm(this, 'WriteLatency', {
+        metric: this.metrics.WriteLatency[0],
+        threshold: 100,
+        evaluationPeriods: 3,
+        treatMissingData: TreatMissingData.IGNORE,
+        alarmDescription: `${Stack.of(this).stackName} docdb write latency alarm`,
+      }),
+      new Alarm(this, 'DatabaseCursorsTimedOutAlarm', {
+        metric: this.metrics.DatabaseCursorsTimedOut[0],
+        threshold: 1,
+        evaluationPeriods: 1,
+        alarmDescription: `${Stack.of(this).stackName} docdb cursors timed out alarm`,
+      }),
+    ];
+  }
+
+  getDashboardLink() {
+    const { region } = Stack.of(this);
+    const dbClusterId = this.dbCluster.clusterIdentifier;
+    return `https://console.aws.amazon.com/docdb/home?region=${region}#cluster-details/${dbClusterId}`;
   }
 }
 
-export class CacclRdsDb extends CacclDb {
+export class CacclRdsDb extends CacclDbBase {
 
   metricNamespace = 'AWS/RDS';
 
@@ -335,6 +333,7 @@ export class CacclRdsDb extends CacclDb {
     this.instanceParameterGroupParams.log_output = "TABLE";
     this.instanceParameterGroupParams.long_query_time = "3";
     this.instanceParameterGroupParams.sql_mode = 'STRICT_ALL_TABLES';
+    this.instanceParameterGroupParams.innodb_monitor_enable = 'all';
 
     const instanceParameterGroup = new RdsParameterGroup(this, 'InstanceParameterGroup', {
       engine: auroraMysqlEngineVersion,
@@ -384,12 +383,98 @@ export class CacclRdsDb extends CacclDb {
 
     this.createMetricsAndAlarms();
     this.createOutputs();
-    this.addSecurityGroupIngress(vpc);
+    this.addSecurityGroupIngress(vpc.vpcCidrBlock);
+  }
 
-    this.getDashboardLink = () => {
-      const { region } = Stack.of(this);
-      const dbClusterId = this.dbCluster.clusterIdentifier;
-      return `https://console.aws.amazon.com/rds/home?region=${region}#database:id=${dbClusterId};is-cluster=true`;
-    }
+  makeInstanceMetrics(metricName: string, extraProps = {}): Metric[] {
+    return this.dbCluster.instanceIdentifiers.map((id) => {
+      const metric = new Metric({
+        metricName,
+        namespace: this.metricNamespace,
+        period: Duration.minutes(1),
+        dimensions: { DBInstanceIdentifier: id },
+        label: id,
+        ...extraProps,
+      });
+
+      return metric.attachTo(this.dbCluster);
+    });
+  }
+
+  createMetricsAndAlarms(): void {
+    this.metrics = {
+      ReadIOPS: this.makeInstanceMetrics('ReadIOPS'),
+      WriteIOPS: this.makeInstanceMetrics('WriteIOPS'),
+      CPUUtilization: this.makeInstanceMetrics('CPUUtilization', { unit: Unit.PERCENT }),
+      FreeableMemory: this.makeInstanceMetrics('FreeableMemory'),
+      BufferCacheHitRatio: this.makeInstanceMetrics('BufferCacheHitRatio', { unit: Unit.PERCENT }),
+      DatabaseConnections: this.makeInstanceMetrics('DatabaseConnections'),
+      DiskQueueDepth: this.makeInstanceMetrics('DiskQueueDepth'),
+      ReadLatency: this.makeInstanceMetrics('ReadLatency', { unit: Unit.MILLISECONDS }),
+      WriteLatency: this.makeInstanceMetrics('WriteLatency', { unit: Unit.MILLISECONDS }),
+      DatabaseCursorsTimedOut: this.makeInstanceMetrics('DatabaseCursorsTimedOut', { statistic: 'sum' }),
+      Transactions: this.makeInstanceMetrics('ActiveTransactions'),
+      Queries: this.makeInstanceMetrics('Queries'),
+    };
+
+    this.alarms = [
+      ...this.metrics.ReadIOPS.map((metric: Metric, idx: number) => {
+        return new Alarm(this, `CPUUtilizationAlarm-${idx}`, {
+          metric,
+          threshold: 50,
+          evaluationPeriods: 3,
+          alarmDescription: `${Stack.of(this).stackName} ${metric.label} cpu utilization alarm`,
+        });
+      }),
+      ...this.metrics.BufferCacheHitRatio.map((metric, idx) => {
+        return new Alarm(this, `BufferCacheHitRatioAlarm-${idx}`, {
+          metric,
+          threshold: 90,
+          evaluationPeriods: 3,
+          comparisonOperator: ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
+          alarmDescription: `${Stack.of(this).stackName} ${metric.label} buffer cache hit ratio alarm`,
+        });
+      }),
+      ...this.metrics.DiskQueueDepth.map((metric, idx) => {
+        return new Alarm(this, `DiskQueueDepth-${idx}`, {
+          metric,
+          threshold: 1,
+          evaluationPeriods: 3,
+          alarmDescription: `${Stack.of(this).stackName} ${metric.label} disk queue depth`,
+        });
+      }),
+      ...this.metrics.ReadLatency.map((metric, idx) => {
+        return new Alarm(this, `ReadLatency-${idx}`, {
+          metric,
+          threshold: 20,
+          evaluationPeriods: 3,
+          treatMissingData: TreatMissingData.IGNORE,
+          alarmDescription: `${Stack.of(this).stackName} ${metric.label} read latency alarm`,
+        });
+      }),
+      ...this.metrics.WriteLatency.map((metric, idx) => {
+        return new Alarm(this, `WriteLatency-${idx}`, {
+          metric,
+          threshold: 100,
+          evaluationPeriods: 3,
+          treatMissingData: TreatMissingData.IGNORE,
+          alarmDescription: `${Stack.of(this).stackName} ${metric.label} write latency alarm`,
+        });
+      }),
+      ...this.metrics.DatabaseCursorsTimedOut.map((metric, idx) => {
+        return new Alarm(this, `DatabaseCursorsTimedOutAlarm-${idx}`, {
+          metric,
+          threshold: 1,
+          evaluationPeriods: 1,
+          alarmDescription: `${Stack.of(this).stackName} ${metric.label} cursors timed out alarm`,
+        });
+      }),
+    ];
+  }
+
+  getDashboardLink() {
+    const { region } = Stack.of(this);
+    const dbClusterId = this.dbCluster.clusterIdentifier;
+    return `https://console.aws.amazon.com/rds/home?region=${region}#database:id=${dbClusterId};is-cluster=true`;
   }
 }
