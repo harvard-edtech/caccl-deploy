@@ -1,8 +1,8 @@
 import { Dashboard, GraphWidget, TextWidget, Metric, Unit, AlarmStatusWidget } from '@aws-cdk/aws-cloudwatch';
 import { HttpCodeTarget } from '@aws-cdk/aws-elasticloadbalancingv2';
-import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+import { Construct, CfnOutput, Stack, IConstruct, Duration } from '@aws-cdk/core';
 
-import { CacclDb } from './db';
+import { CacclDbBase } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclScheduledTasks } from './scheduledTasks';
 import { CacclService } from './service';
@@ -155,14 +155,14 @@ export class CacclMonitoring extends Construct {
         title: 'Storage Read/Write Bytes',
         left: [makeCIMetric('StorageReadBytes')],
         right: [makeCIMetric('StorageWriteBytes')],
-        width: 8,
+        width: 12,
         height: 6,
       }),
       new GraphWidget({
         title: 'Tasks & Deployments',
         left: [makeCIMetric('DesiredTaskCount'), makeCIMetric('PendingTaskCount'), makeCIMetric('RunningTaskCount')],
         right: [ecsService.metric('DeploymentCount')],
-        width: 8,
+        width: 12,
         height: 6,
       }),
     );
@@ -176,18 +176,18 @@ export class CacclMonitoring extends Construct {
       new TextWidget({
         markdown: ['### Logs\n', makeLogLink(`/${stackName}/app`), makeLogLink(`/${stackName}/proxy`)].join('\n'),
         width: 24,
-        height: 6,
+        height: 4,
       }),
     );
   }
 
-  addDbSection(db: CacclDb): void {
+  addDbSection(db: CacclDbBase): void {
     const { region } = Stack.of(this);
     const { dbCluster } = db;
 
     this.dashboard.addWidgets(
       new TextWidget({
-        markdown: `### DocDB Cluster: [${dbCluster.clusterIdentifier}](${db.getDashboardLink()})`,
+        markdown: `### Database Cluster: [${dbCluster.clusterIdentifier}](${db.getDashboardLink()})`,
         width: 24,
         height: 1,
       }),
@@ -196,22 +196,32 @@ export class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       new GraphWidget({
         title: 'Read/Write IOPS',
-        left: [db.metrics.ReadIOPS],
-        right: [db.metrics.WriteIOPS],
-        width: 8,
+        left: db.metrics.ReadIOPS,
+        right: db.metrics.WriteIOPS,
+        width: 12,
         height: 6,
       }),
       new GraphWidget({
         title: 'CPU & Memory',
-        left: [db.metrics.CPUUtilization],
-        right: [db.metrics.FreeableMemory],
-        width: 8,
+        left: db.metrics.CPUUtilization,
+        right: db.metrics.FreeableMemory,
+        width: 12,
+        height: 6,
+      }),
+    );
+    this.dashboard.addWidgets(
+      new GraphWidget({
+        title: 'Read/Write Latency',
+        left: db.metrics.ReadLatency,
+        right: db.metrics.WriteLatency,
+        width: 12,
         height: 6,
       }),
       new GraphWidget({
-        title: 'CursorsTimedOut',
-        left: [db.metrics.DatabaseCursorsTimedOut],
-        width: 8,
+        title: 'Transactions/Queries',
+        left: db.metrics.Transactions,
+        right: db.metrics.Queries,
+        width: 12,
         height: 6,
       }),
     );
@@ -220,23 +230,21 @@ export class CacclMonitoring extends Construct {
         alarms: db.alarms,
         width: 24,
         height: 6,
-        title: 'DocDb Alarm States',
+        title: 'Database Alarm States',
       }),
     );
     this.dashboard.addWidgets(
       new GraphWidget({
-        left: [db.metrics.BufferCacheHitRatio],
+        left: db.metrics.BufferCacheHitRatio,
       }),
       new GraphWidget({
-        left: [db.metrics.DatabaseConnections],
+        left: db.metrics.DatabaseConnections,
       }),
       new GraphWidget({
-        left: [db.metrics.DiskQueueDepth],
+        left: db.metrics.DiskQueueDepth,
       }),
       new GraphWidget({
-        title: 'Read/Write Latency',
-        left: [db.metrics.ReadLatency],
-        right: [db.metrics.WriteLatency],
+        left: db.metrics.DatabaseCursorsTimedOut,
       }),
     );
   };
