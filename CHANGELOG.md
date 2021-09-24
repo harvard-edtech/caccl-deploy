@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.10.0] - 2021-09-24
+
+### Fixed
+
+- rds/mysql database metrics were not showing up. Database constructs were rewritten to allow rds/mysql metrics to come from db instances while docdb metrics continue to come from the cluster
+- rearranged the db section of the dashboard
+
+### Added
+
+- `innodb_monitor_enable='all'` added to the rds/mysql instance parameter group to provide additional metrics
+- two new dashboard db metrics: Transactions and Queries
+
+
 ## [0.9.3] - 2021-09-23
+
+### Fixed
 
 - fixing an issue with the last release: performance insights isn't supported on all instance types
 
