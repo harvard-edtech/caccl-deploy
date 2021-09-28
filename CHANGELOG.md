@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- `isProductionAccount` was erroring if user's config didn't set `productionAccounts`
+
 ## [0.10.0] - 2021-09-24
 
 ### Fixed
