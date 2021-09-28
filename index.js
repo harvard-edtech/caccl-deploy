@@ -80,7 +80,7 @@ const initAwsProfile = (profile) => {
 const isProdAccount = async () => {
   const prodAccounts = conf.get('productionAccounts');
   const accountId = await aws.getAccountId();
-  return prodAccounts.includes(accountId);
+  return prodAccounts && prodAccounts.includes(accountId);
 };
 
 /**
@@ -248,7 +248,7 @@ async function main() {
       'with the following default values:',
       '',
       ...Object.entries(configDefaults).map(([k, v]) => {
-        return `  - ${chalk.yellow(k)}: ${chalk.bold(v)}`;
+        return `  - ${chalk.yellow(k)}: ${chalk.bold(JSON.stringify(v))}`;
       }),
       '',
       'Please see the docs for explanations of these settings',

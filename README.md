@@ -107,8 +107,9 @@ It looks like this is your first time running caccl-deploy.
 A preferences file has been created at ~/.config/caccl-deploy-nodejs/config.json
 with the following default values:
 
-  - ssmRootPrefix: /caccl-deploy
-  - cfnStackPrefix: CacclDeploy-
+  - ssmRootPrefix: "/caccl-deploy"
+  - cfnStackPrefix: "CacclDeploy-"
+  - productionAccounts: []
 
 Please see the docs for explanations of these settings
 ✖ Continue … yes
@@ -120,6 +121,16 @@ There are four possible settings in the `config.json`:
 - `cfnStackPrefix` (string) - this determines the prefix for all CloudFormation stacks controlled by `caccl-deploy`. For example, if you create an app called "foo-app" it will be provisioned with the CFn stack "CacclDeploy-foo-app".
 - `ecrAccessRoleArn` (string) - the ARN of an IAM role for allowing cross-account access to ECR repositories and images. This setting is necessary for situations in which you have multiple AWS accounts but only use ECR repos/images in one of them. See the section below on ECR Repositories.
 - `productionAccouts` (array) - if you want an additional, loud warning prompt when performing operations on a production account, include its account id (as a string) here.
+
+Example:
+```
+{
+    "ssmRootPrefix": "/caccl-deploy",
+    "cfnStackPrefix": "CacclDeploy-",
+    "ecrAccessRoleArn": "arn:aws:iam::121212121212:role/CrossAccountEcrAccess",
+    "productionAccounts": ["343434343434"]
+}
+```
 
 ---
 
