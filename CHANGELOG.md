@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.10.2] - 2021-09-28
+
+### Fixed
+
+- migrate to lockfileVersion 2 so that npm v7 can symlink our dependent binaries correctly
+
 ## [0.10.1] - 2021-09-28
 
 ### Fixed
