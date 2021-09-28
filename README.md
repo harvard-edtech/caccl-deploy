@@ -119,8 +119,8 @@ There are four possible settings in the `config.json`:
 
 - `ssmRootPrefix` (string) - this determines the root namespace for all SSM Parameter Store entries controlled by `caccl-deploy`. For instance, the default value of `/caccl-deploy` means that the program will only look for parameters whose names begin with that string, and newly created app configurations will be created with a namespace of `/caccl-deploy/my-new-app`. See the section below on Parameters & Secrets for more detail.
 - `cfnStackPrefix` (string) - this determines the prefix for all CloudFormation stacks controlled by `caccl-deploy`. For example, if you create an app called "foo-app" it will be provisioned with the CFn stack "CacclDeploy-foo-app".
-- `ecrAccessRoleArn` (string) - the ARN of an IAM role for allowing cross-account access to ECR repositories and images. This setting is necessary for situations in which you have multiple AWS accounts but only use ECR repos/images in one of them. See the section below on ECR Repositories.
-- `productionAccouts` (array) - if you want an additional, loud warning prompt when performing operations on a production account, include its account id (as a string) here.
+- `ecrAccessRoleArn` (string, optional) - the ARN of an IAM role for allowing cross-account access to ECR repositories and images. This setting is necessary for situations in which you have multiple AWS accounts but only use ECR repos/images in one of them. See the section below on ECR Repositories.
+- `productionAccouts` (array, optional) - if you want an additional, loud warning prompt when performing operations on a production account, include its account id (as a string) here.
 
 Example:
 ```
