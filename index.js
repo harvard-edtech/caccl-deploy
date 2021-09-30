@@ -685,13 +685,13 @@ async function main() {
       }
 
       // disable cdk prompting if user included `--yes` flag
-      if (cdkArgs.includes('deploy') && cmd.yes) {
+      if (cmd.yes && (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))) {
         cdkArgs.push('--require-approval-never');
       }
 
-      if (cdkArgs.includes('deploy') || cdkArgs.includes('destroy')) {
+      if (['deploy', 'destroy', 'changeset'].some((c) => cdkArgs.includes(c))) {
         // check that we're not using a wildly different version of the cli
-        if (stackExists && !this.yes && !(await cmd.stackVersionDiffCheck())) {
+        if (stackExists && !cmd.yes && !(await cmd.stackVersionDiffCheck())) {
           exitWithSuccess();
         }
         // production failsafe if we're actually changing anything
