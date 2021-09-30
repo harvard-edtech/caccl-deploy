@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.10.3] - 2021-09-29
+
 ### Changed
 
 - `stack ... changeset` now also obeys the `--yes` flag
@@ -194,7 +196,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.1...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.2...v0.10.3
+[0.10.2]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.9.2...v0.9.3
