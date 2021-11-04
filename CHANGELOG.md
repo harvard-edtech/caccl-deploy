@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- fixed two files related to task scheduling that were somehow formatted with tabs instead of spaces
+
 ## [0.10.3] - 2021-09-29
 
 ### Changed
