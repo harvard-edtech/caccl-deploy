@@ -1,6 +1,6 @@
 import { Alarm } from '@aws-cdk/aws-cloudwatch';
 import { SecurityGroup } from '@aws-cdk/aws-ec2';
-import { Cluster, FargatePlatformVersion, FargateService, IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
+import { Cluster, FargatePlatformVersion, FargateService, IEcsLoadBalancerTarget, PropagatedTagSource } from '@aws-cdk/aws-ecs';
 import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
 
 import { CacclTaskDef } from './taskdef';
@@ -35,6 +35,7 @@ export class CacclService extends Construct {
       circuitBreaker: {
         rollback: true,
       },
+      propagateTags: PropagatedTagSource.SERVICE,
     });
 
     // this is the thing that gets handed off to the load balancer
