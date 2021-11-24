@@ -282,8 +282,9 @@ export class CacclDocDb extends CacclDbBase {
       }),
       new Alarm(this, 'DatabaseCursorsTimedOutAlarm', {
         metric: this.metrics.DatabaseCursorsTimedOut[0],
-        threshold: 1,
-        evaluationPeriods: 1,
+        threshold: 5,
+        period: Duration.minutes(5),
+        evaluationPeriods: 3,
         alarmDescription: `${Stack.of(this).stackName} docdb cursors timed out alarm`,
       }),
     ];

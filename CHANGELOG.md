@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Modified
+
+- updated the alarm threshold docdb cursor timeouts. Instead of firing on each occurrance it now has to see 5 over 5 minutes for 3 consectuive evaluation periods.
+
 ### Fixed
 
 - fixed two files related to task scheduling that were somehow formatted with tabs instead of spaces
