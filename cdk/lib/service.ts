@@ -26,7 +26,7 @@ export class CacclService extends Construct {
 
     this.ecsService = new FargateService(this, 'FargateService', {
       cluster,
-      platformVersion: FargatePlatformVersion.VERSION1_3,
+      platformVersion: FargatePlatformVersion.VERSION1_4,
       securityGroup: sg,
       taskDefinition: taskDef.taskDef,
       desiredCount: taskCount,

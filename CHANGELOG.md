@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Modified
 
 - updated the alarm threshold docdb cursor timeouts. Instead of firing on each occurrance it now has to see 5 over 5 minutes for 3 consectuive evaluation periods.
+- update to Fargate platform version 1.4
 
 ### Fixed
 
