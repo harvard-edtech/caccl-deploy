@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fixed two files related to task scheduling that were somehow formatted with tabs instead of spaces
 - tags are now propagated from the ECS service to the Fargate tasks
 
+### Added
+
+- new deploy configuration setting: `targetDeregistrationDelay`, specifies number of seconds between when load balancer stops sending new reguests to a target and the target is finally deregistered.
+
 ## [0.10.3] - 2021-09-29
 
 ### Changed

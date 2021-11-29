@@ -18,6 +18,7 @@ export interface CacclLoadBalancerProps {
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
   albLogBucketName?: string;
+  targetDeregistrationDelay?: number;
 }
 
 export class CacclLoadBalancer extends Construct {
@@ -32,7 +33,14 @@ export class CacclLoadBalancer extends Construct {
   constructor(scope: Construct, id: string, props: CacclLoadBalancerProps) {
     super(scope, id);
 
-    const { sg, vpc, certificateArn, loadBalancerTarget, albLogBucketName } = props;
+    const {
+      sg,
+      vpc,
+      certificateArn,
+      loadBalancerTarget,
+      albLogBucketName,
+      targetDeregistrationDelay = 30,
+    } = props;
 
     this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
@@ -78,7 +86,7 @@ export class CacclLoadBalancer extends Construct {
       protocol: ApplicationProtocol.HTTPS,
       // setting this duration value enables the lb stickiness; 1 day is the default
       stickinessCookieDuration: Duration.seconds(86400),
-      deregistrationDelay: Duration.seconds(30),
+      deregistrationDelay: Duration.seconds(targetDeregistrationDelay),
       targetType: TargetType.IP,
       targets: [loadBalancerTarget],
       healthCheck: {

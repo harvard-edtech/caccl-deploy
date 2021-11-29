@@ -28,6 +28,7 @@ export interface CacclDeployStackProps extends StackProps {
   dbOptions?: CacclDbOptions;
   bastionAmiMap?: { [key: string]: string; };
   scheduledTasks?: { [key: string]: CacclScheduledTask };
+  targetDeregistrationDelay?: number;
 }
 
 export class CacclDeployStack extends Stack {
@@ -119,6 +120,7 @@ export class CacclDeployStack extends Stack {
       certificateArn: props.certificateArn,
       loadBalancerTarget: service.loadBalancerTarget,
       albLogBucketName: props.albLogBucketName,
+      targetDeregistrationDelay: props.targetDeregistrationDelay,
       vpc,
       sg,
     });

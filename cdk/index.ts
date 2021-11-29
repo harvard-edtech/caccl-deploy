@@ -46,6 +46,7 @@ const stackProps: CacclDeployStackProps = {
     gitRepoVolume: deployConfig.gitRepoVolume,
   },
   taskCount: +(deployConfig.taskCount || 1),
+  targetDeregistrationDelay: deployConfig.targetDeregistrationDelay,
   cacheOptions: deployConfig.cacheOptions,
   dbOptions: deployConfig.dbOptions,
   bastionAmiMap: deployConfig.bastionAmiMap || {},

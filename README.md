@@ -256,6 +256,8 @@ _**Important**_: The configured address(es) will redceive a confirmation message
 
 `taskMemory` - memory in MB assigned to each task. Default is "512". See note below.
 
+`targetDeregistrationDelay` - number of seconds between when the load balancer stops sending requests to a target (i.e. an app task instance) and when it actually deregisters the target. See [Deregistration Delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#deregistration-delay).
+
 `gitRepoVolume` - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
 
 **Database & cache options**
