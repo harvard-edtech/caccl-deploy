@@ -13,8 +13,8 @@ import { Bucket } from '@aws-cdk/aws-s3';
 import { CfnOutput, Construct, Duration, Stack } from '@aws-cdk/core';
 
 export interface CacclLoadBalancerProps {
-  sg: SecurityGroup;
   vpc: Vpc;
+  sg: SecurityGroup;
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
   albLogBucketName?: string;
@@ -34,8 +34,8 @@ export class CacclLoadBalancer extends Construct {
     super(scope, id);
 
     const {
-      sg,
       vpc,
+      sg,
       certificateArn,
       loadBalancerTarget,
       albLogBucketName,
@@ -78,6 +78,11 @@ export class CacclLoadBalancer extends Construct {
       certificates: [{ certificateArn }],
       port: 443,
       protocol: ApplicationProtocol.HTTPS,
+      /**
+       * if we don't make this false the listener construct will add rules
+       * to our security group that we don't want/need
+       */
+      open: false,
     });
 
     const appTargetGroup = new ApplicationTargetGroup(this, 'TargetGroup', {
@@ -98,9 +103,6 @@ export class CacclLoadBalancer extends Construct {
     httpsListener.addTargetGroups('AppTargetGroup', {
       targetGroups: [appTargetGroup],
     });
-
-    sg.addIngressRule(Peer.anyIpv4(), Port.tcp(80));
-    sg.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
 
     this.metrics = {
       RequestCount: this.loadBalancer.metricRequestCount(),

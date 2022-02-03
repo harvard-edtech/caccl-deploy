@@ -1,4 +1,4 @@
-import { Vpc, SecurityGroup } from '@aws-cdk/aws-ec2';
+import { Vpc, SecurityGroup, Peer, Port } from '@aws-cdk/aws-ec2';
 import { Cluster } from '@aws-cdk/aws-ecs';
 import { Stack, Construct, StackProps } from '@aws-cdk/core';
 
@@ -29,6 +29,7 @@ export interface CacclDeployStackProps extends StackProps {
   bastionAmiMap?: { [key: string]: string; };
   scheduledTasks?: { [key: string]: CacclScheduledTask };
   targetDeregistrationDelay?: number;
+  firewallSgId?: string;
 }
 
 export class CacclDeployStack extends Stack {
@@ -54,11 +55,6 @@ export class CacclDeployStack extends Stack {
       throw new Error('deployConfig must define either cidrBlock or vpcId');
     }
 
-    const sg = new SecurityGroup(this, 'SecurityGroup', {
-      allowAllOutbound: true,
-      vpc,
-    });
-
     const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
       envVars: props.appEnvironment,
     });
@@ -83,7 +79,6 @@ export class CacclDeployStack extends Stack {
       createBastion = true;
       cache = new CacclCache(this, 'Cache', {
         vpc,
-        sg,
         options: props.cacheOptions,
         appEnv,
       });
@@ -109,10 +104,28 @@ export class CacclDeployStack extends Stack {
       ...props.taskDefProps,
     });
 
+    let firewallSg;
+    if (props.firewallSgId) {
+      // import the security group
+      firewallSg = SecurityGroup.fromSecurityGroupId(this, 'SecurityGroupImport', props.firewallSgId, {
+        allowAllOutbound: true,
+      }) as SecurityGroup;
+      // re-use for the bastion host
+    } else {
+      firewallSg = new SecurityGroup(this, 'FirewallSecurityGroup', {
+        vpc,
+        description: 'security group for the load balancer and app service',
+      });
+
+      // by default apps are public
+      firewallSg.addIngressRule(Peer.anyIpv4(), Port.tcp(80))
+      firewallSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
+    }
+
     const service = new CacclService(this, 'EcsService', {
-      sg,
       cluster,
       taskDef,
+      loadBalancerSg: firewallSg,
       taskCount: props.taskCount,
     });
 
@@ -121,8 +134,8 @@ export class CacclDeployStack extends Stack {
       loadBalancerTarget: service.loadBalancerTarget,
       albLogBucketName: props.albLogBucketName,
       targetDeregistrationDelay: props.targetDeregistrationDelay,
+      sg: firewallSg,
       vpc,
-      sg,
     });
 
     const dashboard = new CacclMonitoring(this, 'Dashboard', {
@@ -147,7 +160,17 @@ export class CacclDeployStack extends Stack {
     }
 
     if (createBastion) {
-      new CacclSshBastion(this, 'SshBastion', { vpc });
+      let bastionSg;
+      if (props.firewallSgId) {
+        bastionSg = firewallSg;
+      } else {
+        bastionSg = new SecurityGroup(this, 'BastionSecurityGroup', {
+          vpc,
+          description: 'security group for the ssh bastion host',
+        })
+        bastionSg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
+      }
+      new CacclSshBastion(this, 'SshBastion', { vpc, sg: bastionSg });
     }
 
     if (props.scheduledTasks) {

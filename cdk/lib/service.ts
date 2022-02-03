@@ -1,5 +1,5 @@
 import { Alarm } from '@aws-cdk/aws-cloudwatch';
-import { SecurityGroup } from '@aws-cdk/aws-ec2';
+import { Port, SecurityGroup } from '@aws-cdk/aws-ec2';
 import { Cluster, FargatePlatformVersion, FargateService, IEcsLoadBalancerTarget, PropagatedTagSource } from '@aws-cdk/aws-ecs';
 import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
 
@@ -7,9 +7,9 @@ import { CacclTaskDef } from './taskdef';
 
 export interface CacclServiceProps {
   cluster: Cluster;
-  sg: SecurityGroup;
   taskDef: CacclTaskDef;
   taskCount: number;
+  loadBalancerSg: SecurityGroup;
 }
 
 export class CacclService extends Construct {
@@ -22,12 +22,19 @@ export class CacclService extends Construct {
   constructor(scope: Construct, id: string, props: CacclServiceProps) {
     super(scope, id);
 
-    const { sg, cluster, taskDef, taskCount } = props;
+    const { cluster, taskDef, taskCount, loadBalancerSg } = props;
+
+    const serviceSg = new SecurityGroup(this, 'SecurityGroup', {
+      vpc: cluster.vpc,
+      description: 'ecs service security group',
+    });
+    // Load balancer to tasks
+    serviceSg.connections.allowFrom(loadBalancerSg, Port.tcp(443));
 
     this.ecsService = new FargateService(this, 'FargateService', {
       cluster,
+      securityGroups: [serviceSg],
       platformVersion: FargatePlatformVersion.VERSION1_4,
-      securityGroup: sg,
       taskDefinition: taskDef.taskDef,
       desiredCount: taskCount,
       minHealthyPercent: 100,

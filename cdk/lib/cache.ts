@@ -12,20 +12,20 @@ export interface CacclCacheOptions {
 
 export interface CacclCacheProps {
   vpc: Vpc,
-  sg: SecurityGroup,
   options: CacclCacheOptions,
   appEnv: CacclAppEnvironment,
 };
 
 export class CacclCache extends Construct {
   cache: CfnCacheCluster;
+  cacheSg: SecurityGroup;
   metrics: { [key: string]: Metric; };
   alarms: Alarm[];
 
   constructor(scope: Construct, id: string, props: CacclCacheProps) {
     super(scope, id);
 
-    const { vpc, sg, appEnv } = props;
+    const { vpc, appEnv } = props;
     const {
       engine = 'redis',
       numCacheNodes = 1,
@@ -39,15 +39,28 @@ export class CacclCache extends Construct {
       }),
     });
 
+    this.cacheSg = new SecurityGroup(this, 'CacheSecurityGroup', {
+      vpc,
+      description: 'security group for the elasticache cluster',
+      allowAllOutbound: false,
+    });
+
+    this.cacheSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(6379), 'allow from internal network');
+
+    /**
+     * why do we `allowAllOutbound: false` just above and then undo it here?
+     * because CDK complains if we don't. something about allowAllOutbound
+     * not allowing IPv6 traffic so they had to add a warning?
+     */
+    this.cacheSg.addEgressRule(Peer.anyIpv4(), Port.allTcp());
+
     this.cache = new CfnCacheCluster(this, 'CacheCluster', {
       engine,
       numCacheNodes,
       cacheNodeType,
       cacheSubnetGroupName: subnetGroup.ref,
-      vpcSecurityGroupIds: [sg.securityGroupId],
+      vpcSecurityGroupIds: [this.cacheSg.securityGroupId],
     });
-
-    sg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(6379), 'elasticache instance');
 
     appEnv.addEnvironmentVar('REDIS_HOST', this.cache.attrRedisEndpointAddress);
     appEnv.addEnvironmentVar('REDIS_PORT', this.cache.attrRedisEndpointPort);

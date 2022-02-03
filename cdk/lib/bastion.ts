@@ -7,31 +7,27 @@ const DEFAULT_AMI_MAP = {
 
 export interface CacclSshBastionProps {
   vpc: Vpc,
+  sg: SecurityGroup;
   amiMap?: { [key: string]: string },
 };
 
 export class CacclSshBastion extends Construct {
   instance: BastionHostLinux;
-  sg: SecurityGroup;
 
   constructor(scope: Construct, id: string, props: CacclSshBastionProps) {
     super(scope, id);
 
     const {
       vpc,
+      sg,
       amiMap = {},
     } = props;
-
-
-
-    this.sg = new SecurityGroup(this, 'BastionSecurityGroup', { vpc });
-    this.sg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
 
     this.instance = new BastionHostLinux(this, 'SshBastionHost', {
       vpc,
       subnetSelection: { subnetType: SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
-      securityGroup: this.sg,
+      securityGroup: sg,
       machineImage: MachineImage.genericLinux(Object.assign(DEFAULT_AMI_MAP, amiMap)),
     });
 

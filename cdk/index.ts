@@ -47,6 +47,7 @@ const stackProps: CacclDeployStackProps = {
   },
   taskCount: +(deployConfig.taskCount || 1),
   targetDeregistrationDelay: deployConfig.targetDeregistrationDelay,
+  firewallSgId: deployConfig.firewallSgId,
   cacheOptions: deployConfig.cacheOptions,
   dbOptions: deployConfig.dbOptions,
   bastionAmiMap: deployConfig.bastionAmiMap || {},
