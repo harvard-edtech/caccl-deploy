@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - new deploy configuration setting: `targetDeregistrationDelay`, specifies number of seconds between when load balancer stops sending new reguests to a target and the target is finally deregistered.
+- new configuration setting, `firewallSgId` allows for importing a security group to apply to the load balancer and bastion host. meant as a way to restrict app traffic to internal (office, vpn) ips.
 
 ## [0.10.3] - 2021-09-29
 

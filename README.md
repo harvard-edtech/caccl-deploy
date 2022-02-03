@@ -166,6 +166,9 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
   "appImage": "arn:aws:ecr:us-east-1:123456789012:repository/hdce/my-app-image:1.0.0",
   "certificateArn": "arn:aws:acm:us-east-1:123456789012:certificate/172b09cc-84a8-4d9d-a463-c1fc0f19a3fd",
 
+  // See "Security" section below
+  "firewallSgId": "sg-12345abcdef"
+
   // Everything else is optional or has defaults
   "appEnvironment": {
     "FOO": "barbar",
@@ -229,6 +232,8 @@ First the required values.
 `certificateArn` - one of the components of the app provisioning that `caccl-deploy` creates is a Application Load Balancer. You will need to create (or import) an ACM certificate so that it can be attached to the load balancer. This value should be the full ARN of that certfiicate.
 
 Now the optional stuff.
+
+`firewallSgId` - set this to import/re-use an existing security group that will be applied to the load balancer and bastion host. See "Secruity" below.
 
 `appEnvironment` - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--keep-secret-arns` flag to see the actual ARN values.
 
@@ -440,6 +445,21 @@ Including a cache in your deploy configuration will result in a bastion host bei
 `cacheOptions.numCacheNodes` - Default is "1". Production apps should use "2" to enable multi-az replication.
 
 `cacheOptions.cacheNodeType` - Default is "cache.t3.medium". Consider "cache.r5.large" for production.
+
+---
+
+### Security
+
+Some notes about app and resource security state.
+
+- by default, caccl-deploy apps are open to the internet on ports 80 and 443
+- all databases and/or Elasticache (redis) instances run on private subnets. They should be accessible through their respective ports only to traffic coming from internal (10.1.x.x) ips.
+- to access a database or cache instance from outside the vpc you must tunnel through the bastion host. The `connect` command helps facilitate this.
+- the bastion host, if the app has one, is open to the internet on port 22
+
+##### Importing a security group
+
+Should you wish to apply restrictions on where your app can be accessed from (e.g. office network or vpn), you can import an existing security group using the deployment configuration setting, `firewallSgId`. This security group will be used in place of the default for both the application load balancer and the bastion host. The security group will need to have ingress rules for at least ports 80, 443 and 22. Note that the imported security group does not become a member of the stack's resources; it continues to exist separately from the importing app's cloudformation stack and won't be updated or deleted by the app's stack update operations.
 
 ---
 
