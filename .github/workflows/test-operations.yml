@@ -1,0 +1,36 @@
+name: test operations
+on:
+  workflow_dispatch:
+  push:
+    branches: [jluker-github-action-ops-test]
+    paths-ignore:
+      - '*.md'
+
+permissions:
+  id-token: write # required to use OIDC authentication
+  contents: read # required to checkout the code from the repo
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::542186135646:role/caccl-deploy-github-action
+          role-duration-seconds: 900 # the ttl of the session, in seconds.
+          aws-region: us-east-1 # use your region here.
+      - name: install
+        run: npm ci
+      - name: list apps
+        env:
+          CACCL_DEPLOY_CONFIG_DIR: '/tmp'
+          CACCL_DEPLOY_NON_INTERACTIVE: 1
+        run: |
+          echo '{ "ssmRootPrefix": "foo" }' > '/tmp/config.json'
+          node index.js apps
