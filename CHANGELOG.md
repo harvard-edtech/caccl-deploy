@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.11.0] - 2022-02-22
+
 ### Modified
 
 - updated the alarm threshold docdb cursor timeouts. Instead of firing on each occurrance it now has to see 5 over 5 minutes for 3 consectuive evaluation periods.
@@ -211,7 +213,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0]
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.3...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.0...v0.10.1
