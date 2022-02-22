@@ -18,7 +18,7 @@ export interface CacclLoadBalancerProps {
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
   albLogBucketName?: string;
-  targetDeregistrationDelay?: number;
+  targetDeregistrationDelay?: number; // in seconds
 }
 
 export class CacclLoadBalancer extends Construct {

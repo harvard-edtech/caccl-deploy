@@ -28,7 +28,7 @@ export interface CacclDeployStackProps extends StackProps {
   dbOptions?: CacclDbOptions;
   bastionAmiMap?: { [key: string]: string; };
   scheduledTasks?: { [key: string]: CacclScheduledTask };
-  targetDeregistrationDelay?: number;
+  targetDeregistrationDelay?: number; // in seconds
   firewallSgId?: string;
 }
 

@@ -225,21 +225,21 @@ The following DocumentDb configuration was used by caccl-deploy prior to version
 
 First the required values.
 
-`infraStackName` - this tells `caccl-deploy` what set of shared infrastructure resources your app will be deployed into. For this setting you just want the string value of the CloudFormation stack name. The companion project, [dce-ecs-infra](https://github.com/harvard-edtech/dce-ecs-infra) is what we use to build out that infrastructure.
+`infraStackName` (string) - this tells `caccl-deploy` what set of shared infrastructure resources your app will be deployed into. For this setting you just want the string value of the CloudFormation stack name. The companion project, [dce-ecs-infra](https://github.com/harvard-edtech/dce-ecs-infra) is what we use to build out that infrastructure.
 
-`appImage` - this tells `caccl-deploy` where to find your app's Docker image. This value should be the ARN of an ECR repo plus an image tag. It's also possible to use a DockerHub name:tag combo, but some of the `caccl-deploy` subcommands (`release` for example) are not compatible with that use.
+`appImage` (string) - this tells `caccl-deploy` where to find your app's Docker image. This value should be the ARN of an ECR repo plus an image tag. It's also possible to use a DockerHub name:tag combo, but some of the `caccl-deploy` subcommands (`release` for example) are not compatible with that use.
 
-`certificateArn` - one of the components of the app provisioning that `caccl-deploy` creates is a Application Load Balancer. You will need to create (or import) an ACM certificate so that it can be attached to the load balancer. This value should be the full ARN of that certfiicate.
+`certificateArn` (string) - one of the components of the app provisioning that `caccl-deploy` creates is a Application Load Balancer. You will need to create (or import) an ACM certificate so that it can be attached to the load balancer. This value should be the full ARN of that certfiicate.
 
 Now the optional stuff.
 
-`firewallSgId` - set this to import/re-use an existing security group that will be applied to the load balancer and bastion host. See "Secruity" below.
+`firewallSgId` (string) - set this to import/re-use an existing security group that will be applied to the load balancer and bastion host. See "Security" below.
 
-`appEnvironment` - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--keep-secret-arns` flag to see the actual ARN values.
+`appEnvironment` ({ [string]: string }) - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--keep-secret-arns` flag to see the actual ARN values.
 
-`notifications.slack` - a slack webhook URL. If configured this will result in a Lambda function being added to your stack and subscribed to the stack's SNS topic for alert notifications.
+`notifications.slack` (string) - a slack webhook URL. If configured this will result in a Lambda function being added to your stack and subscribed to the stack's SNS topic for alert notifications.
 
-`notifications.email` - an email address for subscribing to the stack's SNS topic for alerts and other notifications. This setting also supports a list of addresses, which would be represented as `notifications.email.[0-n]`. In other words, the following configuration is also supported:
+`notifications.email` ([string])- an email address for subscribing to the stack's SNS topic for alerts and other notifications. This setting also supports a list of addresses, which would be represented as `notifications.email.[0-n]`. In other words, the following configuration is also supported:
 
 ```
 {
@@ -251,25 +251,25 @@ Now the optional stuff.
   }
 }
 ```
-_**Important**_: The configured address(es) will redceive a confirmation message and must confirm to complete the subscription.
+_**Important**_: The configured address(es) will receive a confirmation message and must confirm to complete the subscription.
 
-`tags` - a set of key value pairs. these will be assigned to the CloudFormation stack and by extension all the resources in the stack (for resource types that support this (which is most)).
+`tags` ({ [string]: string }) - a set of key value pairs. these will be assigned to the CloudFormation stack and by extension all the resources in the stack (for resource types that support this (which is most)).
 
-`taskCount` - how many concurrent tasks should the Fargate service run. Default is "1".
+`taskCount` (number) - how many concurrent tasks should the Fargate service run. Default is "1".
 
-`taskCpu` - the amount of CPU units assigned to each task. Default is "256", which is equivalent to 1 virtual CPU (vCPU). See note below.
+`taskCpu` (number) - the amount of CPU units assigned to each task. Default is "256", which is equivalent to 1 virtual CPU (vCPU). See note below.
 
-`taskMemory` - memory in MB assigned to each task. Default is "512". See note below.
+`taskMemory` (number) - memory in MB assigned to each task. Default is "512". See note below.
 
-`targetDeregistrationDelay` - number of seconds between when the load balancer stops sending requests to a target (i.e. an app task instance) and when it actually deregisters the target. See [Deregistration Delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#deregistration-delay).
+`targetDeregistrationDelay` (number) - number of seconds between when the load balancer stops sending requests to a target (i.e. an app task instance) and when it actually deregisters the target. See [Deregistration Delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#deregistration-delay).
 
-`gitRepoVolume` - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
+`gitRepoVolume` (string) - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
 
 **Database & cache options**
 
-`dbOptions.engine` - Allowed values are "mysql" and "docdb". If set, a cluster of the specified type will be provisioned and its connection details and credentials injected into the container environment. See the Database section below for more info.
+`dbOptions.engine` (string) - Allowed values are "mysql" and "docdb". If set, a cluster of the specified type will be provisioned and its connection details and credentials injected into the container environment. See the Database section below for more info.
 
-`cacheOptions.engine` - "redis" is the only supported value. If set, an Elasticache instance will be provisioned and its connection details injected into the container environment. See the Cache section below for more info.
+`cacheOptions.engine` (string) - "redis" is the only supported value. If set, an Elasticache instance will be provisioned and its connection details injected into the container environment. See the Cache section below for more info.
 
 ##### A note about `taskCpu` and `taskMemory`
 
@@ -365,23 +365,23 @@ The `caccl-deploy connect ...` command can be used for creating ssh port-forward
 
 ##### Common db options
 
-`dbOptions.engine` - either "mysql" or "docdb"
+`dbOptions.engine` (string) - either "mysql" or "docdb"
 
-`dbOptions.instanceType` - default is "t3.medium". Consider at least "r5.large" for production.
+`dbOptions.instanceType` (string) - default is "t3.medium". Consider at least "r5.large" for production.
 
-`dbOptions.instanceCount` - Default is "1". Production apps should use "2" to enable multi-az replication.
+`dbOptions.instanceCount` (number) - Default is "1". Production apps should use "2" to enable multi-az replication.
 
-`dbOptions.engineVersion` - use a specific version of the docdb or aurora/mysql engine. You probably don't need to set this.
+`dbOptions.engineVersion` (string) - use a specific version of the docdb or aurora/mysql engine. You probably don't need to set this.
 
-`dbOptions.removalPolicy` - **IMPORTANT** can be one of "RETAIN", "SNAPSHOT" or "DELETE". See the section just below on what this does.
+`dbOptions.removalPolicy` (string) - **IMPORTANT** can be one of "RETAIN", "SNAPSHOT" or "DELETE". See the section just below on what this does.
 
 ##### DocumentDb only
 
-`dbOptions.profiler` - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
+`dbOptions.profiler` ("true|false") - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
 
 ##### Mysql only
 
-`dbOptions.databaseName` - Set this if you want a database to be automatically created during provisioning.
+`dbOptions.databaseName` (string) - Set this if you want a database to be automatically created during provisioning.
 
 ##### DocumentDb environment variables
 
@@ -440,11 +440,11 @@ Including a cache in your deploy configuration will result in a bastion host bei
 
 ##### Cache options
 
-`cacheOptions.engine` - currently the only choice is "redis"
+`cacheOptions.engine` (string) - currently the only choice is "redis"
 
-`cacheOptions.numCacheNodes` - Default is "1". Production apps should use "2" to enable multi-az replication.
+`cacheOptions.numCacheNodes` (number) - Default is "1". Production apps should use "2" to enable multi-az replication.
 
-`cacheOptions.cacheNodeType` - Default is "cache.t3.medium". Consider "cache.r5.large" for production.
+`cacheOptions.cacheNodeType` (string) - Default is "cache.t3.medium". Consider "cache.r5.large" for production.
 
 ---
 
