@@ -107,6 +107,8 @@ export abstract class CacclDbBase extends Construct implements ICacclDb {
       },
     });
 
+    this.dbPasswordSecret.applyRemovalPolicy(this.etcRemovalPolicy);
+
     /**
      * the database needs it's own security group so that we can apply
      * a removal policy to it. if we re-used the main stack's security group
@@ -221,10 +223,9 @@ export class CacclDocDb extends CacclDbBase {
     const metric = new Metric({
       metricName,
       namespace: this.metricNamespace,
-      period: Duration.minutes(1),
-      dimensions: { DBClusterIdentifier: this.dbCluster.clusterIdentifier },
+      dimensionsMap: { DBClusterIdentifier: this.dbCluster.clusterIdentifier },
       ...extraProps,
-    });
+    }).with({ period: Duration.minutes(1) });
 
     return metric.attachTo(this.dbCluster);
   }
@@ -247,9 +248,8 @@ export class CacclDocDb extends CacclDbBase {
 
     this.alarms = [
       new Alarm(this, 'CPUUtilizationAlarm', {
-        metric: this.metrics.CPUUtilization[0],
+        metric: this.metrics.CPUUtilization[0].with({ period: Duration.minutes(5) }),
         threshold: 50,
-        period: Duration.minutes(5),
         evaluationPeriods: 3,
         alarmDescription: `${Stack.of(this).stackName} docdb cpu utilization alarm`,
       }),
@@ -281,9 +281,8 @@ export class CacclDocDb extends CacclDbBase {
         alarmDescription: `${Stack.of(this).stackName} docdb write latency alarm`,
       }),
       new Alarm(this, 'DatabaseCursorsTimedOutAlarm', {
-        metric: this.metrics.DatabaseCursorsTimedOut[0],
+        metric: this.metrics.DatabaseCursorsTimedOut[0].with({ period: Duration.minutes(5) }),
         threshold: 5,
-        period: Duration.minutes(5),
         evaluationPeriods: 3,
         alarmDescription: `${Stack.of(this).stackName} docdb cursors timed out alarm`,
       }),
@@ -392,11 +391,10 @@ export class CacclRdsDb extends CacclDbBase {
       const metric = new Metric({
         metricName,
         namespace: this.metricNamespace,
-        period: Duration.minutes(1),
-        dimensions: { DBInstanceIdentifier: id },
+        dimensionsMap: { DBInstanceIdentifier: id },
         label: id,
         ...extraProps,
-      });
+      }).with({ period: Duration.minutes(1) });
 
       return metric.attachTo(this.dbCluster);
     });

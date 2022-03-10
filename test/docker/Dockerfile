@@ -6,7 +6,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt -y update \
   && apt -y dist-upgrade \
   && apt -y install awscli vim
 
-RUN npm install -g npm@7
+RUN npm install -g npm@8
 
 USER node
 WORKDIR /home/node

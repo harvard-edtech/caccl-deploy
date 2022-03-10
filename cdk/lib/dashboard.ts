@@ -108,7 +108,7 @@ export class CacclMonitoring extends Construct {
       const metric = new Metric({
         metricName,
         namespace: 'ECS/ContainerInsights',
-        dimensions: {
+        dimensionsMap: {
           ClusterName: ecsService.cluster.clusterName,
           ServiceName: ecsService.serviceName,
         },

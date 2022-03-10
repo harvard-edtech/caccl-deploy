@@ -116,17 +116,15 @@ export class CacclScheduledTasks extends Construct {
     this.alarms = [
       // alarm on any function errors
       new Alarm(this, 'ErrorAlarm', {
-        metric: this.taskExecFunction.metricErrors(),
+        metric: this.taskExecFunction.metricErrors().with({ period: Duration.minutes(5) }),
         threshold: 1,
-        period: Duration.minutes(5),
         evaluationPeriods: 1,
         alarmDescription: `${stackName} scheduled task execution error alarm`,
       }),
       // alarm if function isn't invoked at least once per day
       new Alarm(this, 'InvocationsAlarm', {
-        metric: this.taskExecFunction.metricInvocations(),
+        metric: this.taskExecFunction.metricInvocations().with({ period: Duration.days(1) }),
         threshold: 1,
-        period: Duration.days(1),
         evaluationPeriods: 1,
         alarmDescription: `${stackName} no invocations alarm`,
         comparisonOperator: ComparisonOperator.LESS_THAN_THRESHOLD,

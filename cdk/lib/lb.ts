@@ -121,15 +121,15 @@ export class CacclLoadBalancer extends Construct {
         period: Duration.minutes(1),
         unit: Unit.MILLISECONDS,
         statistic: 'avg',
-      }),
+      }).with({ period: Duration.minutes(1) }),
       RejectedConnectionCount: this.loadBalancer.metricRejectedConnectionCount({
         period: Duration.minutes(1),
         statistic: 'sum',
-      }),
+      }).with({ period: Duration.minutes(1) }),
       UnHealthyHostCount: appTargetGroup.metricUnhealthyHostCount({
         period: Duration.minutes(1),
         statistic: 'sum',
-      }),
+      }).with({ period: Duration.minutes(1) }),
     };
 
     this.alarms = [

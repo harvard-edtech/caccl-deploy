@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Modified
+
+- aws-cdk, eslint, jest and object-hash dependency versions
+
 ## [0.11.1] - 2022-03-15
 
 ### Added
