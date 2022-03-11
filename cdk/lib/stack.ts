@@ -5,7 +5,7 @@ import { Stack, Construct, StackProps } from '@aws-cdk/core';
 import { CacclAppEnvironment } from './appEnvironment';
 import { CacclMonitoring } from './dashboard';
 import { CacclDbOptions, CacclDbBase } from './db';
-import { CacclLoadBalancer } from './lb';
+import { CacclLoadBalancer, LoadBalancerSecurityGoups } from './lb';
 import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclService } from './service';
@@ -104,28 +104,42 @@ export class CacclDeployStack extends Stack {
       ...props.taskDefProps,
     });
 
-    let firewallSg;
+    let lbSecurityGroups: LoadBalancerSecurityGoups = {};
+
     if (props.firewallSgId) {
-      // import the security group
-      firewallSg = SecurityGroup.fromSecurityGroupId(this, 'SecurityGroupImport', props.firewallSgId, {
+      // primary firewall will be the imported, shared security group
+      lbSecurityGroups.primary = SecurityGroup.fromSecurityGroupId(this, 'SecurityGroupImport', props.firewallSgId, {
         allowAllOutbound: true,
       }) as SecurityGroup;
-      // re-use for the bastion host
+
+      // we also need a separate, app-specific security group for miscellaneous
+      lbSecurityGroups.misc = new SecurityGroup(this, 'MiscSecurityGroup', {
+        vpc,
+        description: 'security group for miscellaneous app-specific ingress rules',
+      });
     } else {
-      firewallSg = new SecurityGroup(this, 'FirewallSecurityGroup', {
+      // primary will be a new, "open" security group
+      const newSg = new SecurityGroup(this, 'FirewallSecurityGroup', {
         vpc,
         description: 'security group for the load balancer and app service',
       });
 
       // by default apps are public
-      firewallSg.addIngressRule(Peer.anyIpv4(), Port.tcp(80))
-      firewallSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
+      newSg.addIngressRule(Peer.anyIpv4(), Port.tcp(80))
+      newSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
+
+      lbSecurityGroups.primary = newSg;
     }
 
     const service = new CacclService(this, 'EcsService', {
       cluster,
       taskDef,
-      loadBalancerSg: firewallSg,
+      /**
+       * The security group passed into the CacclService is used in a traffic source ingress rule.
+       * i.e., the resulting ECS servcie will get its own security group with a single ingress rule that allows
+       * traffic from any resource associated with the security group passed in here.
+       */
+      loadBalancerSg: lbSecurityGroups.primary,
       taskCount: props.taskCount,
     });
 
@@ -134,7 +148,7 @@ export class CacclDeployStack extends Stack {
       loadBalancerTarget: service.loadBalancerTarget,
       albLogBucketName: props.albLogBucketName,
       targetDeregistrationDelay: props.targetDeregistrationDelay,
-      sg: firewallSg,
+      securityGroups: lbSecurityGroups,
       vpc,
     });
 
@@ -162,7 +176,7 @@ export class CacclDeployStack extends Stack {
     if (createBastion) {
       let bastionSg;
       if (props.firewallSgId) {
-        bastionSg = firewallSg;
+        bastionSg = lbSecurityGroups.primary;
       } else {
         bastionSg = new SecurityGroup(this, 'BastionSecurityGroup', {
           vpc,

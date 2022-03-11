@@ -12,9 +12,14 @@ import {
 import { Bucket } from '@aws-cdk/aws-s3';
 import { CfnOutput, Construct, Duration, Stack } from '@aws-cdk/core';
 
+export type LoadBalancerSecurityGoups = {
+  primary?: SecurityGroup;
+  misc?: SecurityGroup;
+};
+
 export interface CacclLoadBalancerProps {
   vpc: Vpc;
-  sg: SecurityGroup;
+  securityGroups: LoadBalancerSecurityGoups;
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
   albLogBucketName?: string;
@@ -35,7 +40,7 @@ export class CacclLoadBalancer extends Construct {
 
     const {
       vpc,
-      sg,
+      securityGroups,
       certificateArn,
       loadBalancerTarget,
       albLogBucketName,
@@ -44,9 +49,13 @@ export class CacclLoadBalancer extends Construct {
 
     this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
-      securityGroup: sg,
+      securityGroup: securityGroups.primary,
       internetFacing: true,
     });
+
+    if (securityGroups.misc) {
+      this.loadBalancer.addSecurityGroup(securityGroups.misc);
+    }
 
     if (albLogBucketName !== undefined) {
       const bucket = Bucket.fromBucketName(this, 'AlbLogBucket', albLogBucketName);
