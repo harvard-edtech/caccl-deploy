@@ -12,9 +12,14 @@ import {
 import { Bucket } from '@aws-cdk/aws-s3';
 import { CfnOutput, Construct, Duration, Stack } from '@aws-cdk/core';
 
+export type LoadBalancerSecurityGoups = {
+  primary?: SecurityGroup;
+  misc?: SecurityGroup;
+};
+
 export interface CacclLoadBalancerProps {
   vpc: Vpc;
-  sg: SecurityGroup;
+  securityGroups: LoadBalancerSecurityGoups;
   certificateArn: string;
   loadBalancerTarget: IEcsLoadBalancerTarget;
   albLogBucketName?: string;
@@ -35,7 +40,7 @@ export class CacclLoadBalancer extends Construct {
 
     const {
       vpc,
-      sg,
+      securityGroups,
       certificateArn,
       loadBalancerTarget,
       albLogBucketName,
@@ -44,9 +49,13 @@ export class CacclLoadBalancer extends Construct {
 
     this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
-      securityGroup: sg,
+      securityGroup: securityGroups.primary,
       internetFacing: true,
     });
+
+    if (securityGroups.misc) {
+      this.loadBalancer.addSecurityGroup(securityGroups.misc);
+    }
 
     if (albLogBucketName !== undefined) {
       const bucket = Bucket.fromBucketName(this, 'AlbLogBucket', albLogBucketName);
@@ -151,5 +160,17 @@ export class CacclLoadBalancer extends Construct {
       exportName: `${Stack.of(this).stackName}-load-balancer-hostname`,
       value: this.loadBalancer.loadBalancerDnsName,
     });
+
+    new CfnOutput(this, 'LoadBalancerPrimarySecurityGroup', {
+      exportName: `${Stack.of(this).stackName}-primary-security-group`,
+      value: securityGroups.primary!.securityGroupId,
+    });
+
+    if (securityGroups.misc) {
+      new CfnOutput(this, 'LoadBalancerMiscSecurityGroup', {
+        exportName: `${Stack.of(this).stackName}-misc-security-group`,
+        value: securityGroups.misc.securityGroupId,
+      });
+    }
   }
 }

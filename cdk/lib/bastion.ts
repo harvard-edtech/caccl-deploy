@@ -46,5 +46,10 @@ export class CacclSshBastion extends Construct {
       value: this.instance.instanceAvailabilityZone,
     });
 
+    new CfnOutput(this, 'DbBastionSecurityGroupId', {
+      exportName: `${Stack.of(this).stackName}-bastion-security-group-id`,
+      value: sg.securityGroupId,
+    });
+
   }
 };

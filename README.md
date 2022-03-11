@@ -452,14 +452,18 @@ Including a cache in your deploy configuration will result in a bastion host bei
 
 Some notes about app and resource security state.
 
-- by default, caccl-deploy apps are open to the internet on ports 80 and 443
+- by default caccl-deploy apps are open to the internet on ports 80 and 443
+- by default the bastion host, if the app has one, is open to the internet on port 22
 - all databases and/or Elasticache (redis) instances run on private subnets. They should be accessible through their respective ports only to traffic coming from internal (10.1.x.x) ips.
 - to access a database or cache instance from outside the vpc you must tunnel through the bastion host. The `connect` command helps facilitate this.
-- the bastion host, if the app has one, is open to the internet on port 22
 
 ##### Importing a security group
 
 Should you wish to apply restrictions on where your app can be accessed from (e.g. office network or vpn), you can import an existing security group using the deployment configuration setting, `firewallSgId`. This security group will be used in place of the default for both the application load balancer and the bastion host. The security group will need to have ingress rules for at least ports 80, 443 and 22. Note that the imported security group does not become a member of the stack's resources; it continues to exist separately from the importing app's cloudformation stack and won't be updated or deleted by the app's stack update operations.
+
+If an app imports a security group using the `firewallSgId` setting, and additional, empty security group will also be created and attached to the load balancer. This "miscellaneous" security group should be used for one-off ingress rules specific to the app. For instance, allowing an Opencast cluster admin node to push metadata updates to an instance of Porta.
+
+Use the `caccl-deploy stack --app [app name] info` command to find the ids of security groups being used. The miscellaneous security group id will be named `CacclDeploy-[app name]-misc`.
 
 ---
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Added
+
+- apps that use an imported security group via `firewallSgId` will also now create another, miscellaneous
+  security group, attached to the load balancer. This group will initially have no ingress rules and is meant
+  for things like allowing an Opencast instance to push metadata updates to Porta, and other situations that
+  wouldn't be appropriate for a common security group shared with other apps
+
 ## [0.11.0] - 2022-02-22
 
 ### Modified
