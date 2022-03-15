@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.11.1] - 2022-03-15
+
 ### Added
 
 - apps that use an imported security group via `firewallSgId` will also now create another, miscellaneous
