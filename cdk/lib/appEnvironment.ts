@@ -1,17 +1,19 @@
-import { Secret as EcsSecret } from '@aws-cdk/aws-ecs';
-import { Secret } from '@aws-cdk/aws-secretsmanager';
-import { Construct } from '@aws-cdk/core';
+import {
+  aws_ecs as ecs,
+  aws_secretsmanager as secretsmanager,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
-export interface CacclAppEnvioronmentProps {
-  envVars: { [key: string]: string; };
+export interface CacclAppEnvironmentProps {
+  envVars: { [key: string]: string };
 }
 
 export class CacclAppEnvironment extends Construct {
-  env: { [key: string]: string; };
+  env: { [key: string]: string };
 
-  secrets: { [key: string]: EcsSecret; };
+  secrets: { [key: string]: ecs.Secret };
 
-  constructor(scope: Construct, id: string, props: CacclAppEnvioronmentProps) {
+  constructor(scope: Construct, id: string, props: CacclAppEnvironmentProps) {
     super(scope, id);
 
     this.env = {
@@ -22,8 +24,12 @@ export class CacclAppEnvironment extends Construct {
     this.secrets = {};
     Object.entries(props.envVars).forEach(([name, value]) => {
       if (value.toString().toLowerCase().startsWith('arn:aws:secretsmanager')) {
-        const varSecret = Secret.fromSecretCompleteArn(this, `${name}SecretArn`, value) as Secret;
-        this.secrets[name] = EcsSecret.fromSecretsManager(varSecret);
+        const varSecret = secretsmanager.Secret.fromSecretCompleteArn(
+          this,
+          `${name}SecretArn`,
+          value,
+        );
+        this.secrets[name] = ecs.Secret.fromSecretsManager(varSecret);
       } else {
         this.env[name] = value;
       }
@@ -34,7 +40,7 @@ export class CacclAppEnvironment extends Construct {
     this.env[k] = v;
   }
 
-  public addSecret(k: string, secret: EcsSecret): void {
+  public addSecret(k: string, secret: ecs.Secret): void {
     this.secrets[k] = secret;
   }
 }

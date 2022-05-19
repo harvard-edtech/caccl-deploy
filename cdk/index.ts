@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 import 'source-map-support/register';
-import { App, CfnOutput } from '@aws-cdk/core';
 import { readFileSync } from 'fs';
+import { App, CfnOutput } from 'aws-cdk-lib';
 import yn from 'yn';
 
 import { CacclDeployStack, CacclDeployStackProps } from './lib/stack';
@@ -12,7 +12,7 @@ if (process.env.CDK_STACK_PROPS_FILE_PATH === undefined) {
 }
 
 const stackPropsData = JSON.parse(
-  readFileSync(process.env.CDK_STACK_PROPS_FILE_PATH, 'utf8')
+  readFileSync(process.env.CDK_STACK_PROPS_FILE_PATH, 'utf8'),
 );
 
 const {
@@ -70,7 +70,7 @@ if (yn(deployConfig.docDb)) {
     engine: 'docdb',
     instanceCount: deployConfig.docDbInstanceCount,
     instanceType: deployConfig.docDbInstanceType,
-    profiler: deployConfig.docDbProfiler
+    profiler: deployConfig.docDbProfiler,
   };
 }
 

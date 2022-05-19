@@ -1,9 +1,14 @@
-import { FargateTaskDefinition, LogDriver, ContainerDefinition } from '@aws-cdk/aws-ecs';
-import { LogGroup } from '@aws-cdk/aws-logs';
-import { Construct, Stack, RemovalPolicy, CfnOutput } from '@aws-cdk/core';
+import {
+  aws_ecs as ecs,
+  aws_logs as logs,
+  Stack,
+  RemovalPolicy,
+  CfnOutput,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 import { CacclAppEnvironment } from './appEnvironment';
-import { CacclContainerImageOptions, CacclContainerImage } from './image';
+import { CacclContainerImage } from './image';
 import { CacclGitRepoVolumeContainer } from './volumeContainer';
 
 const DEFAULT_PROXY_REPO_NAME = 'hdce/nginx-ssl-proxy';
@@ -16,19 +21,19 @@ export interface CacclTaskDefProps {
   taskCpu?: number;
   taskMemory?: number;
   logRetentionDays?: number;
-  gitRepoVolume?: { [key: string]: string; };
+  gitRepoVolume?: { [key: string]: string };
 }
 
 export class CacclTaskDef extends Construct {
-  taskDef: FargateTaskDefinition;
+  taskDef: ecs.FargateTaskDefinition;
 
-  appOnlyTaskDef: FargateTaskDefinition;
+  appOnlyTaskDef: ecs.FargateTaskDefinition;
 
-  proxyContainer: ContainerDefinition;
+  proxyContainer: ecs.ContainerDefinition;
 
-  appContainer: ContainerDefinition;
+  appContainer: ecs.ContainerDefinition;
 
-  logGroup: LogGroup;
+  logGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props: CacclTaskDefProps) {
     super(scope, id);
@@ -47,13 +52,13 @@ export class CacclTaskDef extends Construct {
     });
 
     // this is the task def that our fargate service will run
-    this.taskDef = new FargateTaskDefinition(this, 'Task', {
+    this.taskDef = new ecs.FargateTaskDefinition(this, 'Task', {
       cpu: taskCpu,
       memoryLimitMiB: taskMemory,
     });
 
     // this task def will have only the app container and be used for one-off tasks
-    this.appOnlyTaskDef = new FargateTaskDefinition(this, 'AppOnlyTask', {
+    this.appOnlyTaskDef = new ecs.FargateTaskDefinition(this, 'AppOnlyTask', {
       cpu: taskCpu,
       memoryLimitMiB: taskMemory,
     });
@@ -65,9 +70,9 @@ export class CacclTaskDef extends Construct {
       essential: true,
       environment: appEnvironment?.env,
       secrets: appEnvironment?.secrets,
-      logging: LogDriver.awsLogs({
+      logging: ecs.LogDriver.awsLogs({
         streamPrefix: 'app',
-        logGroup: new LogGroup(this, 'AppLogGroup', {
+        logGroup: new logs.LogGroup(this, 'AppLogGroup', {
           logGroupName: `/${Stack.of(this).stackName}/app`,
           removalPolicy: RemovalPolicy.DESTROY,
           retention: logRetentionDays,
@@ -76,7 +81,11 @@ export class CacclTaskDef extends Construct {
     };
 
     // the container definition associated with our fargate service task def
-    this.appContainer = new ContainerDefinition(this, 'AppContainer', appContainerParams);
+    this.appContainer = new ecs.ContainerDefinition(
+      this,
+      'AppContainer',
+      appContainerParams,
+    );
     this.appContainer.addPortMappings({
       containerPort: 8080,
       hostPort: 8080,
@@ -88,13 +97,17 @@ export class CacclTaskDef extends Construct {
       taskDefinition: this.appOnlyTaskDef,
     };
     // and a 2nd container definition used by the one-off app only task deff
-    const appOnlyContainer = new ContainerDefinition(this, 'AppOnlyContainer', appOnlyContainerParams);
+    new ecs.ContainerDefinition(
+      this,
+      'AppOnlyContainer',
+      appOnlyContainerParams,
+    );
 
     const proxyContainerImage = new CacclContainerImage(this, 'ProxyImage', {
       appImage: proxyImage,
     });
 
-    const environment: { [key: string]: string; } = {
+    const environment: { [key: string]: string } = {
       APP_PORT: '8080',
     };
 
@@ -111,14 +124,14 @@ export class CacclTaskDef extends Construct {
     }
 
     // this container is the proxy
-    this.proxyContainer = new ContainerDefinition(this, 'ProxyContainer', {
+    this.proxyContainer = new ecs.ContainerDefinition(this, 'ProxyContainer', {
       image: proxyContainerImage.image,
       environment,
       essential: true,
       taskDefinition: this.taskDef,
-      logging: LogDriver.awsLogs({
+      logging: ecs.LogDriver.awsLogs({
         streamPrefix: 'proxy',
-        logGroup: new LogGroup(this, 'ProxyLogGroup', {
+        logGroup: new logs.LogGroup(this, 'ProxyLogGroup', {
           logGroupName: `/${Stack.of(this).stackName}/proxy`,
           removalPolicy: RemovalPolicy.DESTROY,
           retention: logRetentionDays,

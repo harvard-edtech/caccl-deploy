@@ -4,7 +4,7 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 
 ### Requirements
 
-- nodejs ≥ v10
+- nodejs ≥ v12
 - a docker image that runs your app on port 8080
 - the [awscli tool](https://aws.amazon.com/cli/) installed and configured
 - an AWS Certificate Manager certificate. You probably want one that matches the hostname you have in mind for the app.
@@ -20,11 +20,12 @@ This package provides a CLI and an [aws-cdk](https://aws.amazon.com/cdk/) librar
 - provision, deploy and release updates to those apps on ECS/Fargate
 
 An "app" is assumed to be an application that has been packaged as a Docker image. Currently both Nodejs/React and Django apps are supported. Once deployed, the AWS resources dedicated to the app will consist of:
+
 - an Application Load Balancer
 - an ECS Fargate Service
 - an ECS Fargate Task with (in most cases) two containers:
-    - an nginx reverse proxy (provided by [hdce/dce-ecs-nginx-proxy](https://github.com/harvard-edtech/dce-ecs-nginx-proxy))
-    - the app itself.
+  - an nginx reverse proxy (provided by [hdce/dce-ecs-nginx-proxy](https://github.com/harvard-edtech/dce-ecs-nginx-proxy))
+  - the app itself.
 - a CloudWatch dashboard containing widgets for monitoring metrics and alarms
 - an SNS topic capable of sending notifications via email or Slack
 - (optionally) either a DocumentDb or Mysql database cluster accessible to the app
@@ -34,8 +35,8 @@ As part of this app deployment, `caccl-deploy` will create and manage a deployme
 - the name of the CloudFormation stack containing your underlying infrastructure (VPC, ECS Cluster)
 - the ARN of an ACM ssl certificate
 - one of either
-	- the ARN of a Docker image in an ECR repository
-	- the name of an image in, e.g., DockerHub
+  - the ARN of a Docker image in an ECR repository
+  - the name of an image in, e.g., DockerHub
 - An optional set of environment variables your app needs
 - An optional set of AWS resource tags
 - various task provisioning settings, such as number of CPUs, memory, number of tasks, etc
@@ -123,6 +124,7 @@ There are four possible settings in the `config.json`:
 - `productionAccouts` (array, optional) - if you want an additional, loud warning prompt when performing operations on a production account, include its account id (as a string) here.
 
 Example:
+
 ```
 {
     "ssmRootPrefix": "/caccl-deploy",
@@ -211,6 +213,7 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
 ```
 
 The following DocumentDb configuration was used by caccl-deploy prior to version 0.7.0 and is still supported (but should not be used in new deployments).
+
 ```
 {
   "docDb": "true",
@@ -251,6 +254,7 @@ Now the optional stuff.
   }
 }
 ```
+
 _**Important**_: The configured address(es) will receive a confirmation message and must confirm to complete the subscription.
 
 `tags` ({ [string]: string }) - a set of key value pairs. these will be assigned to the CloudFormation stack and by extension all the resources in the stack (for resource types that support this (which is most)).
@@ -472,13 +476,13 @@ Use the `caccl-deploy stack --app [app name] info` command to find the ids of se
 ##### Create a new app from scratch
 
 1. Run `caccly-deploy new`. You will be prompted for the following values. **Note**: all except the app name can be changed prior to the actual deployment:
-    - The name of your app. This should be unique for the AWS account.
-    - The base infrastructure stack into which your app will be deployed. If there's only one available it will be selected for you.
-    - The full ARN identifier of your AWS Certificate Manager entry.
-    - The ECR repository where your app's images are registered
-    - The ECR image tag to use. If you don't see the one you want, just pick one; you can change it later.
-    - Any AWS resource tags to apply to your app's CloudFormation stack
-    - Any environment variables that should be injected into the container's runtime environment.
+   - The name of your app. This should be unique for the AWS account.
+   - The base infrastructure stack into which your app will be deployed. If there's only one available it will be selected for you.
+   - The full ARN identifier of your AWS Certificate Manager entry.
+   - The ECR repository where your app's images are registered
+   - The ECR image tag to use. If you don't see the one you want, just pick one; you can change it later.
+   - Any AWS resource tags to apply to your app's CloudFormation stack
+   - Any environment variables that should be injected into the container's runtime environment.
 1. Optionally, run `caccl-deploy update --app [your app name] [setting] [value]` to add or update the generated deployment configuration.
 1. Optionally, run `caccl-deploy stack --app [your app name] diff` to sanity check and see the list of resources that will be created by the CDK/CloudFormation process.
 1. Run `caccl-deploy stack --app [your app name] deploy` to deploy the app. After a few minutes your app should be available and running.
@@ -497,7 +501,7 @@ Let's say you had an existing app called "fooapp-stage" and you wanted to create
 Let's say your app had a couple of environment variables that needed to be changed, `API_KEY` and `API_SECRET`.
 
 1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
-    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--keep-secret-arns` flag to the above command.
+   - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--keep-secret-arns` flag to the above command.
 1. Update the `API_KEY` variable to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_KEY my-api-key`
 1. Update the `API_SECRET` variable to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_SECRET 12345abcdef`
 1. Run `caccl-deploy restart --app [your app name]`
@@ -509,7 +513,7 @@ Note that the final step is only a `restart` vs a `stack ... deploy`. This is be
 In this example we're going to add a new variable, `API_BASE_URL`, to an existing configuration.
 
 1. Run `caccl-deploy show --app [your app name]` to review your app's current configuration and environment variables.
-    - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--keep-secret-arns` flag to the above command.
+   - Remember that, by default, `caccl-deploy` will dereference and display the raw string values of your environment variables. To see the ARNs of the SecretsManager entries you can add the `--keep-secret-arns` flag to the above command.
 1. Add the `API_BASE_URL` value to the app environment: `caccl-deploy update --app [your app name] appEnvironment/API_BASE_URL https://api.example.edu/v1`
 1. Review the app's stack changes `caccl-deploy stack --app [your app name] diff`
 1. Deploy the app's stack changes `caccl-deploy stack --app [your app name] deploy`. _**WARNING**_ this will restart the app.
@@ -565,9 +569,9 @@ Commands:
 This will list the existing app configurations found using the provided or configured SSM parameter name prefix.
 
 - `--full-status` - enables the output of additional information. If the app configuration has a corresponding CloudFormation stack (i.e., it's been deployed) then 3 additional columns will be generated:
-    * "Infra Stack": shows the name of the shared infrastructure stack the app is or will be deployed to
-    * "Stack Status": shows the current status of the Cloudformation stack, e.g. "UPDATE_COMPLETE".
-    * "Config Drift": a "yes" value means that the app's current deployment configuration is not in sync with the Cloudformation deployment.
+  - "Infra Stack": shows the name of the shared infrastructure stack the app is or will be deployed to
+  - "Stack Status": shows the current status of the Cloudformation stack, e.g. "UPDATE_COMPLETE".
+  - "Config Drift": a "yes" value means that the app's current deployment configuration is not in sync with the Cloudformation deployment.
 
 ---
 
@@ -575,9 +579,9 @@ This will list the existing app configurations found using the provided or confi
 
 This command allows you to create a new app configuration in a few ways:
 
-* from scratch with prompts for the required options
-* import from a json file using the `-i` option, with prompts for any missing, required values
-* import from a URL (json response) using the `-i` option, with prompts for any missing, required values
+- from scratch with prompts for the required options
+- import from a json file using the `-i` option, with prompts for any missing, required values
+- import from a URL (json response) using the `-i` option, with prompts for any missing, required values
 
 The required options (also described above in the section on "Config setting explanations") which will need to be provided via prompt or included in your imported json, are:
 
@@ -753,6 +757,7 @@ $ caccl-deploy connect -a my-app -s mysql --local-port 3307 --sleep 300
 ```
 
 Output:
+
 ```
 Your public key, /home/foo/.ssh/id_rsa.pub, has temporarily been placed on the bastion instance
 You have ~60s to establish the ssh tunnel
@@ -776,7 +781,7 @@ List, create and/or delete scheduled tasks (think cron jobs) that execute your a
 - `-d`/`--delete` - in combination with `--task-id`, delete an existing scheduled task
 - `-t` / `--task-id` - a string/shortname id for your task. Will be a randomly generated id if not specified
 - `-d` / `--task-description` - describe what the task does
-- `-s` / `--task-schedule` - a six-field cron expression, e.g. '0 12 * * ? *'. See [Scheedule Expressions for Rules](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html) for details.
+- `-s` / `--task-schedule` - a six-field cron expression, e.g. '0 12 \* _ ? _'. See [Scheedule Expressions for Rules](https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html) for details.
 - `-c` / `--task-command` - the override command to use when starting the container (the `CMD` value).
 
 **Important**: the `schedule` subcommand only modifies your app's deployment configuration; you must still run a `stack ... deploy` for the resource additions/changes to be provisioned.
@@ -795,9 +800,9 @@ $ caccl-deploy stack -a my-app [diff|deploy]
 
 ```
 
-Note that the cron expression will need to be in GMT, so for the schedule you'll add five hours and enter "0 8 * * ? *". Why the "?"? According to the docs:
+Note that the cron expression will need to be in GMT, so for the schedule you'll add five hours and enter "0 8 \* _ ? _". Why the "?"? According to the docs:
 
-> You can't specify the Day-of-month and Day-of-week fields in the same cron expression. If you specify a value (or a *) in one of the fields, you must use a ? (question mark) in the other.
+> You can't specify the Day-of-month and Day-of-week fields in the same cron expression. If you specify a value (or a \*) in one of the fields, you must use a ? (question mark) in the other.
 
 ---
 

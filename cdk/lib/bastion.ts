@@ -1,34 +1,32 @@
-import { Vpc, SecurityGroup, BastionHostLinux, SubnetType, Peer, Port, LookupMachineImage, MachineImage } from '@aws-cdk/aws-ec2';
-import { Construct, Stack, CfnOutput } from '@aws-cdk/core';
+import { aws_ec2 as ec2, Stack, CfnOutput } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 const DEFAULT_AMI_MAP = {
   'us-east-1': 'ami-0c2b8ca1dad447f8a',
 };
 
 export interface CacclSshBastionProps {
-  vpc: Vpc,
-  sg: SecurityGroup;
-  amiMap?: { [key: string]: string },
-};
+  vpc: ec2.Vpc;
+  sg: ec2.SecurityGroup;
+  amiMap?: { [key: string]: string };
+}
 
 export class CacclSshBastion extends Construct {
-  instance: BastionHostLinux;
+  instance: ec2.BastionHostLinux;
 
   constructor(scope: Construct, id: string, props: CacclSshBastionProps) {
     super(scope, id);
 
-    const {
-      vpc,
-      sg,
-      amiMap = {},
-    } = props;
+    const { vpc, sg, amiMap = {} } = props;
 
-    this.instance = new BastionHostLinux(this, 'SshBastionHost', {
+    this.instance = new ec2.BastionHostLinux(this, 'SshBastionHost', {
       vpc,
-      subnetSelection: { subnetType: SubnetType.PUBLIC },
+      subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
       securityGroup: sg,
-      machineImage: MachineImage.genericLinux(Object.assign(DEFAULT_AMI_MAP, amiMap)),
+      machineImage: ec2.MachineImage.genericLinux(
+        Object.assign(DEFAULT_AMI_MAP, amiMap),
+      ),
     });
 
     new CfnOutput(this, 'DbBastionHostIp', {
@@ -50,6 +48,5 @@ export class CacclSshBastion extends Construct {
       exportName: `${Stack.of(this).stackName}-bastion-security-group-id`,
       value: sg.securityGroupId,
     });
-
   }
-};
+}

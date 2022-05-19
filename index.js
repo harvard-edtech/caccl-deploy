@@ -1,30 +1,23 @@
 #!/usr/bin/env node
 
-const { Command } = require('commander');
 const { execSync } = require('child_process');
-const { table } = require('table');
-const moment = require('moment');
 const chalk = require('chalk');
+const { Command } = require('commander');
 const figlet = require('figlet');
-const yn = require('yn');
+const moment = require('moment');
+const { table } = require('table');
 const tempy = require('tempy');
 const untildify = require('untildify');
+const yn = require('yn');
 
 const aws = require('./lib/aws');
-const DeployConfig = require('./lib/deployConfig');
-const cacclDeployVersion = require('./lib/generateVersion')();
+const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
 const {
   promptAppName,
   confirm,
   confirmProductionOp,
 } = require('./lib/configPrompts');
-const { conf, setConfigDefaults, configDefaults } = require('./lib/conf');
-const { description } = require('./package.json');
-const {
-  looksLikeSemver,
-  validSSMParamName,
-  warnAboutVersionDiff,
-} = require('./lib/helpers');
+const DeployConfig = require('./lib/deployConfig');
 const {
   AppNotFound,
   UserCancel,
@@ -32,6 +25,13 @@ const {
   NoPromptChoices,
   CfnStackNotFound,
 } = require('./lib/errors');
+const cacclDeployVersion = require('./lib/generateVersion')();
+const {
+  looksLikeSemver,
+  validSSMParamName,
+  warnAboutVersionDiff,
+} = require('./lib/helpers');
+const { description: packageDescription } = require('./package.json');
 
 /**
  * Setting this env var is the equivalent of passing the `--yes` argument
@@ -54,10 +54,12 @@ const exitWithError = (msg) => {
 };
 
 const byeWithCredentialsError = () => {
-  exitWithError([
-    'Looks like there is a problem with your AWS credentials configuration.',
-    'Did you run `aws configure`? Did you set a region? Default profile?',
-  ].join('\n'));
+  exitWithError(
+    [
+      'Looks like there is a problem with your AWS credentials configuration.',
+      'Did you run `aws configure`? Did you set a region? Default profile?',
+    ].join('\n'),
+  );
 };
 
 /**
@@ -115,8 +117,10 @@ class CacclDeployCommander extends Command {
    * @param {string} appName
    */
   getAppPrefix(appName) {
-    if (this.ssmRootPrefix === undefined
-        || (this.app === undefined && appName === undefined)) {
+    if (
+      this.ssmRootPrefix === undefined ||
+      (this.app === undefined && appName === undefined)
+    ) {
       throw Error('Attempted to make an ssm prefix with undefined values');
     }
     return `${this.ssmRootPrefix}/${appName || this.app}`;
@@ -127,9 +131,13 @@ class CacclDeployCommander extends Command {
    * @param {string} appName
    */
   getCfnStackName(appName) {
-    if (this.cfnStackPrefix === undefined
-      || (this.app === undefined && appName === undefined)) {
-      throw Error('Attempted to make a cloudformation stack name with undefined values');
+    if (
+      this.cfnStackPrefix === undefined ||
+      (this.app === undefined && appName === undefined)
+    ) {
+      throw Error(
+        'Attempted to make a cloudformation stack name with undefined values',
+      );
     }
     return `${this.cfnStackPrefix}${appName || this.app}`;
   }
@@ -146,7 +154,7 @@ class CacclDeployCommander extends Command {
     try {
       const deployConfig = await DeployConfig.fromSsmParams(
         appPrefix,
-        keepSecretArns
+        keepSecretArns,
       );
 
       return deployConfig;
@@ -169,11 +177,16 @@ class CacclDeployCommander extends Command {
     const cfnExports = await aws.getCfnStackExports(cfnStackName);
     const stackVersion = cfnExports.cacclDeployVersion;
     const cliVersion = cacclDeployVersion;
-    if (cliVersion === stackVersion || !warnAboutVersionDiff(stackVersion, cliVersion)) {
+    if (
+      cliVersion === stackVersion ||
+      !warnAboutVersionDiff(stackVersion, cliVersion)
+    ) {
       return true;
     }
-    const confirmMsg = `Stack deployed with ${chalk.redBright(stackVersion)}; you are using ${chalk.redBright(cliVersion)}. Proceed?`;
-    return await confirm(confirmMsg, false);
+    const confirmMsg = `Stack deployed with ${chalk.redBright(
+      stackVersion,
+    )}; you are using ${chalk.redBright(cliVersion)}. Proceed?`;
+    return confirm(confirmMsg, false);
   }
 
   /**
@@ -183,31 +196,30 @@ class CacclDeployCommander extends Command {
    * @memberof CacclDeployCommander
    */
   commonOptions() {
-    return this
-      .option(
-        '--profile <string>',
-        'activate a specific aws config/credential profile',
-        initAwsProfile
-      )
+    return this.option(
+      '--profile <string>',
+      'activate a specific aws config/credential profile',
+      initAwsProfile,
+    )
       .option(
         '--ecr-access-role-arn <string>',
         'IAM role ARN for cross account ECR repo access',
-        conf.get('ecrAccessRoleArn')
+        conf.get('ecrAccessRoleArn'),
       )
       .requiredOption(
         '--ssm-root-prefix <string>',
         'The root prefix for ssm parameter store entries',
-        conf.get('ssmRootPrefix')
+        conf.get('ssmRootPrefix'),
       )
       .requiredOption(
         '--cfn-stack-prefix <string>',
         'cloudformation stack name prefix, e.g. "CacclDeploy-"',
-        conf.get('cfnStackPrefix')
+        conf.get('cfnStackPrefix'),
       )
       .option(
         '-y --yes',
         'non-interactive, yes to everything, overwrite existing, etc',
-        yn(CACCL_DEPLOY_NON_INTERACTIVE)
+        yn(CACCL_DEPLOY_NON_INTERACTIVE),
       );
   }
 
@@ -220,13 +232,8 @@ class CacclDeployCommander extends Command {
    * @memberof CacclDeployCommander
    */
   appOption(optional) {
-    const args = [
-      '-a --app <string>',
-      'name of the app to work with',
-    ];
-    return (optional
-      ? this.option(...args)
-      : this.requiredOption(...args));
+    const args = ['-a --app <string>', 'name of the app to work with'];
+    return optional ? this.option(...args) : this.requiredOption(...args);
   }
 }
 
@@ -242,41 +249,44 @@ async function main() {
    */
   if (!conf.get('ssmRootPrefix')) {
     console.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
-    console.log([
-      'It looks like this is your first time running caccl-deploy. ',
-      `A preferences file has been created at ${chalk.yellow(conf.path)}`,
-      'with the following default values:',
-      '',
-      ...Object.entries(configDefaults).map(([k, v]) => {
-        return `  - ${chalk.yellow(k)}: ${chalk.bold(JSON.stringify(v))}`;
-      }),
-      '',
-      'Please see the docs for explanations of these settings',
-    ].join('\n'));
+    console.log(
+      [
+        'It looks like this is your first time running caccl-deploy. ',
+        `A preferences file has been created at ${chalk.yellow(conf.path)}`,
+        'with the following default values:',
+        '',
+        ...Object.entries(configDefaults).map(([k, v]) => {
+          return `  - ${chalk.yellow(k)}: ${chalk.bold(JSON.stringify(v))}`;
+        }),
+        '',
+        'Please see the docs for explanations of these settings',
+      ].join('\n'),
+    );
 
-    CACCL_DEPLOY_NON_INTERACTIVE || (await confirm('Continue?', true)) || exitWithSuccess();
+    CACCL_DEPLOY_NON_INTERACTIVE ||
+      (await confirm('Continue?', true)) ||
+      exitWithSuccess();
     setConfigDefaults();
   }
 
   const cli = new CacclDeployCommander()
     .version(cacclDeployVersion)
-    .description([
-      description,
-      `config: ${conf.path}`,
-    ].join('\n'));
+    .description([packageDescription, `config: ${conf.path}`].join('\n'));
 
   cli
     .command('apps')
     .option(
       '--full-status',
-      'show the full status of each app including CFN stack and config state'
+      'show the full status of each app including CFN stack and config state',
     )
     .description('list available app configurations')
     .action(async (cmd) => {
       const apps = await aws.getAppList(cmd.ssmRootPrefix);
 
       if (!apps.length) {
-        exitWithError(`No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`);
+        exitWithError(
+          `No app configurations found using ssm root prefix ${cmd.ssmRootPrefix}`,
+        );
       }
 
       const appData = {};
@@ -288,7 +298,12 @@ async function main() {
       }
 
       if (cmd.fullStatus) {
-        tableColumns.push('Infra Stack', 'Stack Status', 'Config Drift', 'caccl-deploy Version');
+        tableColumns.push(
+          'Infra Stack',
+          'Stack Status',
+          'Config Drift',
+          'caccl-deploy Version',
+        );
         const cfnStacks = await aws.getCfnStacks(cmd.cfnStackPrefix);
 
         for (let i = 0; i < apps.length; i++) {
@@ -296,12 +311,14 @@ async function main() {
           const cfnStackName = cmd.getCfnStackName(app);
 
           const appPrefix = cmd.getAppPrefix(app);
-          const deployConfig = await DeployConfig
-            .fromSsmParams(appPrefix);
+          const deployConfig = await DeployConfig.fromSsmParams(appPrefix);
           appData[app].push(deployConfig.infraStackName);
 
           const cfnStack = cfnStacks.find((s) => {
-            return s.StackName === cfnStackName && s.StackStatus !== 'DELETE_COMPLETE';
+            return (
+              s.StackName === cfnStackName &&
+              s.StackStatus !== 'DELETE_COMPLETE'
+            );
           });
           if (!cfnStack) {
             // config exists but cfn stack not deployed yet (or was destroyed)
@@ -327,7 +344,7 @@ async function main() {
 
           const cfnStackCacclDeployVersion = cfnStack.Outputs.find((o) => {
             return o.OutputKey.startsWith('CacclDeployVersion');
-          })
+          });
           appData[app].push(cfnStackCacclDeployVersion.OutputValue);
         }
       }
@@ -335,9 +352,7 @@ async function main() {
         return [app, ...appData[app]];
       });
 
-      exitWithSuccess(
-        table([tableColumns, ...tableData])
-      );
+      exitWithSuccess(table([tableColumns, ...tableData]));
     });
 
   cli
@@ -346,7 +361,7 @@ async function main() {
     .appOption(true)
     .option(
       '-i --import <string>',
-      'import new deploy config from a json file or URL'
+      'import new deploy config from a json file or URL',
     )
     .description('create a new app configuration')
     .action(async (cmd) => {
@@ -357,7 +372,7 @@ async function main() {
 
       let appName;
       try {
-        appName = (cmd.app || await promptAppName());
+        appName = cmd.app || (await promptAppName());
       } catch (err) {
         if (err instanceof UserCancel) {
           exitWithSuccess();
@@ -375,8 +390,8 @@ async function main() {
           console.log(`Configuration for ${cmd.app} already exists`);
         }
 
-        if (cmd.yes || await confirm('Overwrite?')) {
-          if (!await confirmProductionOp(cmd.yes)) {
+        if (cmd.yes || (await confirm('Overwrite?'))) {
+          if (!(await confirmProductionOp(cmd.yes))) {
             exitWithSuccess();
           }
           await DeployConfig.wipeExisting(appPrefix);
@@ -392,7 +407,7 @@ async function main() {
        */
       let importedConfig;
       if (cmd.import !== undefined) {
-        importedConfig = (/^http(s):\//.test(cmd.import))
+        importedConfig = /^http(s):\//.test(cmd.import)
           ? await DeployConfig.fromUrl(cmd.import)
           : DeployConfig.fromFile(cmd.import);
       }
@@ -404,24 +419,28 @@ async function main() {
         if (err instanceof UserCancel) {
           exitWithSuccess();
         } else if (err instanceof NoPromptChoices) {
-          exitWithError([
-            'Something went wrong trying to generate your config: ',
-            err.message,
-          ].join('\n'));
+          exitWithError(
+            [
+              'Something went wrong trying to generate your config: ',
+              err.message,
+            ].join('\n'),
+          );
         }
         throw err;
       }
 
       await deployConfig.syncToSsm(appPrefix);
-      exitWithSuccess([
-        chalk.yellowBright(figlet.textSync(`${appName}!`)),
-        '',
-        'Your new app deployment configuration is created!',
-        'Next steps:',
-        `  * modify or add settings with 'caccl-deploy update -a ${appName} [...]'`,
-        `  * deploy the app stack with 'caccl-deploy stack -a ${appName} deploy'`,
-        '',
-      ].join('\n'));
+      exitWithSuccess(
+        [
+          chalk.yellowBright(figlet.textSync(`${appName}!`)),
+          '',
+          'Your new app deployment configuration is created!',
+          'Next steps:',
+          `  * modify or add settings with 'caccl-deploy update -a ${appName} [...]'`,
+          `  * deploy the app stack with 'caccl-deploy stack -a ${appName} deploy'`,
+          '',
+        ].join('\n'),
+      );
     });
 
   cli
@@ -431,20 +450,24 @@ async function main() {
     .action(async (cmd) => {
       const cfnStackName = cmd.getCfnStackName();
       if (await aws.cfnStackExists(cfnStackName)) {
-        exitWithError([
-          `You must first run "caccl-deploy stack -a ${cmd.app} destroy" to delete`,
-          `the deployed ${cfnStackName} CloudFormation stack before deleting it's config.`,
-        ].join('\n'));
+        exitWithError(
+          [
+            `You must first run "caccl-deploy stack -a ${cmd.app} destroy" to delete`,
+            `the deployed ${cfnStackName} CloudFormation stack before deleting it's config.`,
+          ].join('\n'),
+        );
       }
 
       try {
-        console.log(`This will delete all deployment configuation for ${cmd.app}`);
+        console.log(
+          `This will delete all deployment configuation for ${cmd.app}`,
+        );
 
-        if (!(cmd.yes || await confirm('Are you sure?'))) {
+        if (!(cmd.yes || (await confirm('Are you sure?')))) {
           exitWithSuccess();
         }
         // extra confirm if this is a production deployment
-        if (!await confirmProductionOp(cmd.yes)) {
+        if (!(await confirmProductionOp(cmd.yes))) {
           exitWithSuccess();
         }
 
@@ -460,19 +483,13 @@ async function main() {
 
   cli
     .command('show')
-    .description('display an app\'s current configuration')
+    .description("display an app's current configuration")
     .appOption()
-    .option(
-      '-f --flat',
-      'display the flattened, key: value form of the config'
-    )
-    .option(
-      '-s --sha',
-      'output a sha1 hash of the current configuration'
-    )
+    .option('-f --flat', 'display the flattened, key: value form of the config')
+    .option('-s --sha', 'output a sha1 hash of the current configuration')
     .option(
       '--keep-secret-arns',
-      'show app environment secret value ARNs instead of dereferencing'
+      'show app environment secret value ARNs instead of dereferencing',
     )
     .action(async (cmd) => {
       // we only want to see that sha1 hash (likely for debugging)
@@ -480,7 +497,10 @@ async function main() {
         exitWithSuccess((await cmd.getDeployConfig()).toHash());
       }
       exitWithSuccess(
-        (await cmd.getDeployConfig(cmd.keepSecretArns)).toString(true, cmd.flat)
+        (await cmd.getDeployConfig(cmd.keepSecretArns)).toString(
+          true,
+          cmd.flat,
+        ),
       );
     });
 
@@ -490,12 +510,12 @@ async function main() {
     .appOption()
     .option(
       '-D --delete',
-      'delete the named parameter instead of creating/updating'
+      'delete the named parameter instead of creating/updating',
     )
     .action(async (cmd) => {
       const deployConfig = await cmd.getDeployConfig(true);
 
-      if (!await confirmProductionOp(cmd.yes)) {
+      if (!(await confirmProductionOp(cmd.yes))) {
         exitWithSuccess();
       }
 
@@ -506,20 +526,13 @@ async function main() {
       try {
         if (cmd.delete) {
           const [param] = cmd.args;
-          await deployConfig.delete(
-            cmd.getAppPrefix(),
-            param
-          );
+          await deployConfig.delete(cmd.getAppPrefix(), param);
         } else {
           const [param, value] = cmd.args;
           if (!validSSMParamName(param)) {
             throw new Error(`Invalid param name: '${param}'`);
           }
-          await deployConfig.update(
-            cmd.getAppPrefix(),
-            param,
-            value
-          );
+          await deployConfig.update(cmd.getAppPrefix(), param, value);
         }
       } catch (err) {
         exitWithError(`Something went wrong: ${err.message}`);
@@ -535,13 +548,12 @@ async function main() {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
       const repos = await aws.getRepoList();
-      const data = repos.map((r) => { return [r]; });
+      const data = repos.map((r) => {
+        return [r];
+      });
 
       if (data.length) {
-        const tableOutput = table([
-          ['Respository Name'],
-          ...data,
-        ]);
+        const tableOutput = table([['Respository Name'], ...data]);
         exitWithSuccess(tableOutput);
       }
       exitWithError('No ECR repositories found');
@@ -552,11 +564,11 @@ async function main() {
     .description('list the most recent available ECR images for an app')
     .requiredOption(
       '-r --repo <string>',
-      'the name of the ECR repo; use `caccl-deploy app repos` for available repos'
+      'the name of the ECR repo; use `caccl-deploy app repos` for available repos',
     )
     .option(
       '-A --all',
-      'show all images; default is to show only semver-tagged releases'
+      'show all images; default is to show only semver-tagged releases',
     )
     .action(async (cmd) => {
       // see the README section on cross-account ECR access
@@ -583,31 +595,26 @@ async function main() {
          * Filter then list of image ids for just the ones that correspond
          * to the image tags we want to include
          */
-        const imageArns = i.imageTags.reduce((collect, t) => {
-          if (includeThisTag(t)) {
-            collect.push(
-              aws.createEcrArn({
-                repoName: cmd.repo,
-                imageTag: t,
-                account: i.registryId,
-                region,
-              })
-            );
-          }
-          return collect;
-        }, []).join('\n');
+        const imageArns = i.imageTags
+          .reduce((collect, t) => {
+            if (includeThisTag(t)) {
+              collect.push(
+                aws.createEcrArn({
+                  repoName: cmd.repo,
+                  imageTag: t,
+                  account: i.registryId,
+                  region,
+                }),
+              );
+            }
+            return collect;
+          }, [])
+          .join('\n');
 
-        return [
-          moment(i.imagePushedAt).format(),
-          imageTags,
-          imageArns,
-        ];
+        return [moment(i.imagePushedAt).format(), imageTags, imageArns];
       });
       if (data.length) {
-        const tableOutput = table([
-          ['Pushed On', 'Tags', 'ARNs'],
-          ...data,
-        ]);
+        const tableOutput = table([['Pushed On', 'Tags', 'ARNs'], ...data]);
         exitWithSuccess(tableOutput);
       }
       exitWithError('No images found');
@@ -615,7 +622,7 @@ async function main() {
 
   cli
     .command('stack')
-    .description('diff, deploy, or delete the app\'s AWS resources')
+    .description("diff, deploy, or delete the app's AWS resources")
     .appOption()
     .action(async (cmd) => {
       // get this without resolved secrets for passing to cdk
@@ -632,11 +639,8 @@ async function main() {
        */
       const cfnStackName = cmd.getCfnStackName();
       const stackExists = await aws.cfnStackExists(cfnStackName);
-      const {
-        vpcId,
-        ecsClusterName,
-        albLogBucketName,
-      } = await aws.getCfnStackExports(deployConfig.infraStackName);
+      const { vpcId, ecsClusterName, albLogBucketName } =
+        await aws.getCfnStackExports(deployConfig.infraStackName);
 
       /**
        * Create an object structure with all the info
@@ -685,49 +689,63 @@ async function main() {
       }
 
       // disable cdk prompting if user included `--yes` flag
-      if (cmd.yes && (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))) {
+      if (
+        cmd.yes &&
+        (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))
+      ) {
         cdkArgs.push('--require-approval-never');
       }
 
-      if (['deploy', 'destroy', 'changeset'].some((c) => cdkArgs.includes(c))) {
+      if (
+        ['deploy', 'destroy', 'changeset'].some((c) => {
+          return cdkArgs.includes(c);
+        })
+      ) {
         // check that we're not using a wildly different version of the cli
         if (stackExists && !cmd.yes && !(await cmd.stackVersionDiffCheck())) {
           exitWithSuccess();
         }
         // production failsafe if we're actually changing anything
-        if (!await confirmProductionOp(cmd.yes)) {
+        if (!(await confirmProductionOp(cmd.yes))) {
           exitWithSuccess();
         }
       }
 
       // Set some default removal policy options depending on if this is a "prod" account
-      if (cdkStackProps.deployConfig.dbOptions && !cdkStackProps.deployConfig.dbOptions.removalPolicy) {
-        cdkStackProps.deployConfig.dbOptions.removalPolicy = await isProdAccount() ? 'RETAIN' : 'DESTROY';
+      if (
+        cdkStackProps.deployConfig.dbOptions &&
+        !cdkStackProps.deployConfig.dbOptions.removalPolicy
+      ) {
+        cdkStackProps.deployConfig.dbOptions.removalPolicy =
+          (await isProdAccount()) ? 'RETAIN' : 'DESTROY';
       }
 
       /**
        * Write out the stack properties to a temp json file for
        * the CDK subprocess to pick up
        */
-      tempy.write.task(JSON.stringify(cdkStackProps), async (tempPath) => {
-        // tell the CDK subprocess where to find the stack properties file
-        envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
+      await tempy.write.task(
+        JSON.stringify(cdkStackProps, null, 2),
+        async (tempPath) => {
+          // tell the CDK subprocess where to find the stack properties file
+          envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
 
-        const execOpts = {
-          stdio: 'inherit',
-          // exec the cdk process in the cdk directory
-          cwd: __dirname, // path.join(__dirname, 'cdk'),
-          // inject our additional env vars
-          env: { ...process.env, ...envAdditions },
-        };
+          const execOpts = {
+            stdio: 'inherit',
+            // exec the cdk process in the cdk directory
+            cwd: __dirname, // path.join(__dirname, 'cdk'),
+            // inject our additional env vars
+            env: { ...process.env, ...envAdditions },
+          };
 
-        try {
-          execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
-          exitWithSuccess('done!');
-        } catch (err) {
-          exitWithError(err.msg);
-        }
-      });
+          try {
+            execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
+            exitWithSuccess('done!');
+          } catch (err) {
+            exitWithError(err.msg);
+          }
+        },
+      );
     });
 
   cli
@@ -746,9 +764,11 @@ async function main() {
         throw err;
       }
       const { clusterName, serviceName } = cfnExports;
-      console.log(`Restarting service ${serviceName} on cluster ${clusterName}`);
+      console.log(
+        `Restarting service ${serviceName} on cluster ${clusterName}`,
+      );
 
-      if (!await confirmProductionOp(cmd.yes)) {
+      if (!(await confirmProductionOp(cmd.yes))) {
         exitWithSuccess();
       }
 
@@ -763,11 +783,11 @@ async function main() {
     .appOption()
     .requiredOption(
       '-i --image-tag <string>',
-      'the docker image version tag to release'
+      'the docker image version tag to release',
     )
     .option(
       '--no-deploy',
-      'Update the Fargate Task Definition but don\'t restart the service'
+      "Update the Fargate Task Definition but don't restart the service",
     )
     .action(async (cmd) => {
       // see the README section on cross-account ECR access
@@ -781,17 +801,16 @@ async function main() {
       let cfnExports;
       try {
         cfnExports = await aws.getCfnStackExports(cfnStackName);
-        [
-          'taskDefName',
-          'clusterName',
-          'serviceName',
-        ].forEach((exportValue) => {
+        ['taskDefName', 'clusterName', 'serviceName'].forEach((exportValue) => {
           if (cfnExports[exportValue] === undefined) {
             throw new Error(`Incomplete app stack: missing ${exportValue}`);
           }
         });
       } catch (err) {
-        if (err instanceof CfnStackNotFound || err.message.includes('Incomplete')) {
+        if (
+          err instanceof CfnStackNotFound ||
+          err.message.includes('Incomplete')
+        ) {
           exitWithError(err.message);
         }
         throw err;
@@ -813,10 +832,12 @@ async function main() {
       console.log(`Checking that an image exists with the tag ${cmd.imageTag}`);
       const imageTagExists = await aws.imageTagExists(
         repoArn.repoName,
-        cmd.imageTag
+        cmd.imageTag,
       );
       if (!imageTagExists) {
-        exitWithError(`No image with tag ${cmd.imageTag} in ${repoArn.repoName}`);
+        exitWithError(
+          `No image with tag ${cmd.imageTag} in ${repoArn.repoName}`,
+        );
       }
 
       // check if it's the latest release and prompt if not
@@ -839,14 +860,15 @@ async function main() {
        * to get/extract it via the api. `taskDefName` here is also known as the
        * "family" and doesn't include the task def revision/version number
        */
-      const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } = cfnExports;
+      const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } =
+        cfnExports;
 
       // check that we're not using a wildly different version of the cli
       if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
         exitWithSuccess();
       }
 
-      if (!await confirmProductionOp(cmd.yes)) {
+      if (!(await confirmProductionOp(cmd.yes))) {
         exitWithSuccess();
       }
 
@@ -872,30 +894,25 @@ async function main() {
       // restart the service
       if (cmd.deploy) {
         console.log(`Restarting the ${serviceName} service...`);
-        await aws.restartEcsServcie(
-          clusterName,
-          serviceName,
-          {
-            newTaskDefArn,
-            wait: true,
-          }
-        );
+        await aws.restartEcsServcie(clusterName, serviceName, {
+          newTaskDefArn,
+          wait: true,
+        });
         exitWithSuccess('done.');
       }
-      exitWithSuccess([
-        'Redployment skipped',
-        'WARNING: service is out-of-sync with stored deployment configuration',
-      ].join('\n'));
+      exitWithSuccess(
+        [
+          'Redployment skipped',
+          'WARNING: service is out-of-sync with stored deployment configuration',
+        ].join('\n'),
+      );
     });
 
   cli
     .command('exec')
     .description('execute a one-off task using the app image')
     .appOption()
-    .requiredOption(
-      '-c, --command <string>',
-      'the app task command to run'
-    )
+    .requiredOption('-c, --command <string>', 'the app task command to run')
     .option(
       '-e, --env <value>',
       'add or override container environment variables',
@@ -908,27 +925,23 @@ async function main() {
           },
         ]);
       },
-      []
+      [],
     )
     .action(async (cmd) => {
       const cfnStackName = cmd.getCfnStackName();
-      const {
-        appOnlyTaskDefName,
-        clusterName,
-        serviceName,
-      } = await aws.getCfnStackExports(cfnStackName);
+      const { appOnlyTaskDefName, clusterName, serviceName } =
+        await aws.getCfnStackExports(cfnStackName);
 
       // check that we're not using a wildly different version of the cli
       if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
         exitWithSuccess();
       }
-      if (!await confirmProductionOp(cmd.yes)) {
+      if (!(await confirmProductionOp(cmd.yes))) {
         exitWithSuccess();
       }
 
       console.log(
-        `Running command "${cmd.command}" `
-        + `on service ${serviceName} using task def ${appOnlyTaskDefName}`
+        `Running command '${cmd.command}' on service ${serviceName} using task def ${appOnlyTaskDefName}`,
       );
       const taskArn = await aws.execTask({
         clusterName,
@@ -942,28 +955,31 @@ async function main() {
 
   cli
     .command('connect')
-    .description('connect to an app\'s peripheral services (db, redis, etc)')
+    .description("connect to an app's peripheral services (db, redis, etc)")
     .appOption()
     .option('-l, --list', 'list the things to connect to')
     .option(
       '-s, --service <string>',
-      'service to connect to; use `--list` to see what is available'
+      'service to connect to; use `--list` to see what is available',
     )
     .option(
       '-k, --public-key <string>',
       'path to the ssh public key file to use',
-      untildify('~/.ssh/id_rsa.pub')
+      untildify('~/.ssh/id_rsa.pub'),
     )
-    .option('--local-port <string>', 'attach tunnel to a non-default local port')
+    .option(
+      '--local-port <string>',
+      'attach tunnel to a non-default local port',
+    )
     .option('-q, --quiet', 'output only the ssh tunnel command')
     .option(
       '-S, --sleep <string>',
       'keep the tunnel alive for this long without activity',
-      60
+      60,
     )
     .action(async (cmd) => {
       if (!cmd.list && !cmd.service) {
-        exitWithError("One of `--list` or `--service` is required");
+        exitWithError('One of `--list` or `--service` is required');
       }
 
       const deployConfig = await cmd.getDeployConfig();
@@ -975,17 +991,18 @@ async function main() {
         }
       });
       if (yn(deployConfig.docDb)) {
-        exitWithError([
-          'Deployment configuration is out-of-date',
-          'Replace `docDb*` with `dbOptions: {...}`',
-        ].join('\n'));
+        exitWithError(
+          [
+            'Deployment configuration is out-of-date',
+            'Replace `docDb*` with `dbOptions: {...}`',
+          ].join('\n'),
+        );
       }
 
       if (cmd.list) {
-        exitWithSuccess([
-          'Valid `--service=` options:',
-          ...services,
-        ].join('\n  '));
+        exitWithSuccess(
+          ['Valid `--service=` options:', ...services].join('\n  '),
+        );
       }
 
       if (!services.has(cmd.service)) {
@@ -1000,7 +1017,6 @@ async function main() {
         bastionHostId,
         bastionHostIp,
         dbPasswordSecretArn,
-
       } = cfnStackExports;
 
       try {
@@ -1025,7 +1041,8 @@ async function main() {
           clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;
         } else {
           localPort = cmd.localPort || '27017';
-          const tlsOpts = '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
+          const tlsOpts =
+            '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
           clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
         }
       } else if (cmd.service === 'redis') {
@@ -1048,18 +1065,22 @@ async function main() {
         exitWithSuccess(tunnelCommand);
       }
 
-      exitWithSuccess([
-        `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
-        'You have ~60s to establish the ssh tunnel',
-        '',
-        `# tunnel command:\n${tunnelCommand}`,
-        `# ${cmd.service} client command:\n${clientCommand}`,
-      ].join('\n'));
+      exitWithSuccess(
+        [
+          `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
+          'You have ~60s to establish the ssh tunnel',
+          '',
+          `# tunnel command:\n${tunnelCommand}`,
+          `# ${cmd.service} client command:\n${clientCommand}`,
+        ].join('\n'),
+      );
     });
 
   cli
     .command('schedule')
-    .description('create a scheduled task that executes the app image with a custom command')
+    .description(
+      'create a scheduled task that executes the app image with a custom command',
+    )
     .appOption()
     .option('-l, --list', 'list the existing scheduled tasks')
     .option(
@@ -1070,20 +1091,13 @@ async function main() {
       '-d, --task-description <string>',
       'description of what the task does',
     )
-    .option(
-      '-D, --delete <string>',
-      'delete a scheduled task'
-    )
+    .option('-D, --delete <string>', 'delete a scheduled task')
     .option(
       '-s, --task-schedule <string>',
       'a cron expression, e.g. "0 4 * * *"',
     )
-    .option(
-      '-c, --task-command <string>',
-      'the app task command to run'
-    )
+    .option('-c, --task-command <string>', 'the app task command to run')
     .action(async (cmd) => {
-
       const deployConfig = await cmd.getDeployConfig();
       const existingTasks = deployConfig.scheduledTasks || {};
       const existingTaskIds = Object.keys(existingTasks);
@@ -1095,7 +1109,7 @@ async function main() {
             const taskSettings = existingTasks[id];
             const { command, schedule, description } = taskSettings;
             return [id, schedule, command, description];
-          })
+          });
           const tableOutput = table([
             ['ID', 'Schedule', 'Command', 'Description'],
             ...tableRows,
@@ -1109,7 +1123,9 @@ async function main() {
           exitWithError(`No scheduled task with id ${cmd.delete}`);
         }
         const existingTask = existingTasks[cmd.delete];
-        if (!(cmd.yes || await confirm(`Delete scheduled task ${cmd.delete}?`))) {
+        if (
+          !(cmd.yes || (await confirm(`Delete scheduled task ${cmd.delete}?`)))
+        ) {
           exitWithSuccess();
         }
         const existingTaskParams = Object.keys(existingTask);
@@ -1121,20 +1137,28 @@ async function main() {
         }
         exitWithSuccess(`Scheduled task ${cmd.delete} deleted`);
       } else if (!(cmd.taskSchedule && cmd.taskCommand)) {
-        exitWithError("Invalid options. See `--help` output");
+        exitWithError('Invalid options. See `--help` output');
       }
 
       const taskId = cmd.taskId || Math.random().toString(36).substr(2, 16);
       const taskDescription = cmd.taskDescription || '';
-      const taskSchedule = cmd.taskSchedule;
+      const { taskSchedule } = cmd;
       const taskComman = cmd.taskCommand;
 
       if (!validSSMParamName(taskId)) {
-        exitWithError(`Invalid ${taskId} value; '/^([a-z0-9:/_-]+)$/i' allowed only`)
+        exitWithError(
+          `Invalid ${taskId} value; '/^([a-z0-9:/_-]+)$/i' allowed only`,
+        );
       }
 
-      if (existingTaskIds.some((t) => t.id === taskId)) {
-        exitWithError(`A schedule task with id ${taskId} already exists for ${cmd.app}`);
+      if (
+        existingTaskIds.some((t) => {
+          return t.id === taskId;
+        })
+      ) {
+        exitWithError(
+          `A schedule task with id ${taskId} already exists for ${cmd.app}`,
+        );
       }
 
       const params = {
@@ -1150,7 +1174,7 @@ async function main() {
   await cli.parseAsync(process.argv);
 }
 
-main()
-  .catch((err) => {
-    console.error(err);
-  });
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

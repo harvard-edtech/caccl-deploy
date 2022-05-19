@@ -1,16 +1,20 @@
-import * as path from 'path';
-import { SnsAction } from '@aws-cdk/aws-cloudwatch-actions';
-import { ServicePrincipal } from '@aws-cdk/aws-iam';
-import { Function, Runtime, Code } from '@aws-cdk/aws-lambda';
-import { Topic, Subscription, SubscriptionProtocol } from '@aws-cdk/aws-sns';
-import { LambdaSubscription } from '@aws-cdk/aws-sns-subscriptions';
-import { Construct, CfnOutput, Stack } from '@aws-cdk/core';
+import path from 'path';
+import {
+  aws_sns as sns,
+  aws_iam as iam,
+  aws_lambda as lambda,
+  aws_cloudwatch_actions as actions,
+  aws_sns_subscriptions as subscriptions,
+  CfnOutput,
+  Stack,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 import { CacclDocDb, CacclRdsDb } from './db';
 import { CacclLoadBalancer } from './lb';
 import { CacclService } from './service';
 
 export interface CacclNotificationsProps {
-  email?: (string | string[]);
+  email?: string | string[];
   slack?: string;
   service: CacclService;
   loadBalancer: CacclLoadBalancer;
@@ -18,64 +22,64 @@ export interface CacclNotificationsProps {
 }
 
 export class CacclNotifications extends Construct {
-  topic: Topic;
+  topic: sns.Topic;
 
-  subscriptions: Subscription[];
+  subscriptions: sns.Subscription[];
 
   constructor(scope: Construct, id: string, props: CacclNotificationsProps) {
     super(scope, id);
 
-    const email = (
-      typeof props.email === 'string'
-        ? [props.email]
-        : props.email
-    );
+    const email = typeof props.email === 'string' ? [props.email] : props.email;
 
     const { slack, service, loadBalancer, db } = props;
 
-    this.topic = new Topic(this, 'NotificationTopic', {
+    this.topic = new sns.Topic(this, 'NotificationTopic', {
       displayName: `${Stack.of(this).stackName}-notifications`,
     });
 
     this.topic.grantPublish({
-      grantPrincipal: new ServicePrincipal('cloudwatch.amazonaws.com'),
+      grantPrincipal: new iam.ServicePrincipal('cloudwatch.amazonaws.com'),
     });
 
     if (email) {
       email.forEach((emailAddr, idx) => {
-        new Subscription(this, `email-subscription-${idx}`, {
+        new sns.Subscription(this, `email-subscription-${idx}`, {
           topic: this.topic,
-          protocol: SubscriptionProtocol.EMAIL,
+          protocol: sns.SubscriptionProtocol.EMAIL,
           endpoint: emailAddr,
         });
       });
     }
 
     if (slack !== undefined) {
-      const slackFunction = new Function(this, 'SlackFunction', {
+      const slackFunction = new lambda.Function(this, 'SlackFunction', {
         functionName: `${Stack.of(this).stackName}-slack-notify`,
-        runtime: Runtime.PYTHON_3_8,
+        runtime: lambda.Runtime.PYTHON_3_8,
         handler: 'notify.handler',
-        code: Code.fromAsset(path.join(__dirname, '..', 'assets/slack_notify')),
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '..', 'assets/slack_notify'),
+        ),
         environment: {
           SLACK_WEBHOOK_URL: slack,
         },
       });
 
-      this.topic.addSubscription(new LambdaSubscription(slackFunction));
+      this.topic.addSubscription(
+        new subscriptions.LambdaSubscription(slackFunction),
+      );
     }
 
     loadBalancer.alarms.forEach((alarm) => {
-      alarm.addAlarmAction(new SnsAction(this.topic));
+      alarm.addAlarmAction(new actions.SnsAction(this.topic));
     });
 
     service.alarms.forEach((alarm) => {
-      alarm.addAlarmAction(new SnsAction(this.topic));
+      alarm.addAlarmAction(new actions.SnsAction(this.topic));
     });
 
     db?.alarms.forEach((alarm) => {
-      alarm.addAlarmAction(new SnsAction(this.topic));
-    })
+      alarm.addAlarmAction(new actions.SnsAction(this.topic));
+    });
 
     new CfnOutput(this, 'TopicName', {
       exportName: `${Stack.of(this).stackName}-sns-topic-name`,

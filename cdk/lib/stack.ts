@@ -1,17 +1,16 @@
-import { Vpc, SecurityGroup, Peer, Port } from '@aws-cdk/aws-ec2';
-import { Cluster } from '@aws-cdk/aws-ecs';
-import { Stack, Construct, StackProps } from '@aws-cdk/core';
+import { aws_ec2 as ec2, aws_ecs as ecs, Stack, StackProps } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 import { CacclAppEnvironment } from './appEnvironment';
+import { CacclSshBastion } from './bastion';
+import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclMonitoring } from './dashboard';
-import { CacclDbOptions, CacclDbBase } from './db';
+import { CacclDbOptions, createDbConstruct } from './db';
 import { CacclLoadBalancer, LoadBalancerSecurityGoups } from './lb';
 import { CacclNotifications, CacclNotificationsProps } from './notify';
-import { CacclCache, CacclCacheOptions } from './cache';
+import { CacclScheduledTask, CacclScheduledTasks } from './scheduledTasks';
 import { CacclService } from './service';
 import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
-import { CacclSshBastion } from './bastion';
-import { CacclScheduledTask, CacclScheduledTasks } from './scheduledTasks';
 
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
@@ -19,14 +18,14 @@ export interface CacclDeployStackProps extends StackProps {
   maxAzs: number;
   certificateArn: string;
   ecsClusterName?: string;
-  appEnvironment: { [key: string]: string; };
+  appEnvironment: { [key: string]: string };
   taskDefProps: CacclTaskDefProps;
   taskCount: number;
   notifications: CacclNotificationsProps;
   albLogBucketName?: string;
   cacheOptions?: CacclCacheOptions;
   dbOptions?: CacclDbOptions;
-  bastionAmiMap?: { [key: string]: string; };
+  bastionAmiMap?: { [key: string]: string };
   scheduledTasks?: { [key: string]: CacclScheduledTask };
   targetDeregistrationDelay?: number; // in seconds
   firewallSgId?: string;
@@ -43,11 +42,11 @@ export class CacclDeployStack extends Stack {
     let createBastion = false;
 
     if (props.vpcId !== undefined) {
-      vpc = Vpc.fromLookup(this, 'Vpc', {
+      vpc = ec2.Vpc.fromLookup(this, 'Vpc', {
         vpcId: props.vpcId,
-      }) as Vpc;
+      }) as ec2.Vpc;
     } else if (props.cidrBlock !== undefined) {
-      vpc = new Vpc(this, 'Vpc', {
+      vpc = new ec2.Vpc(this, 'Vpc', {
         cidr: props.cidrBlock,
         maxAzs: props.maxAzs,
       });
@@ -67,17 +66,16 @@ export class CacclDeployStack extends Stack {
     let db = null;
     if (props.dbOptions) {
       createBastion = true;
-      db = CacclDbBase.createDbConstruct(this, {
+      db = createDbConstruct(this, {
         vpc,
         options: props.dbOptions,
         appEnv,
       });
     }
 
-    let cache = null;
     if (props.cacheOptions) {
       createBastion = true;
-      cache = new CacclCache(this, 'Cache', {
+      new CacclCache(this, 'Cache', {
         vpc,
         options: props.cacheOptions,
         appEnv,
@@ -85,13 +83,13 @@ export class CacclDeployStack extends Stack {
     }
 
     if (props.ecsClusterName !== undefined) {
-      cluster = Cluster.fromClusterAttributes(this, 'Cluster', {
+      cluster = ecs.Cluster.fromClusterAttributes(this, 'Cluster', {
         vpc,
         clusterName: props.ecsClusterName,
         securityGroups: [],
-      }) as Cluster;
+      }) as ecs.Cluster;
     } else {
-      cluster = new Cluster(this, 'Cluster', {
+      cluster = new ecs.Cluster(this, 'Cluster', {
         clusterName: props.stackName,
         containerInsights: true,
         vpc,
@@ -104,29 +102,35 @@ export class CacclDeployStack extends Stack {
       ...props.taskDefProps,
     });
 
-    let lbSecurityGroups: LoadBalancerSecurityGoups = {};
+    const lbSecurityGroups: LoadBalancerSecurityGoups = {};
 
     if (props.firewallSgId) {
       // primary firewall will be the imported, shared security group
-      lbSecurityGroups.primary = SecurityGroup.fromSecurityGroupId(this, 'SecurityGroupImport', props.firewallSgId, {
-        allowAllOutbound: true,
-      }) as SecurityGroup;
+      lbSecurityGroups.primary = ec2.SecurityGroup.fromSecurityGroupId(
+        this,
+        'SecurityGroupImport',
+        props.firewallSgId,
+        {
+          allowAllOutbound: true,
+        },
+      ) as ec2.SecurityGroup;
 
       // we also need a separate, app-specific security group for miscellaneous
-      lbSecurityGroups.misc = new SecurityGroup(this, 'MiscSecurityGroup', {
+      lbSecurityGroups.misc = new ec2.SecurityGroup(this, 'MiscSecurityGroup', {
         vpc,
-        description: 'security group for miscellaneous app-specific ingress rules',
+        description:
+          'security group for miscellaneous app-specific ingress rules',
       });
     } else {
       // primary will be a new, "open" security group
-      const newSg = new SecurityGroup(this, 'FirewallSecurityGroup', {
+      const newSg = new ec2.SecurityGroup(this, 'FirewallSecurityGroup', {
         vpc,
         description: 'security group for the load balancer and app service',
       });
 
       // by default apps are public
-      newSg.addIngressRule(Peer.anyIpv4(), Port.tcp(80))
-      newSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443));
+      newSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80));
+      newSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443));
 
       lbSecurityGroups.primary = newSg;
     }
@@ -178,11 +182,11 @@ export class CacclDeployStack extends Stack {
       if (props.firewallSgId) {
         bastionSg = lbSecurityGroups.primary;
       } else {
-        bastionSg = new SecurityGroup(this, 'BastionSecurityGroup', {
+        bastionSg = new ec2.SecurityGroup(this, 'BastionSecurityGroup', {
           vpc,
           description: 'security group for the ssh bastion host',
-        })
-        bastionSg.addIngressRule(Peer.anyIpv4(), Port.tcp(22));
+        });
+        bastionSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22));
       }
       new CacclSshBastion(this, 'SshBastion', { vpc, sg: bastionSg });
     }

@@ -1,40 +1,43 @@
-import { Alarm } from '@aws-cdk/aws-cloudwatch';
-import { Port, SecurityGroup } from '@aws-cdk/aws-ec2';
-import { Cluster, FargatePlatformVersion, FargateService, IEcsLoadBalancerTarget, PropagatedTagSource } from '@aws-cdk/aws-ecs';
-import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
-
+import {
+  aws_cloudwatch as cloudwatch,
+  aws_ec2 as ec2,
+  aws_ecs as ecs,
+  CfnOutput,
+  Stack,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 import { CacclTaskDef } from './taskdef';
 
 export interface CacclServiceProps {
-  cluster: Cluster;
+  cluster: ecs.Cluster;
   taskDef: CacclTaskDef;
   taskCount: number;
-  loadBalancerSg: SecurityGroup;
+  loadBalancerSg: ec2.SecurityGroup;
 }
 
 export class CacclService extends Construct {
-  loadBalancerTarget: IEcsLoadBalancerTarget;
+  loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
 
-  ecsService: FargateService;
+  ecsService: ecs.FargateService;
 
-  alarms: Alarm[];
+  alarms: cloudwatch.Alarm[];
 
   constructor(scope: Construct, id: string, props: CacclServiceProps) {
     super(scope, id);
 
     const { cluster, taskDef, taskCount, loadBalancerSg } = props;
 
-    const serviceSg = new SecurityGroup(this, 'SecurityGroup', {
+    const serviceSg = new ec2.SecurityGroup(this, 'SecurityGroup', {
       vpc: cluster.vpc,
       description: 'ecs service security group',
     });
     // Load balancer to tasks
-    serviceSg.connections.allowFrom(loadBalancerSg, Port.tcp(443));
+    serviceSg.connections.allowFrom(loadBalancerSg, ec2.Port.tcp(443));
 
-    this.ecsService = new FargateService(this, 'FargateService', {
+    this.ecsService = new ecs.FargateService(this, 'FargateService', {
       cluster,
       securityGroups: [serviceSg],
-      platformVersion: FargatePlatformVersion.VERSION1_4,
+      platformVersion: ecs.FargatePlatformVersion.VERSION1_4,
       taskDefinition: taskDef.taskDef,
       desiredCount: taskCount,
       minHealthyPercent: 100,
@@ -42,7 +45,7 @@ export class CacclService extends Construct {
       circuitBreaker: {
         rollback: true,
       },
-      propagateTags: PropagatedTagSource.SERVICE,
+      propagateTags: ecs.PropagatedTagSource.SERVICE,
     });
 
     // this is the thing that gets handed off to the load balancer

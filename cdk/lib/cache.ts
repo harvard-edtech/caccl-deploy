@@ -1,26 +1,34 @@
-import { CfnOutput, Construct, Stack } from '@aws-cdk/core';
-import { CfnCacheCluster, CfnSubnetGroup } from '@aws-cdk/aws-elasticache';
-import { Alarm, Metric } from '@aws-cdk/aws-cloudwatch';
-import { Peer, Port, SecurityGroup, Vpc } from '@aws-cdk/aws-ec2';
+import {
+  aws_cloudwatch as cloudwatch,
+  aws_ec2 as ec2,
+  aws_elasticache as elasticache,
+  Stack,
+  CfnOutput,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+
 import { CacclAppEnvironment } from './appEnvironment';
 
 export interface CacclCacheOptions {
-  engine: string,
-  numCacheNodes?: number,
-  cacheNodeType?: string,
-};
+  engine: string;
+  numCacheNodes?: number;
+  cacheNodeType?: string;
+}
 
 export interface CacclCacheProps {
-  vpc: Vpc,
-  options: CacclCacheOptions,
-  appEnv: CacclAppEnvironment,
-};
+  vpc: ec2.Vpc;
+  options: CacclCacheOptions;
+  appEnv: CacclAppEnvironment;
+}
 
 export class CacclCache extends Construct {
-  cache: CfnCacheCluster;
-  cacheSg: SecurityGroup;
-  metrics: { [key: string]: Metric; };
-  alarms: Alarm[];
+  cache: elasticache.CfnCacheCluster;
+
+  cacheSg: ec2.SecurityGroup;
+
+  metrics: { [key: string]: cloudwatch.Metric };
+
+  alarms: cloudwatch.Alarm[];
 
   constructor(scope: Construct, id: string, props: CacclCacheProps) {
     super(scope, id);
@@ -32,29 +40,37 @@ export class CacclCache extends Construct {
       cacheNodeType = 'cache.t3.medium',
     } = props.options;
 
-    const subnetGroup = new CfnSubnetGroup(this, 'CacheSubnetGroup', {
-      description: `List of subnets for ${Stack.of(this).stackName}`,
-      subnetIds: vpc.privateSubnets.map((subnet) => {
-        return subnet.subnetId;
-      }),
-    });
+    const subnetGroup = new elasticache.CfnSubnetGroup(
+      this,
+      'CacheSubnetGroup',
+      {
+        description: `List of subnets for ${Stack.of(this).stackName}`,
+        subnetIds: vpc.privateSubnets.map((subnet) => {
+          return subnet.subnetId;
+        }),
+      },
+    );
 
-    this.cacheSg = new SecurityGroup(this, 'CacheSecurityGroup', {
+    this.cacheSg = new ec2.SecurityGroup(this, 'CacheSecurityGroup', {
       vpc,
       description: 'security group for the elasticache cluster',
       allowAllOutbound: false,
     });
 
-    this.cacheSg.addIngressRule(Peer.ipv4(vpc.vpcCidrBlock), Port.tcp(6379), 'allow from internal network');
+    this.cacheSg.addIngressRule(
+      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      ec2.Port.tcp(6379),
+      'allow from internal network',
+    );
 
     /**
      * why do we `allowAllOutbound: false` just above and then undo it here?
      * because CDK complains if we don't. something about allowAllOutbound
      * not allowing IPv6 traffic so they had to add a warning?
      */
-    this.cacheSg.addEgressRule(Peer.anyIpv4(), Port.allTcp());
+    this.cacheSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.allTcp());
 
-    this.cache = new CfnCacheCluster(this, 'CacheCluster', {
+    this.cache = new elasticache.CfnCacheCluster(this, 'CacheCluster', {
       engine,
       numCacheNodes,
       cacheNodeType,
@@ -69,6 +85,5 @@ export class CacclCache extends Construct {
       exportName: `${Stack.of(this).stackName}-cache-endpoint`,
       value: `${this.cache.attrRedisEndpointAddress}:6379`,
     });
-
   }
-};
+}

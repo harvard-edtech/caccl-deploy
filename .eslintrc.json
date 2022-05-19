@@ -1,0 +1,155 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "env": {
+    "node": true,
+    "jest": true
+  },
+  "settings": {
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts"]
+    },
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".ts"]
+      },
+      "typescript": {
+        "directory": "./tsconfig.json"
+      }
+    }
+  },
+  "plugins": ["@typescript-eslint", "import", "cdk"],
+  "extends": [
+    "airbnb-base",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
+  "ignorePatterns": [
+    "*.d.ts",
+    "node_modules/",
+    "*.generated.ts",
+    "build/",
+    "cdk/cdk.out/"
+  ],
+  "rules": {
+    "@typescript-eslint/no-var-requires": "off",
+    "@typescript-eslint/no-floating-promises": ["error"],
+    "@typescript-eslint/no-non-null-assertion": ["warn"],
+    "@typescript-eslint/no-explicit-any": "off",
+    "max-classes-per-file": "off",
+    "arrow-body-style": ["warn", "always"],
+    "arrow-parens": ["warn", "always"],
+    "comma-dangle": ["error", "only-multiline"],
+    "consistent-return": "off",
+    "no-duplicate-imports": ["error"],
+    "no-continue": "off",
+    "no-shadow": ["error"],
+    "key-spacing": ["error"],
+    "semi": ["error", "always"],
+    "quote-props": ["error", "consistent-as-needed"],
+    "function-call-argument-newline": ["error", "consistent"],
+    "no-multiple-empty-lines": ["error"],
+    "no-new": 0,
+    "explicit-function-return-type": 0,
+    "no-console": "off",
+    "no-underscore-dangle": "off",
+    "no-await-in-loop": "off",
+    "no-unused-expressions": "off",
+    "import/no-unresolved": ["error"],
+		"indent": ["error", 2, { "SwitchCase": 1 }],
+    "class-methods-use-this": [
+      "error",
+      {
+        "exceptMethods": ["createCommand"]
+      }
+    ],
+		"quotes": [
+			"error",
+			"single",
+			{
+				"avoidEscape": true
+			}
+		],
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": ["**/build-tools/**", "**/test/**"],
+        "optionalDependencies": false,
+        "peerDependencies": false
+      }
+    ],
+    "import/order": [
+      "warn",
+      {
+        "groups": ["builtin", "external"],
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        }
+      }
+    ],
+    "import/extensions": [
+      "warn",
+      "never",
+      {
+        "json": "always"
+      }
+    ],
+    "max-len": [
+      "error",
+      {
+        "code": 150,
+        "ignoreUrls": true,
+        "ignoreStrings": true,
+        "ignoreTemplateLiterals": true,
+        "ignoreComments": true,
+        "ignoreRegExpLiterals": true
+      }
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "no-void": [
+      "error",
+      {
+        "allowAsStatement": true
+      }
+    ],
+    "no-plusplus": [
+      "warn",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
+    "prefer-destructuring": [
+      "error",
+      {
+        "VariableDeclarator": {
+          "array": false,
+          "object": true
+        },
+        "AssignmentExpression": {
+          "array": false,
+          "object": true
+        }
+      },
+      {
+        "enforceForRenamedProperties": false
+      }
+    ],
+    "max-params": [
+      "warn",
+      {
+        "max": 3
+      }
+    ]
+  }
+}

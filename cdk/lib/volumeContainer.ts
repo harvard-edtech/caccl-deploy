@@ -1,47 +1,58 @@
 import {
-  ContainerDefinition,
-  ContainerImage,
-  Secret as EcsSecret,
-  ContainerDependencyCondition,
-  TaskDefinition,
-} from '@aws-cdk/aws-ecs';
-import { Secret } from '@aws-cdk/aws-secretsmanager';
-import { Construct } from '@aws-cdk/core';
+  aws_ecs as ecs,
+  aws_secretsmanager as secretsmanager,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 const VOLUME_NAME = 'gitrepovolume';
 const VOLUME_CONTAINER_MOUNT_PATH = '/var/gitrepo';
 
 export interface CacclGitRepoVolumeContainerProps {
-  taskDefinition: TaskDefinition;
-  appContainer: ContainerDefinition;
+  taskDefinition: ecs.TaskDefinition;
+  appContainer: ecs.ContainerDefinition;
   repoUrlSecretArn: string;
   appContainerPath: string;
 }
 
 export class CacclGitRepoVolumeContainer extends Construct {
-  container: ContainerDefinition;
+  container: ecs.ContainerDefinition;
 
-  constructor(scope: Construct, id: string, props: CacclGitRepoVolumeContainerProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: CacclGitRepoVolumeContainerProps,
+  ) {
     super(scope, id);
 
-    const { taskDefinition, appContainer, repoUrlSecretArn, appContainerPath } = props;
+    const { taskDefinition, appContainer, repoUrlSecretArn, appContainerPath } =
+      props;
 
     // the volume itself is added to the task definition
     taskDefinition.addVolume({ name: VOLUME_NAME });
 
     // container gets the full URL (including auth bits) via secrets manager
-    const repoUrlSecret = EcsSecret.fromSecretsManager(Secret.fromSecretCompleteArn(this, 'RepoUrlSecret', repoUrlSecretArn));
+    const repoUrlSecret = ecs.Secret.fromSecretsManager(
+      secretsmanager.Secret.fromSecretCompleteArn(
+        this,
+        'RepoUrlSecret',
+        repoUrlSecretArn,
+      ),
+    );
 
-    this.container = new ContainerDefinition(this, 'GitRepoVolumeContainer', {
-      image: ContainerImage.fromRegistry('alpine/git'),
-      command: ['git clone --branch master $GIT_REPO_URL /var/gitrepo'],
-      entryPoint: ['sh', '-c'],
-      essential: false,
-      taskDefinition,
-      secrets: {
-        GIT_REPO_URL: repoUrlSecret,
+    this.container = new ecs.ContainerDefinition(
+      this,
+      'GitRepoVolumeContainer',
+      {
+        image: ecs.ContainerImage.fromRegistry('alpine/git'),
+        command: ['git clone --branch master $GIT_REPO_URL /var/gitrepo'],
+        entryPoint: ['sh', '-c'],
+        essential: false,
+        taskDefinition,
+        secrets: {
+          GIT_REPO_URL: repoUrlSecret,
+        },
       },
-    });
+    );
 
     this.container.addMountPoints({
       containerPath: VOLUME_CONTAINER_MOUNT_PATH,
@@ -57,7 +68,7 @@ export class CacclGitRepoVolumeContainer extends Construct {
 
     appContainer.addContainerDependencies({
       container: this.container,
-      condition: ContainerDependencyCondition.SUCCESS,
+      condition: ecs.ContainerDependencyCondition.SUCCESS,
     });
   }
 }

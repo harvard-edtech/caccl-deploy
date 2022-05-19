@@ -1,7 +1,6 @@
-const DeployConfig = require('../lib/deployConfig');
-const tempy = require('tempy');
 const fs = require('fs');
-const path = require('path');
+const tempy = require('tempy');
+const DeployConfig = require('../lib/deployConfig');
 
 describe('deployConfig', () => {
   test('it loads a json deployconfig from an absolute path', () => {
@@ -14,5 +13,5 @@ describe('deployConfig', () => {
   test('it loads a json deployconfig from a relative path', () => {
     const dc = DeployConfig.fromFile('test/resources/deployConfig-0.json');
     expect(dc.baz).toEqual(1);
-  })
+  });
 });

@@ -1,39 +1,37 @@
-import { Alarm, Metric, TreatMissingData, Unit } from '@aws-cdk/aws-cloudwatch';
-import { SecurityGroup, Vpc, Peer, Port } from '@aws-cdk/aws-ec2';
-import { IEcsLoadBalancerTarget } from '@aws-cdk/aws-ecs';
 import {
-  ApplicationLoadBalancer,
-  CfnListener,
-  ApplicationProtocol,
-  ApplicationListener,
-  ApplicationTargetGroup,
-  TargetType,
-} from '@aws-cdk/aws-elasticloadbalancingv2';
-import { Bucket } from '@aws-cdk/aws-s3';
-import { CfnOutput, Construct, Duration, Stack } from '@aws-cdk/core';
+  aws_cloudwatch as cloudwatch,
+  aws_ec2 as ec2,
+  aws_ecs as ecs,
+  aws_elasticloadbalancingv2 as elb,
+  aws_s3 as s3,
+  CfnOutput,
+  Duration,
+  Stack,
+} from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 export type LoadBalancerSecurityGoups = {
-  primary?: SecurityGroup;
-  misc?: SecurityGroup;
+  primary?: ec2.SecurityGroup;
+  misc?: ec2.SecurityGroup;
 };
 
 export interface CacclLoadBalancerProps {
-  vpc: Vpc;
+  vpc: ec2.Vpc;
   securityGroups: LoadBalancerSecurityGoups;
   certificateArn: string;
-  loadBalancerTarget: IEcsLoadBalancerTarget;
+  loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
   albLogBucketName?: string;
   targetDeregistrationDelay?: number; // in seconds
 }
 
 export class CacclLoadBalancer extends Construct {
-  loadBalancer: ApplicationLoadBalancer;
+  loadBalancer: elb.ApplicationLoadBalancer;
 
-  httpsListener: ApplicationListener;
+  httpsListener: elb.ApplicationListener;
 
-  metrics: { [key: string]: Metric; };
+  metrics: { [key: string]: cloudwatch.Metric };
 
-  alarms: Alarm[];
+  alarms: cloudwatch.Alarm[];
 
   constructor(scope: Construct, id: string, props: CacclLoadBalancerProps) {
     super(scope, id);
@@ -47,7 +45,7 @@ export class CacclLoadBalancer extends Construct {
       targetDeregistrationDelay = 30,
     } = props;
 
-    this.loadBalancer = new ApplicationLoadBalancer(this, 'LoadBalancer', {
+    this.loadBalancer = new elb.ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
       securityGroup: securityGroups.primary,
       internetFacing: true,
@@ -58,14 +56,18 @@ export class CacclLoadBalancer extends Construct {
     }
 
     if (albLogBucketName !== undefined) {
-      const bucket = Bucket.fromBucketName(this, 'AlbLogBucket', albLogBucketName);
+      const bucket = s3.Bucket.fromBucketName(
+        this,
+        'AlbLogBucket',
+        albLogBucketName,
+      );
       const objPrefix = Stack.of(this).stackName;
       this.loadBalancer.logAccessLogs(bucket, objPrefix);
     }
 
-    new CfnListener(this, 'HttpRedirect', {
+    new elb.CfnListener(this, 'HttpRedirect', {
       loadBalancerArn: this.loadBalancer.loadBalancerArn,
-      protocol: ApplicationProtocol.HTTP,
+      protocol: elb.ApplicationProtocol.HTTP,
       port: 80,
       defaultActions: [
         {
@@ -82,11 +84,11 @@ export class CacclLoadBalancer extends Construct {
       ],
     });
 
-    const httpsListener = new ApplicationListener(this, 'HttpsListener', {
+    const httpsListener = new elb.ApplicationListener(this, 'HttpsListener', {
       loadBalancer: this.loadBalancer,
       certificates: [{ certificateArn }],
       port: 443,
-      protocol: ApplicationProtocol.HTTPS,
+      protocol: elb.ApplicationProtocol.HTTPS,
       /**
        * if we don't make this false the listener construct will add rules
        * to our security group that we don't want/need
@@ -94,14 +96,14 @@ export class CacclLoadBalancer extends Construct {
       open: false,
     });
 
-    const appTargetGroup = new ApplicationTargetGroup(this, 'TargetGroup', {
+    const appTargetGroup = new elb.ApplicationTargetGroup(this, 'TargetGroup', {
       vpc,
       port: 443,
-      protocol: ApplicationProtocol.HTTPS,
+      protocol: elb.ApplicationProtocol.HTTPS,
       // setting this duration value enables the lb stickiness; 1 day is the default
       stickinessCookieDuration: Duration.seconds(86400),
       deregistrationDelay: Duration.seconds(targetDeregistrationDelay),
-      targetType: TargetType.IP,
+      targetType: elb.TargetType.IP,
       targets: [loadBalancerTarget],
       healthCheck: {
         // allow a redirect to indicate service is operational
@@ -117,42 +119,54 @@ export class CacclLoadBalancer extends Construct {
       RequestCount: this.loadBalancer.metricRequestCount(),
       NewConnectionCount: this.loadBalancer.metricNewConnectionCount(),
       ActiveConnectionCount: this.loadBalancer.metricActiveConnectionCount(),
-      TargetResponseTime: this.loadBalancer.metricTargetResponseTime({
-        period: Duration.minutes(1),
-        unit: Unit.MILLISECONDS,
-        statistic: 'avg',
-      }).with({ period: Duration.minutes(1) }),
-      RejectedConnectionCount: this.loadBalancer.metricRejectedConnectionCount({
-        period: Duration.minutes(1),
-        statistic: 'sum',
-      }).with({ period: Duration.minutes(1) }),
-      UnHealthyHostCount: appTargetGroup.metricUnhealthyHostCount({
-        period: Duration.minutes(1),
-        statistic: 'sum',
-      }).with({ period: Duration.minutes(1) }),
+      TargetResponseTime: this.loadBalancer
+        .metricTargetResponseTime({
+          period: Duration.minutes(1),
+          unit: cloudwatch.Unit.MILLISECONDS,
+          statistic: 'avg',
+        })
+        .with({ period: Duration.minutes(1) }),
+      RejectedConnectionCount: this.loadBalancer
+        .metricRejectedConnectionCount({
+          period: Duration.minutes(1),
+          statistic: 'sum',
+        })
+        .with({ period: Duration.minutes(1) }),
+      UnHealthyHostCount: appTargetGroup
+        .metricUnhealthyHostCount({
+          period: Duration.minutes(1),
+          statistic: 'sum',
+        })
+        .with({ period: Duration.minutes(1) }),
     };
 
     this.alarms = [
-      new Alarm(this, 'TargetResponseTimeAlarm', {
+      new cloudwatch.Alarm(this, 'TargetResponseTimeAlarm', {
         metric: this.metrics.TargetResponseTime,
         threshold: 1,
         evaluationPeriods: 3,
-        treatMissingData: TreatMissingData.IGNORE,
-        alarmDescription: `${Stack.of(this).stackName} load balancer target response time (TargetResponseTime)`,
+        treatMissingData: cloudwatch.TreatMissingData.IGNORE,
+        alarmDescription: `${
+          Stack.of(this).stackName
+        } load balancer target response time (TargetResponseTime)`,
       }),
-      new Alarm(this, 'RejectedConnectionsAlarm', {
+      new cloudwatch.Alarm(this, 'RejectedConnectionsAlarm', {
         metric: this.metrics.RejectedConnectionCount,
         threshold: 1,
         evaluationPeriods: 1,
-        treatMissingData: TreatMissingData.IGNORE,
-        alarmDescription: `${Stack.of(this).stackName} load balancer rejected connections (RejectedConnectionCount)`,
+        treatMissingData: cloudwatch.TreatMissingData.IGNORE,
+        alarmDescription: `${
+          Stack.of(this).stackName
+        } load balancer rejected connections (RejectedConnectionCount)`,
       }),
-      new Alarm(this, 'UnhealthHostAlarm', {
+      new cloudwatch.Alarm(this, 'UnhealthHostAlarm', {
         metric: this.metrics.UnHealthyHostCount,
         threshold: 1,
         evaluationPeriods: 3,
-        treatMissingData: TreatMissingData.IGNORE,
-        alarmDescription: `${Stack.of(this).stackName} target group unhealthy host count (UnHealthyHostCount)`,
+        treatMissingData: cloudwatch.TreatMissingData.IGNORE,
+        alarmDescription: `${
+          Stack.of(this).stackName
+        } target group unhealthy host count (UnHealthyHostCount)`,
       }),
     ];
 
@@ -161,10 +175,12 @@ export class CacclLoadBalancer extends Construct {
       value: this.loadBalancer.loadBalancerDnsName,
     });
 
-    new CfnOutput(this, 'LoadBalancerPrimarySecurityGroup', {
-      exportName: `${Stack.of(this).stackName}-primary-security-group`,
-      value: securityGroups.primary!.securityGroupId,
-    });
+    if (securityGroups.primary) {
+      new CfnOutput(this, 'LoadBalancerPrimarySecurityGroup', {
+        exportName: `${Stack.of(this).stackName}-primary-security-group`,
+        value: securityGroups.primary.securityGroupId,
+      });
+    }
 
     if (securityGroups.misc) {
       new CfnOutput(this, 'LoadBalancerMiscSecurityGroup', {

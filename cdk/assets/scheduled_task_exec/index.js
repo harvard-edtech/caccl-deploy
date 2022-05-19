@@ -1,38 +1,52 @@
-const aws = require('aws-sdk')
+const aws = require('aws-sdk');
 
-const ECS_CLUSTER = process.env.ECS_CLUSTER;
-const ECS_SERVICE = process.env.ECS_SERVICE;
-const ECS_TASK_DEFINITION = process.env.ECS_TASK_DEFINITION;
+const { ECS_CLUSTER, ECS_SERVICE, ECS_TASK_DEFINITION } = process.env;
 
 const ecs = new aws.ECS();
 
-exports.handler = async (event, context) => {
+/**
+ * This handler uses the ECS API to execute a one-off run of the app
+ * container with an arbitrary command. The default command assumes a django app, but
+ * php/artisan commands will also work, e.g., `php artisan migrate`.
+ *
+ * Note that `ECS_TASK_DEFINITION` should define a task using only the app container (no proxy)
+ *
+ * @param {object} event
+ */
+exports.handler = async (event) => {
   const { execCommand = 'python manage.py check' } = event;
 
+  /**
+   * Query for the service so that we can copy the
+   * network configuration (which is impractical to assemble here)
+   */
   const serviceResp = await ecs
     .describeServices({
       cluster: ECS_CLUSTER,
       services: [ECS_SERVICE],
-    }).promise();
+    })
+    .promise();
   const service = serviceResp.services[0];
 
   const { networkConfiguration } = service;
 
-  const execResp = await ecs.runTask({
-    cluster: ECS_CLUSTER,
-    taskDefinition: ECS_TASK_DEFINITION,
-    networkConfiguration,
-    launchType: 'FARGATE',
-    platformVersion: '1.3.0',
-    overrides: {
-      containerOverrides: [
-        {
-          name: 'AppOnlyContainer',
-          command: ['/bin/sh', '-c', execCommand],
-        }
-      ],
-    },
-  }).promise();
+  const execResp = await ecs
+    .runTask({
+      cluster: ECS_CLUSTER,
+      taskDefinition: ECS_TASK_DEFINITION,
+      networkConfiguration,
+      launchType: 'FARGATE',
+      platformVersion: '1.4.0',
+      overrides: {
+        containerOverrides: [
+          {
+            name: 'AppOnlyContainer',
+            command: ['/bin/sh', '-c', execCommand],
+          },
+        ],
+      },
+    })
+    .promise();
   const { taskArn } = execResp.tasks[0];
   console.log(`Task ${taskArn} started`);
-}
+};

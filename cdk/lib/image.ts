@@ -1,8 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { Repository } from '@aws-cdk/aws-ecr';
-import { ContainerImage } from '@aws-cdk/aws-ecs';
-import { Construct } from '@aws-cdk/core';
+import fs from 'fs';
+import path from 'path';
+import { aws_ecr as ecr, aws_ecs as ecs } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 
 export interface CacclContainerImageOptions {
   appImage?: string;
@@ -10,7 +9,7 @@ export interface CacclContainerImageOptions {
 }
 
 export class CacclContainerImage extends Construct {
-  image: ContainerImage;
+  image: ecs.ContainerImage;
 
   constructor(scope: Construct, id: string, props: CacclContainerImageOptions) {
     super(scope, id);
@@ -32,17 +31,21 @@ export class CacclContainerImage extends Construct {
           repoArn = appImage;
         }
 
-        const repo = Repository.fromRepositoryArn(this, 'ContainerImageRepo', repoArn);
-        this.image = ContainerImage.fromEcrRepository(repo, repoTag);
+        const repo = ecr.Repository.fromRepositoryArn(
+          this,
+          'ContainerImageRepo',
+          repoArn,
+        );
+        this.image = ecs.ContainerImage.fromEcrRepository(repo, repoTag);
       } else {
-        this.image = ContainerImage.fromRegistry(appImage);
+        this.image = ecs.ContainerImage.fromRegistry(appImage);
       }
     } else if (buildPath !== undefined) {
       if (!fs.existsSync(path.join(buildPath, 'Dockerfile'))) {
         console.error(`No Dockerfile found at ${buildPath}`);
         process.exit(1);
       }
-      this.image = ContainerImage.fromAsset(buildPath);
+      this.image = ecs.ContainerImage.fromAsset(buildPath);
     } else {
       console.error('Missing configuration options for building the app image');
       console.error('At least one of the following must be defined:');
