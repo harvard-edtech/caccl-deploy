@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+## [0.13.0] - 2022-09-13
+
+### Modified
+
+- migrate to CDK v2 w/ associated import statement changes
+- dropped support for node v10.x, added support for v18.x
+
+### Fixed
+
+- one-off app-only task exec now users fargate platform 1.4 (same as regular app task)
+
+### Added
+
+- prettier formatting
+- husky + lint-staged commit hook
+
 ## [0.12.0] - 2022-03-17
 
 ### Modified
@@ -69,7 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `innodb_monitor_enable='all'` added to the rds/mysql instance parameter group to provide additional metrics
 - two new dashboard db metrics: Transactions and Queries
 
-
 ## [0.9.3] - 2021-09-23
 
 ### Fixed
@@ -107,8 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - no longer assigning a name to the Fargate Service as it would in some cases cause name collision errors when CloudFormation needed to replace the resource. As a result the service names will be something like:
-     - "CacclDeploy-foo-app-EcsServiceFargateServiceF382E1EB-pbHI10hubZdS"
-     - instead of "CacclDeploy-foo-app-service"
+  - "CacclDeploy-foo-app-EcsServiceFargateServiceF382E1EB-pbHI10hubZdS"
+  - instead of "CacclDeploy-foo-app-service"
 
 ## [0.8.0] - 2021-09-14
 
@@ -116,8 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - scheduled tasks: managed with new `schedule` subcommand, and executed using CloudWatch Events and a Lambda function
 - new `connect` subcommand options:
-    - `-q` / `--quiet` - only output the ssh tunnel command (suitable for wrapping in a shell script)
-    - `-S` / `--sleep` - increase/decrease the amount of time the tunnel will stay open waiting for activity (e.g. a client connection)
+  - `-q` / `--quiet` - only output the ssh tunnel command (suitable for wrapping in a shell script)
+  - `-S` / `--sleep` - increase/decrease the amount of time the tunnel will stay open waiting for activity (e.g. a client connection)
 - an example iam policy that should cover all needed aws permissions
 
 ### Changed
@@ -168,9 +183,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `cdk/lib/db` now supports multiple db engines: currently docdb or aurora/myql.
-	**Note**: the previous deploy configuration for including a docdb instance,
-	`{ docDb: true, ... }`, is still supported, but new apps should use the new
-	format. See README for more info.
+  **Note**: the previous deploy configuration for including a docdb instance,
+  `{ docDb: true, ... }`, is still supported, but new apps should use the new
+  format. See README for more info.
 - nginx proxy image now pulled with `latest` tag
 
 ## [0.6.4] - 2021-06-09
@@ -182,6 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.3] - 2021-06-04
 
 ### Changed
+
 - allow a successful load balancer target health check for a 302 response
 - pin the fargate version to 1.3
 - pin docdb engine version to 3.6.0
@@ -198,9 +214,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.1] - 2021-02-19
 
 ### Added
+
 - utility script, `bin/perms.sh` for examining IAM user permissions
 
 ### Changed
+
 - update our github action npm publish workflow to run on push to main & use
   [JS-DevTools/npm-publish](https://github.com/marketplace/actions/npm-publish)
 - Fix task definition registration to exclude invalid parameters
@@ -211,24 +229,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.0] - 2021-02-05
 
 ### Added
+
 - Fargate service now enables the "circuit breaker" feature
 
 ### Removed
+
 - unecessary eslint config in the `./cdk` subtree
 
 ### Changed
+
 - package dependencies updated
 
 ## [0.5.4]
+
 ## [0.5.3]
+
 ## [0.5.2]
+
 ## [0.5.1]
+
 ## [0.5.0]
+
 ## [0.4.1]
+
 ## [0.4.0]
+
 ## [0.3.0]
 
-[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.11.0...HEAD
+[unreleased]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/harvard-edtech/caccl-deploy/compare/v0.10.1...v0.10.2
