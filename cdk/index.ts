@@ -28,13 +28,21 @@ const {
 } = stackPropsData;
 
 const stackProps: CacclDeployStackProps = {
+  // the CloudFormation stack name, e.g. "CacclDeploy-foo-app"
   stackName,
+  // id of the shared vpc we're deploying to
   vpcId,
+  // name of the shared ECS cluster we're deploying to
   ecsClusterName,
+  // shared s3 bucket where the application load balancer logs will end up
   albLogBucketName,
+  // ARN of the ssl certificate
   certificateArn: deployConfig.certificateArn,
-  appEnvironment: deployConfig.appEnvironment || {},
-  notifications: deployConfig.notifications || {},
+  // object that defines the environment variables that will be injected into the app container
+  appEnvironment: deployConfig.appEnvironment ?? {},
+  // email and slack endpoints
+  notifications: deployConfig.notifications ?? {},
+  // settings for the fargate task
   taskDefProps: {
     appImage: deployConfig.appImage,
     proxyImage: deployConfig.proxyImage,
@@ -43,11 +51,17 @@ const stackProps: CacclDeployStackProps = {
     logRetentionDays: deployConfig.logRetentionDays,
     gitRepoVolume: deployConfig.gitRepoVolume,
   },
-  taskCount: +(deployConfig.taskCount || 1),
-  targetDeregistrationDelay: deployConfig.targetDeregistrationDelay,
+  // how many concurrent tasks to run
+  taskCount: +(deployConfig.taskCount ?? 1),
+  // settings for the load balancer & load balancer targets
+  lbOptions: deployConfig.lbOptions,
+  // optionally attach a restrictive security group
   firewallSgId: deployConfig.firewallSgId,
+  // add an elasticache/redis instance (e.g. for use by django)
   cacheOptions: deployConfig.cacheOptions,
+  // settings for a database
   dbOptions: deployConfig.dbOptions,
+  // settings to run tasks like cronjobs
   scheduledTasks: deployConfig.scheduledTasks,
   tags: {
     caccl_deploy_stack_name: stackName,

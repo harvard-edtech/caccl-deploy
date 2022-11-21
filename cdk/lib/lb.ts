@@ -15,12 +15,18 @@ export type LoadBalancerSecurityGoups = {
   misc?: ec2.SecurityGroup;
 };
 
+export interface CacclLoadBalancerExtraOptions {
+  healthCheckPath?: string;
+  targetDeregistrationDelay?: number;
+}
+
 export interface CacclLoadBalancerProps {
   vpc: ec2.Vpc;
   securityGroups: LoadBalancerSecurityGoups;
   certificateArn: string;
   loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
   albLogBucketName?: string;
+  extraOptions?: CacclLoadBalancerExtraOptions;
   targetDeregistrationDelay?: number; // in seconds
 }
 
@@ -42,8 +48,13 @@ export class CacclLoadBalancer extends Construct {
       certificateArn,
       loadBalancerTarget,
       albLogBucketName,
-      targetDeregistrationDelay = 30,
+      // includes targetDeregistrationDelay & healthCheckPath which are applied to the ApplicationTargetGroup below
+      extraOptions,
     } = props;
+
+    const targetDeregistrationDelay =
+      extraOptions?.targetDeregistrationDelay ?? 30;
+    const healthCheckPath = extraOptions?.healthCheckPath ?? '/';
 
     this.loadBalancer = new elb.ApplicationLoadBalancer(this, 'LoadBalancer', {
       vpc,
@@ -96,20 +107,35 @@ export class CacclLoadBalancer extends Construct {
       open: false,
     });
 
-    const appTargetGroup = new elb.ApplicationTargetGroup(this, 'TargetGroup', {
+    const atgProps = {
       vpc,
       port: 443,
       protocol: elb.ApplicationProtocol.HTTPS,
       // setting this duration value enables the lb stickiness; 1 day is the default
       stickinessCookieDuration: Duration.seconds(86400),
-      deregistrationDelay: Duration.seconds(targetDeregistrationDelay),
       targetType: elb.TargetType.IP,
       targets: [loadBalancerTarget],
+      deregistrationDelay: Duration.seconds(targetDeregistrationDelay),
       healthCheck: {
         // allow a redirect to indicate service is operational
         healthyHttpCodes: '200,302',
       },
-    });
+    };
+
+    if (healthCheckPath !== undefined && healthCheckPath !== '/') {
+      // this seems like a bonkers way to accomplish inserting an additional k/v pair
+      // into a nested object, but eslint complained about every other approach
+      atgProps.healthCheck = {
+        ...atgProps.healthCheck,
+        ...{ path: healthCheckPath },
+      };
+    }
+
+    const appTargetGroup = new elb.ApplicationTargetGroup(
+      this,
+      'TargetGroup',
+      atgProps,
+    );
 
     httpsListener.addTargetGroups('AppTargetGroup', {
       targetGroups: [appTargetGroup],
