@@ -442,7 +442,7 @@ export class CacclRdsDb extends CacclDbBase {
     appEnv.addEnvironmentVar('DATABASE_USER', 'root');
     appEnv.addEnvironmentVar('DATABASE_PORT', this.port);
     appEnv.addEnvironmentVar('DATABASE_HOST', this.host);
-    appEnv.addEnvironmentVar('DATABASE_NAME', databaseName || '');
+    appEnv.addEnvironmentVar('DATABASE_NAME', databaseName ?? '');
     appEnv.addSecret(
       'DATABASE_PASSWORD',
       ecs.Secret.fromSecretsManager(this.dbPasswordSecret),

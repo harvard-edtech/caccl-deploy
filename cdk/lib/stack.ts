@@ -6,7 +6,11 @@ import { CacclSshBastion } from './bastion';
 import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclMonitoring } from './dashboard';
 import { CacclDbOptions, createDbConstruct } from './db';
-import { CacclLoadBalancer, LoadBalancerSecurityGoups } from './lb';
+import {
+  CacclLoadBalancer,
+  LoadBalancerSecurityGoups,
+  CacclLoadBalancerExtraOptions,
+} from './lb';
 import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclScheduledTask, CacclScheduledTasks } from './scheduledTasks';
 import { CacclService } from './service';
@@ -24,7 +28,7 @@ export interface CacclDeployStackProps extends StackProps {
   cacheOptions?: CacclCacheOptions;
   dbOptions?: CacclDbOptions;
   scheduledTasks?: { [key: string]: CacclScheduledTask };
-  targetDeregistrationDelay?: number; // in seconds
+  lbOptions?: CacclLoadBalancerExtraOptions;
   firewallSgId?: string;
 }
 
@@ -143,7 +147,7 @@ export class CacclDeployStack extends Stack {
       certificateArn: props.certificateArn,
       loadBalancerTarget: service.loadBalancerTarget,
       albLogBucketName: props.albLogBucketName,
-      targetDeregistrationDelay: props.targetDeregistrationDelay,
+      extraOptions: props.lbOptions,
       securityGroups: lbSecurityGroups,
       vpc,
     });
