@@ -32,8 +32,6 @@ const stackProps: CacclDeployStackProps = {
   vpcId,
   ecsClusterName,
   albLogBucketName,
-  cidrBlock: deployConfig.cidrBlock,
-  maxAzs: deployConfig.maxAzs || 2,
   certificateArn: deployConfig.certificateArn,
   appEnvironment: deployConfig.appEnvironment || {},
   notifications: deployConfig.notifications || {},
@@ -50,7 +48,6 @@ const stackProps: CacclDeployStackProps = {
   firewallSgId: deployConfig.firewallSgId,
   cacheOptions: deployConfig.cacheOptions,
   dbOptions: deployConfig.dbOptions,
-  bastionAmiMap: deployConfig.bastionAmiMap || {},
   scheduledTasks: deployConfig.scheduledTasks,
   tags: {
     caccl_deploy_stack_name: stackName,

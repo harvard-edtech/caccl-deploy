@@ -14,8 +14,6 @@ import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
-  cidrBlock?: string;
-  maxAzs: number;
   certificateArn: string;
   ecsClusterName?: string;
   appEnvironment: { [key: string]: string };
@@ -25,7 +23,6 @@ export interface CacclDeployStackProps extends StackProps {
   albLogBucketName?: string;
   cacheOptions?: CacclCacheOptions;
   dbOptions?: CacclDbOptions;
-  bastionAmiMap?: { [key: string]: string };
   scheduledTasks?: { [key: string]: CacclScheduledTask };
   targetDeregistrationDelay?: number; // in seconds
   firewallSgId?: string;
@@ -45,13 +42,8 @@ export class CacclDeployStack extends Stack {
       vpc = ec2.Vpc.fromLookup(this, 'Vpc', {
         vpcId: props.vpcId,
       }) as ec2.Vpc;
-    } else if (props.cidrBlock !== undefined) {
-      vpc = new ec2.Vpc(this, 'Vpc', {
-        cidr: props.cidrBlock,
-        maxAzs: props.maxAzs,
-      });
     } else {
-      throw new Error('deployConfig must define either cidrBlock or vpcId');
+      throw new Error('deployConfig must define a vpcId');
     }
 
     const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
