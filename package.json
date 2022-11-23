@@ -38,14 +38,14 @@
     "cdk/*.ts"
   ],
   "dependencies": {
-    "aws-cdk": "^2.41.0",
-    "aws-cdk-lib": "^2.41.0",
+    "aws-cdk": "~2.41.0",
+    "aws-cdk-lib": "~2.41.0",
     "aws-sdk": "^2.1156.0",
     "camel-case": "^4.1.2",
     "chalk": "4.1.2",
     "commander": "6.2.1",
     "conf": "^10.2.0",
-    "constructs": "^10.1.97",
+    "constructs": "~10.1.97",
     "figlet": "^1.5.2",
     "flat": "^5.0.2",
     "moment": "^2.29.3",
