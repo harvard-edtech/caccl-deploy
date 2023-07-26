@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [unreleased]
 
+### Fixed
+
+- `ts-node` package was incorrectly listed in the dev dependencies
+- pinning dep versions in a way that works with shrinkwrap + tarball installation
+
+### Added
+
+- `lbOptions.healthCheckPath` - specify a different path for the load balancer target health check requests
+
+### Modified
+
+- default mysql/aurora LTS version to use
+
+### Removed
+
+- ability for app stack to create its own vpc
+- lookup table for ssh bastion instance ami id to use in alternate regions
+
 ## [0.13.0] - 2022-09-13
 
 ### Modified
