@@ -16,7 +16,7 @@ import { Construct } from 'constructs';
 import { CacclAppEnvironment } from './appEnvironment';
 
 const DEFAULT_DB_INSTANCE_TYPE = 't3.medium';
-const DEFAULT_AURORA_MYSQL_ENGINE_VERSION = '5.7.mysql_aurora.2.04.9'; // current LTS
+const DEFAULT_AURORA_MYSQL_ENGINE_VERSION = '5.7.mysql_aurora.2.11.2'; // current LTS
 const DEFAULT_DOCDB_ENGINE_VERSION = '3.6';
 const DEFAULT_DOCDB_PARAM_GROUP_FAMILY = 'docdb3.6';
 const DEFAULT_REMOVAL_POLICY = 'DESTROY';
