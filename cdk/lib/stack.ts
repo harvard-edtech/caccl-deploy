@@ -30,6 +30,7 @@ export interface CacclDeployStackProps extends StackProps {
   scheduledTasks?: { [key: string]: CacclScheduledTask };
   lbOptions?: CacclLoadBalancerExtraOptions;
   firewallSgId?: string;
+  enableExecuteCommand?: boolean;
 }
 
 export class CacclDeployStack extends Stack {
@@ -141,6 +142,7 @@ export class CacclDeployStack extends Stack {
        */
       loadBalancerSg: lbSecurityGroups.primary,
       taskCount: props.taskCount,
+      enableExecuteCommand: props.enableExecuteCommand,
     });
 
     const loadBalancer = new CacclLoadBalancer(this, 'LoadBalancer', {

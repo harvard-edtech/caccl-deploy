@@ -367,15 +367,26 @@ export class CacclRdsDb extends CacclDbBase {
       databaseName,
     } = props.options;
 
+    /**
+     * strangely the major version is not automatically derived from whatever
+     * version string is used here. This just pulls it off the engineVersion string
+     * e.g. '8.0.mysql_aurora.3.02.0' -> '8.0'
+     */
+    const majorVersion = engineVersion.substring(0, 3);
     const auroraMysqlEngineVersion = rds.DatabaseClusterEngine.auroraMysql({
-      version: rds.AuroraMysqlEngineVersion.of(engineVersion),
+      version: rds.AuroraMysqlEngineVersion.of(engineVersion, majorVersion),
     });
 
     // performance insights for rds mysql not supported on t3 instances
     const enablePerformanceInsights = !instanceType.startsWith('t3');
 
     this.clusterParameterGroupParams.lower_case_table_names = '1';
-    this.clusterParameterGroupParams.aurora_enable_repl_bin_log_filtering = '1';
+
+    // bin log filtering is baked in to aurora/mysql v8
+    if (parseInt(majorVersion, 10) < 8) {
+      this.clusterParameterGroupParams.aurora_enable_repl_bin_log_filtering =
+        '1';
+    }
 
     const clusterParameterGroup = new rds.ParameterGroup(
       this,

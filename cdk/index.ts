@@ -63,6 +63,7 @@ const stackProps: CacclDeployStackProps = {
   dbOptions: deployConfig.dbOptions,
   // settings to run tasks like cronjobs
   scheduledTasks: deployConfig.scheduledTasks,
+  enableExecuteCommand: yn(deployConfig.enableExecuteCommand),
   tags: {
     caccl_deploy_stack_name: stackName,
     ...deployConfig.tags,

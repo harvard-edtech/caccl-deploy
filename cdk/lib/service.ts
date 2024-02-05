@@ -13,6 +13,7 @@ export interface CacclServiceProps {
   taskDef: CacclTaskDef;
   taskCount: number;
   loadBalancerSg: ec2.SecurityGroup;
+  enableExecuteCommand?: boolean;
 }
 
 export class CacclService extends Construct {
@@ -25,7 +26,13 @@ export class CacclService extends Construct {
   constructor(scope: Construct, id: string, props: CacclServiceProps) {
     super(scope, id);
 
-    const { cluster, taskDef, taskCount, loadBalancerSg } = props;
+    const {
+      cluster,
+      taskDef,
+      taskCount,
+      loadBalancerSg,
+      enableExecuteCommand = false,
+    } = props;
 
     const serviceSg = new ec2.SecurityGroup(this, 'SecurityGroup', {
       vpc: cluster.vpc,
@@ -46,6 +53,7 @@ export class CacclService extends Construct {
         rollback: true,
       },
       propagateTags: ecs.PropagatedTagSource.SERVICE,
+      enableExecuteCommand,
     });
 
     // this is the thing that gets handed off to the load balancer
