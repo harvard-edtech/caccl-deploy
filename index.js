@@ -773,7 +773,7 @@ async function main() {
       }
 
       // restart the service
-      await aws.restartEcsServcie(clusterName, serviceName, { wait: true });
+      await aws.restartEcsService(clusterName, serviceName, { wait: true });
       exitWithSuccess('done');
     });
 
@@ -894,7 +894,7 @@ async function main() {
       // restart the service
       if (cmd.deploy) {
         console.log(`Restarting the ${serviceName} service...`);
-        await aws.restartEcsServcie(clusterName, serviceName, {
+        await aws.restartEcsService(clusterName, serviceName, {
           newTaskDefArn,
           wait: true,
         });
@@ -1130,7 +1130,7 @@ async function main() {
         }
         const existingTaskParams = Object.keys(existingTask);
         for (let i = 0; i < existingTaskParams.length; i++) {
-          await deployConfig.delete(
+          await deployConfig.deleteParam(
             cmd.getAppPrefix(),
             `scheduledTasks/${cmd.delete}/${existingTaskParams[i]}`,
           );

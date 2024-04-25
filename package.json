@@ -3,7 +3,8 @@
   "version": "0.15.0",
   "description": "A cli tool for managing ECS/Fargate app deployments",
   "files": [
-    "dist"
+    "dist",
+    "cdk.json"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -19,7 +20,10 @@
     "test": "jest",
     "prettier": "npx prettier --write --ignore-path .gitignore \"**/*.{ts,js}\"",
     "prepare": "husky install",
-    "build": "tsup src/index.ts --format cjs,esm --dts-resolve && tsup src/cli.ts"
+    "build-lib": "tsup src/index.ts --format cjs,esm --dts-resolve",
+    "build-cdk": "tsup cdk/cdk.ts && rsync -r cdk/assets dist/ && rsync cdk/.npmignore dist/ && rsync cdk/cdk.json dist/",
+    "build-cli": "tsup src/cli.ts",
+    "build": "npm run build-lib && npm run build-cdk && npm run build-cli"
   },
   "keywords": [
     "DCE",
@@ -57,11 +61,16 @@
     "ts-node": "^10.9.1",
     "untildify": "^4.0.0",
     "yargs": "^17.7.2",
-    "yn": "4.0.0"
+    "yn": "4.0.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/figlet": "^1.5.8",
+    "@types/flat": "^5.0.5",
     "@types/node": "^18.7.16",
     "@types/object-hash": "^2.2.1",
+    "@types/prompts": "^2.4.9",
+    "@types/semver": "^7.5.8",
     "@typescript-eslint/eslint-plugin": "^5.36.2",
     "@typescript-eslint/parser": "^5.36.2",
     "eslint": "^8.23.0",
