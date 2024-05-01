@@ -1,13 +1,15 @@
 // Import aws-sdk
 import AWS, { ECS } from 'aws-sdk';
 
+import getCurrentRegion from './getCurrentRegion';
+
 // Import shared helpers
 import sleep from '../../shared/helpers/sleep';
 
 export type RestartOpts = {
   cluster: string;
   service: string;
-  newTaskDefArn: string;
+  newTaskDefArn?: string;
   wait: boolean;
 };
 
@@ -23,7 +25,7 @@ const restartEcsService = async (restartOpts: RestartOpts) => {
   console.log(
     [
       'Console link for monitoring: ',
-      `https://console.aws.amazon.com/ecs/home?region=${aws.getCurrentRegion()}`,
+      `https://console.aws.amazon.com/ecs/home?region=${getCurrentRegion()}`,
       `#/clusters/${cluster}/`,
       `services/${service}/tasks`,
     ].join(''),

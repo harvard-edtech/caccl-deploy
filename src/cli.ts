@@ -14,8 +14,18 @@ import { isConfigured } from './aws';
 
 // Import commands
 import addAppsCommand from './commands/addAppsCommand';
+import addConnectCommand from './commands/addConnectCommand';
+import addDeleteCommand from './commands/addDeleteCommand';
+import addExecCommand from './commands/addExecCommand';
+import addImagesCommand from './commands/addImagesCommand';
 import addNewCommand from './commands/addNewCommand';
+import addReleaseCommand from './commands/addReleaseCommand';
+import addReposCommand from './commands/addReposCommand';
+import addRestartCommand from './commands/addRestartCommand';
 import addScheduleCommand from './commands/addScheduleCommand';
+import addShowCommand from './commands/addShowCommand';
+import addStackCommand from './commands/addStackCommand';
+import addUpdateCommand from './commands/addUpdateCommand';
 
 // Import constants
 import CacclDeployCommander from './commands/classes/CacclDeployCommander';
@@ -77,8 +87,18 @@ const main = async () => {
     .description([packageDescription, `config: ${conf.path}`].join('\n'));
 
   addAppsCommand(cli);
+  addDeleteCommand(cli);
   addNewCommand(cli);
   addScheduleCommand(cli);
+  addConnectCommand(cli);
+  addExecCommand(cli);
+  addImagesCommand(cli);
+  addReleaseCommand(cli);
+  addShowCommand(cli);
+  addUpdateCommand(cli);
+  addReposCommand(cli);
+  addRestartCommand(cli);
+  addStackCommand(cli);
 };
 
 main().catch((err) => {

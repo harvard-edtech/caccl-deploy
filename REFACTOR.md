@@ -17,3 +17,9 @@ In addition, we are adding JSDoc and generally following the style [outlined her
 
 
 ## Yargs Changes (WIP)
+
+Main bullet points:
+ - add better typing for parsed command line arguments
+ - split commands out into separate files/functions
+   - separate commands into `add<command>` and `<command>Operation`
+ - have a standardized way of adding the commands to the app
