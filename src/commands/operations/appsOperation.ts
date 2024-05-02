@@ -23,7 +23,7 @@ const appsOperation = async (cmd: CacclDeployCommander) => {
     );
   }
 
-  const appData = {};
+  const appData: Record<string, string[]> = {};
   const tableColumns = ['App'];
 
   for (let i = 0; i < apps.length; i++) {
@@ -53,7 +53,7 @@ const appsOperation = async (cmd: CacclDeployCommander) => {
           s.StackName === cfnStackName && s.StackStatus !== 'DELETE_COMPLETE'
         );
       });
-      if (!cfnStack) {
+      if (!cfnStack || !cfnStack.Outputs) {
         // config exists but cfn stack not deployed yet (or was destroyed)
         appData[app].push('', '', '');
         continue;
@@ -65,7 +65,7 @@ const appsOperation = async (cmd: CacclDeployCommander) => {
        */
       let configDrift = '?';
       const cfnStackDeployConfigHashOutput = cfnStack.Outputs.find((o) => {
-        return o.OutputKey.startsWith('DeployConfigHash');
+        return o.OutputKey && o.OutputKey.startsWith('DeployConfigHash');
       });
 
       if (cfnStackDeployConfigHashOutput) {
@@ -76,9 +76,9 @@ const appsOperation = async (cmd: CacclDeployCommander) => {
       appData[app].push(cfnStack.StackStatus, configDrift);
 
       const cfnStackCacclDeployVersion = cfnStack.Outputs.find((o) => {
-        return o.OutputKey.startsWith('CacclDeployVersion');
+        return o.OutputKey && o.OutputKey.startsWith('CacclDeployVersion');
       });
-      appData[app].push(cfnStackCacclDeployVersion.OutputValue);
+      appData[app].push(cfnStackCacclDeployVersion?.OutputValue ?? 'N/A');
     }
   }
   const tableData = Object.keys(appData).map((app) => {

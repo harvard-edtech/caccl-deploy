@@ -9,8 +9,13 @@ import AWS from 'aws-sdk';
  * @author Jay Luker
  * @returns {string}
  */
-const getCurrentRegion = () => {
-  return AWS.config.region;
+const getCurrentRegion = (): string => {
+  const { region } = AWS.config;
+  if (!region) {
+    // TODO: better error type
+    throw new Error('Could not get current AWS region.');
+  }
+  return region;
 };
 
 export default getCurrentRegion;

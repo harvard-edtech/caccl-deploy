@@ -11,7 +11,7 @@ import yn from 'yn';
 import { DeployConfigData } from '../../../types';
 
 // Import aws
-import { getCfnStackExports } from '../../aws';
+import { AssumedRole, getCfnStackExports } from '../../aws';
 
 // Import conf
 import { conf } from '../../conf';
@@ -30,6 +30,7 @@ import warnAboutVersionDiff from '../../shared/helpers/warnAboutVersionDiff';
 
 // Import constants
 import CACCL_DEPLOY_NON_INTERACTIVE from '../constants/CACCL_DEPLOY_NON_INTERACTIVE';
+import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION';
 
 // Import helpers
 import exitWithError from '../helpers/exitWithError';
@@ -41,6 +42,10 @@ import initAwsProfile from '../helpers/initAwsProfile';
  * @extends Command
  */
 class CacclDeployCommander extends Command {
+  private assumedRole?: AssumedRole;
+
+  public ecrAccessRoleArn?: string;
+
   /**
    * custom command creator
    * @param {string} name
@@ -99,7 +104,10 @@ class CacclDeployCommander extends Command {
    * that reference secretsmanager entries, preserve the secretsmanager ARN
    * value rather than dereferencing
    */
-  async getDeployConfig(keepSecretArns?: boolean): Promise<DeployConfigData> {
+  async getDeployConfig(
+    assumedRole: AssumedRole,
+    keepSecretArns?: boolean,
+  ): Promise<DeployConfigData> {
     const appPrefix = this.getAppPrefix();
     try {
       const deployConfig = await DeployConfig.fromSsmParams(
@@ -113,7 +121,7 @@ class CacclDeployCommander extends Command {
         exitWithError(`${this.app} app configuration not found!`);
       }
     }
-    return DeployConfig.generate();
+    return DeployConfig.generate(assumedRole);
   }
 
   /**
@@ -127,7 +135,7 @@ class CacclDeployCommander extends Command {
     const cfnStackName = this.getCfnStackName();
     const cfnExports = await getCfnStackExports(cfnStackName);
     const stackVersion = cfnExports.cacclDeployVersion;
-    const cliVersion = cacclDeployVersion;
+    const cliVersion = CACCL_DEPLOY_VERSION;
     if (
       cliVersion === stackVersion ||
       !warnAboutVersionDiff(stackVersion, cliVersion)
@@ -189,6 +197,13 @@ class CacclDeployCommander extends Command {
         '-a --app <string>',
         'name of the app to work with',
       );
+  }
+
+  public getAssumedRole(): AssumedRole {
+    if (!this.assumedRole) {
+      this.assumedRole = new AssumedRole();
+    }
+    return this.assumedRole;
   }
 }
 

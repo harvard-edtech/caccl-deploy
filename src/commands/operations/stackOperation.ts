@@ -1,12 +1,23 @@
+import { execSync } from 'child_process';
+
 import tempy from 'tempy';
 
 import { cfnStackExists, getAccountId, getCfnStackExports } from '../../aws';
 
 import { confirmProductionOp } from '../../configPrompts';
 
+import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION';
+
 import exitWithError from '../helpers/exitWithError';
 import exitWithSuccess from '../helpers/exitWithSuccess';
 import isProdAccount from '../helpers/isProdAccount';
+
+type EnvAdditions = {
+  AWS_REGION: string;
+  CDK_DISABLE_VERSION_CHECK: string;
+  AWS_PROFILE?: string;
+  CDK_STACK_PROPS_FILE_PATH?: string;
+};
 
 const stackOperation = async (cmd: any) => {
   // get this without resolved secrets for passing to cdk
@@ -35,7 +46,7 @@ const stackOperation = async (cmd: any) => {
     vpcId,
     ecsClusterName,
     albLogBucketName,
-    cacclDeployVersion,
+    cacclDeployVersion: CACCL_DEPLOY_VERSION,
     deployConfigHash,
     stackName: cfnStackName,
     awsAccountId: await getAccountId(),
@@ -43,9 +54,9 @@ const stackOperation = async (cmd: any) => {
     deployConfig,
   };
 
-  const envAdditions = {
+  const envAdditions: EnvAdditions = {
     AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-    CDK_DISABLE_VERSION_CHECK: true,
+    CDK_DISABLE_VERSION_CHECK: 'true',
   };
 
   // all args/options following the `stack` subcommand get passed to cdk
@@ -60,7 +71,7 @@ const stackOperation = async (cmd: any) => {
     if (!stackExists) {
       exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
     }
-    const stackExports = await aws.getCfnStackExports(cfnStackName);
+    const stackExports = await getCfnStackExports(cfnStackName);
     exitWithSuccess(JSON.stringify(stackExports, null, '  '));
   } else if (cdkArgs[0] === 'changeset') {
     cdkArgs.shift();
@@ -117,7 +128,7 @@ const stackOperation = async (cmd: any) => {
       envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
 
       const execOpts = {
-        stdio: 'inherit',
+        stdio: 'inherit' as const,
         // exec the cdk process in the cdk directory
         cwd: __dirname, // path.join(__dirname, 'cdk'),
         // inject our additional env vars
@@ -128,7 +139,11 @@ const stackOperation = async (cmd: any) => {
         execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
         exitWithSuccess('done!');
       } catch (err) {
-        exitWithError(err.msg);
+        const message =
+          err instanceof Error
+            ? err.message
+            : `Error while executing CDK: ${err}`;
+        exitWithError(message);
       }
     },
   );

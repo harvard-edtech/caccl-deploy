@@ -7,16 +7,14 @@ import { camelCase } from 'camel-case';
 // Import shared errors
 import CfnStackNotFound from '../../shared/errors/CfnStackNotFound';
 
-// Import
-
-type Output = CloudFormation.Output;
-
 /**
  * Returns an array of objects representing a Cloudformation stack's exports
  * @param {string} stackName
- * @returns {object[]}
+ * @returns {Record<string, string>}
  */
-const getCfnStackExports = async (stackName: string) => {
+const getCfnStackExports = async (
+  stackName: string,
+): Promise<Record<string, string>> => {
   const cnf = new AWS.CloudFormation();
   // TODO: better typing
   let exports: Record<string, string> = {};
@@ -34,7 +32,7 @@ const getCfnStackExports = async (stackName: string) => {
       throw new CfnStackNotFound(`Unable to find stack ${stackName}`);
     }
     exports = resp.Stacks[0].Outputs.reduce(
-      (obj: Record<string, string>, output: Output) => {
+      (obj: Record<string, string>, output: CloudFormation.Output) => {
         if (!output.ExportName || !output.OutputValue) {
           return { ...obj };
         }

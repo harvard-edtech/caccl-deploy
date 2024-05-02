@@ -13,6 +13,7 @@ import { DeployConfigData } from '../../types';
 
 // Import from aws
 import {
+  AssumedRole,
   deleteSecrets,
   deleteSsmParameters,
   getSsmParametersByPrefix,
@@ -92,6 +93,7 @@ namespace DeployConfig {
   };
 
   export const generate = async (
+    assumedRole: AssumedRole,
     baseConfig: Record<PropertyKey, any> = {},
   ): Promise<DeployConfigData> => {
     const newConfig = { ...baseConfig };
@@ -105,7 +107,7 @@ namespace DeployConfig {
     }
 
     if (newConfig.appImage === undefined) {
-      newConfig.appImage = await promptAppImage();
+      newConfig.appImage = await promptAppImage(assumedRole);
     }
 
     newConfig.tags = await promptKeyValuePairs(

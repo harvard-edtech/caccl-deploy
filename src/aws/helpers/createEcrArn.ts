@@ -7,7 +7,7 @@ import EcrImage from '../../shared/types/EcrImage';
  * @param {EcrImage} ecrImage
  * @returns {string} an ECR image ARN
  */
-const createEcrArn = (ecrImage: EcrImage): string => {
+const createEcrArn = (ecrImage: Omit<EcrImage, 'service'>): string => {
   return [
     'arn:aws:ecr',
     ecrImage.region,

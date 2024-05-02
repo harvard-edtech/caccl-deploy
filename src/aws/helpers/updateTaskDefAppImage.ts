@@ -8,6 +8,7 @@ import getTaskDefinition from './getTaskDefinition';
 /**
  * Updates a Fargate task definition, replacing the app container's
  *   ECR image URI value
+ * @author Jay Luker
  * @param {string} taskDefName
  * @param {string} imageArn
  * @returns {string} - the full ARN (incl family:revision) of the newly

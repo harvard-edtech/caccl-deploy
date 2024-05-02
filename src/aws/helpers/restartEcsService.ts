@@ -15,6 +15,7 @@ export type RestartOpts = {
 
 /**
  * Restart an app's ECS service
+ * @author Jay Luker
  * @param {string} cluster
  * @param {string} service
  * @param {boolean} wait

@@ -5,28 +5,31 @@ import {
   imageTagExists as getImageTagExists,
   parseEcrArn,
   restartEcsService,
-  // setAssumedRoleArn,
   updateTaskDefAppImage,
 } from '../../aws';
 
 import { confirm, confirmProductionOp } from '../../configPrompts';
 
+import DeployConfig from '../../deployConfig';
+
 import CfnStackNotFound from '../../shared/errors/CfnStackNotFound';
+
+import CacclDeployCommander from '../classes/CacclDeployCommander';
 
 import exitWithError from '../helpers/exitWithError';
 import exitWithSuccess from '../helpers/exitWithSuccess';
 
-const releaseOperation = async (cmd: any) => {
+const releaseOperation = async (cmd: CacclDeployCommander) => {
+  const assumedRole = cmd.getAssumedRole();
   // see the README section on cross-account ECR access
   if (cmd.ecrAccessRoleArn !== undefined) {
-    // FIXME:
-    // setAssumedRoleArn(cmd.ecrAccessRoleArn);
+    assumedRole.setAssumedRoleArn(cmd.ecrAccessRoleArn);
   }
 
-  const deployConfig = await cmd.getDeployConfig();
+  const deployConfig = await cmd.getDeployConfig(assumedRole);
 
   const cfnStackName = cmd.getCfnStackName();
-  let cfnExports;
+  let cfnExports: Record<string, string>;
   try {
     cfnExports = await getCfnStackExports(cfnStackName);
     ['taskDefName', 'clusterName', 'serviceName'].forEach((exportValue) => {
@@ -35,7 +38,10 @@ const releaseOperation = async (cmd: any) => {
       }
     });
   } catch (err) {
-    if (err instanceof CfnStackNotFound || err.message.includes('Incomplete')) {
+    if (
+      err instanceof Error &&
+      (err instanceof CfnStackNotFound || err.message.includes('Incomplete'))
+    ) {
       exitWithError(err.message);
     }
     throw err;
@@ -56,6 +62,7 @@ const releaseOperation = async (cmd: any) => {
   // check that the specified image tag is legit
   console.log(`Checking that an image exists with the tag ${cmd.imageTag}`);
   const imageTagExists = await getImageTagExists(
+    assumedRole,
     repoArn.repoName,
     cmd.imageTag,
   );
@@ -65,7 +72,11 @@ const releaseOperation = async (cmd: any) => {
 
   // check if it's the latest release and prompt if not
   console.log(`Checking ${cmd.imageTag} is the latest tag`);
-  const isLatestTag = await getIsLatestTag(repoArn.repoName, cmd.imageTag);
+  const isLatestTag = await getIsLatestTag(
+    assumedRole,
+    repoArn.repoName,
+    cmd.imageTag,
+  );
   if (!isLatestTag && !cmd.yes) {
     console.log(`${cmd.imageTag} is not the most recent release`);
     (await confirm('Proceed?')) || exitWithSuccess();
@@ -112,14 +123,19 @@ const releaseOperation = async (cmd: any) => {
 
   // update the ssm parameter
   console.log('Updating stored deployment configuration');
-  await deployConfig.update(cmd.getAppPrefix(), 'appImage', newAppImage);
+  await DeployConfig.update({
+    deployConfig,
+    appPrefix: cmd.getAppPrefix(),
+    param: 'appImage',
+    value: newAppImage,
+  });
 
   // restart the service
   if (cmd.deploy) {
     console.log(`Restarting the ${serviceName} service...`);
     await restartEcsService({
-      clusterName,
-      serviceName,
+      cluster: clusterName,
+      service: serviceName,
       newTaskDefArn,
       wait: true,
     });

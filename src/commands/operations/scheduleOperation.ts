@@ -12,11 +12,14 @@ import exitWithError from '../helpers/exitWithError';
 import exitWithSuccess from '../helpers/exitWithSuccess';
 
 const scheduleOperation = async (cmd: CacclDeployCommander) => {
-  const deployConfig = await cmd.getDeployConfig();
+  const opts = cmd.opts();
+  const assumedRole = cmd.getAssumedRole();
+
+  const deployConfig = await cmd.getDeployConfig(assumedRole);
   const existingTasks = deployConfig.scheduledTasks || {};
   const existingTaskIds = Object.keys(existingTasks);
 
-  if (cmd.list) {
+  if (opts.list) {
     // format existing as a table and exitWithSuccess
     if (existingTaskIds.length) {
       const tableRows = existingTaskIds.map((id) => {
@@ -31,13 +34,15 @@ const scheduleOperation = async (cmd: CacclDeployCommander) => {
       exitWithSuccess(tableOutput);
     }
     exitWithSuccess('No scheduled tasks configured');
-  } else if (cmd.delete) {
+  } else if (opts.delete) {
     // delete the existing entry
     if (!existingTaskIds.includes(cmd.delete)) {
       exitWithError(`No scheduled task with id ${cmd.delete}`);
     }
     const existingTask = existingTasks[cmd.delete];
-    if (!(cmd.yes || (await confirm(`Delete scheduled task ${cmd.delete}?`)))) {
+    if (
+      !(cmd.yes || (await confirm(`Delete scheduled task ${opts.delete}?`)))
+    ) {
       exitWithSuccess();
     }
     const existingTaskParams = Object.keys(existingTask);
@@ -45,18 +50,17 @@ const scheduleOperation = async (cmd: CacclDeployCommander) => {
       await DeployConfig.deleteParam(
         deployConfig,
         cmd.getAppPrefix(),
-        `scheduledTasks/${cmd.delete}/${existingTaskParams[i]}`,
+        `scheduledTasks/${opts.delete}/${existingTaskParams[i]}`,
       );
     }
-    exitWithSuccess(`Scheduled task ${cmd.delete} deleted`);
-  } else if (!(cmd.taskSchedule && cmd.taskCommand)) {
+    exitWithSuccess(`Scheduled task ${opts.delete} deleted`);
+  } else if (!(opts.taskSchedule && opts.taskCommand)) {
     exitWithError('Invalid options. See `--help` output');
   }
 
-  const taskId = cmd.taskId || Math.random().toString(36).substr(2, 16);
-  const taskDescription = cmd.taskDescription || '';
-  const { taskSchedule } = cmd;
-  const taskComman = cmd.taskCommand;
+  const taskId = opts.taskId || Math.random().toString(36).substring(2, 16);
+  const taskDescription = opts.taskDescription || '';
+  const { taskCommand, taskSchedule } = opts;
 
   if (!validSSMParamName(taskId)) {
     exitWithError(
@@ -70,14 +74,14 @@ const scheduleOperation = async (cmd: CacclDeployCommander) => {
     })
   ) {
     exitWithError(
-      `A schedule task with id ${taskId} already exists for ${cmd.app}`,
+      `A schedule task with id ${taskId} already exists for ${opts.app}`,
     );
   }
 
   const params = {
     [`scheduledTasks/${taskId}/description`]: taskDescription,
     [`scheduledTasks/${taskId}/schedule`]: taskSchedule,
-    [`scheduledTasks/${taskId}/command`]: taskComman,
+    [`scheduledTasks/${taskId}/command`]: taskCommand,
   };
 
   await DeployConfig.syncToSsm(deployConfig, cmd.getAppPrefix(), params);

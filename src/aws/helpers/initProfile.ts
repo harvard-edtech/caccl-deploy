@@ -2,7 +2,7 @@
 import AWS from 'aws-sdk';
 import { iniLoader as SharedIniFile } from 'aws-sdk/lib/shared-ini';
 
-// Import errrors
+// Import errors
 import AwsProfileNotFound from '../../shared/errors/AwsProfileNotFound';
 
 /**

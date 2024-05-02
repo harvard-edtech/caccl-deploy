@@ -14,7 +14,7 @@ const addScheduleCommand = (
     .option('-l, --list', 'list the existing scheduled tasks')
     .option(
       '-t, --task-id <string>',
-      'give the taska a string id; by default one will be generated',
+      'give the task a string id; by default one will be generated',
     )
     .option(
       '-d, --task-description <string>',

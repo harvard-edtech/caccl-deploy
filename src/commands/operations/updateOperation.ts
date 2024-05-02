@@ -28,7 +28,8 @@ const updateOperation = async (cmd: any) => {
       await deployConfig.update(cmd.getAppPrefix(), param, value);
     }
   } catch (err) {
-    exitWithError(`Something went wrong: ${err.message}`);
+    const message = err instanceof Error ? err.message : `${err}`;
+    exitWithError(`Something went wrong: ${message}`);
   }
 };
 

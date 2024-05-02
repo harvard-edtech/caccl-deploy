@@ -29,8 +29,11 @@ import exitWithError from '../helpers/exitWithError';
 import exitWithSuccess from '../helpers/exitWithSuccess';
 
 const newOperation = async (cmd: CacclDeployCommander) => {
+  const opts = cmd.opts();
+
+  const assumedRole = cmd.getAssumedRole();
   if (cmd.ecrAccessRoleArn !== undefined) {
-    // setAssumedRoleArn(cmd.ecrAccessRoleArn);
+    assumedRole.setAssumedRoleArn(cmd.ecrAccessRoleArn);
   }
   const existingApps = await getAppList(cmd.ssmRootPrefix);
 
@@ -70,15 +73,15 @@ const newOperation = async (cmd: CacclDeployCommander) => {
    * operation to complete any missing settings
    */
   let importedConfig;
-  if (cmd.import !== undefined) {
-    importedConfig = /^http(s):\//.test(cmd.import)
-      ? await DeployConfig.fromUrl(cmd.import)
-      : DeployConfig.fromFile(cmd.import);
+  if (opts.import !== undefined) {
+    importedConfig = /^http(s):\//.test(opts.import)
+      ? await DeployConfig.fromUrl(opts.import)
+      : DeployConfig.fromFile(opts.import);
   }
 
   let deployConfig;
   try {
-    deployConfig = await DeployConfig.generate(importedConfig);
+    deployConfig = await DeployConfig.generate(assumedRole, importedConfig);
   } catch (err) {
     if (err instanceof UserCancel) {
       exitWithSuccess();

@@ -1,3 +1,6 @@
+// Import helpers
+import parseEcrArn from './parseEcrArn';
+
 /**
  * Transforms an ECR ARN value into it's URI form
  * for example, this:
@@ -9,7 +12,7 @@
  * @returns {string} and ECR image URI
  */
 const ecrArnToImageId = (arn: string): string => {
-  const parsedArn = aws.parseEcrArn(arn);
+  const parsedArn = parseEcrArn(arn);
   const host = [
     parsedArn.account,
     'dkr.ecr',

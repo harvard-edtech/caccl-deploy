@@ -3,6 +3,8 @@ import AWS, { SSM } from 'aws-sdk';
 import AwsTag from '../../shared/types/AwsTag';
 
 /**
+ * Add parameters to SSM
+ * @author Jay Luker
  * @param {SSM.PutParameterRequest} opts - the parameter details, name, value, etc
  * @param {object[]} tags - aws resource tags
  * @returns {object}

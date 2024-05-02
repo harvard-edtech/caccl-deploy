@@ -8,8 +8,6 @@ import looksLikeSemver from '../../shared/helpers/looksLikeSemver';
 // Import classes
 import AssumedRole from '../classes/AssumedRole';
 
-// Import helpers
-
 /**
  * @author Jay Luker
  * @param {string} repo - ECR repository name, e.g. 'hdce/fooapp'
@@ -18,10 +16,9 @@ import AssumedRole from '../classes/AssumedRole';
  * @returns {object[]}
  */
 const getRepoImageList = async (
-  repo: string,
-  // TODO: make `all` optional
-  all: boolean,
   assumedRole: AssumedRole,
+  repo: string,
+  all?: boolean,
 ) => {
   const ecr = await assumedRole.getAssumedRoleClient(AWS.ECR);
   const images = await getPaginatedResponse(

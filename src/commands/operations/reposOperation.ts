@@ -5,15 +5,18 @@ import {
   // setAssumedRoleArn,
 } from '../../aws';
 
+import CacclDeployCommander from '../classes/CacclDeployCommander';
+
 import exitWithError from '../helpers/exitWithError';
 import exitWithSuccess from '../helpers/exitWithSuccess';
 
-const reposOperation = async (cmd) => {
+const reposOperation = async (cmd: CacclDeployCommander) => {
+  const assumedRole = cmd.getAssumedRole();
   // see the README section on cross-account ECR access
   if (cmd.ecrAccessRoleArn !== undefined) {
-    // setAssumedRoleArn(cmd.ecrAccessRoleArn);
+    assumedRole.setAssumedRoleArn(cmd.ecrAccessRoleArn);
   }
-  const repos = await getRepoList();
+  const repos = await getRepoList(assumedRole);
   const data = repos.map((r) => {
     return [r];
   });

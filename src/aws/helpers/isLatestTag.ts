@@ -1,15 +1,22 @@
 // Import helpers
 import getRepoImageList from './getRepoImageList';
 
+// Import classes
+import AssumedRole from '../classes/AssumedRole';
+
 /**
  * Confirms that a tag is the latest for a repo
+ * @author Jay Luker
  * @param {string} repoName
  * @param {string} tag
  * @returns {boolean}
  */
-const isLatestTag = async (repoName: string, tag: string): Promise<boolean> => {
-  // FIXME: change getRepoImageList arguments
-  const imageList = await getRepoImageList(repoName);
+const isLatestTag = async (
+  assumedRole: AssumedRole,
+  repoName: string,
+  tag: string,
+): Promise<boolean> => {
+  const imageList = await getRepoImageList(assumedRole, repoName);
   return (
     !!imageList.length &&
     !!imageList[0].imageTags &&

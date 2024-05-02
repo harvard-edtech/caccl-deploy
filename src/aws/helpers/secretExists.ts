@@ -3,6 +3,7 @@ import AWS from 'aws-sdk';
 
 /**
  * Confirm that a secretsmanager entry exists
+ * @author Jay Luker
  * @param {string} secretName
  * @returns {boolean}
  */

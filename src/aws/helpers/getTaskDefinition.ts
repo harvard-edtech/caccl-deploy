@@ -3,6 +3,7 @@ import AWS, { ECS } from 'aws-sdk';
 
 /**
  * Fetches the data for an ECS task definition
+ * @author Jay Luker
  * @param {string} taskDefName
  * @returns {string}
  */

@@ -4,6 +4,7 @@ import AWS from 'aws-sdk';
 // Import helpers
 import getService from './getService';
 
+// Types
 export type EnvVariable = {
   name: string;
   value: string;

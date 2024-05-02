@@ -27,9 +27,12 @@ import addShowCommand from './commands/addShowCommand';
 import addStackCommand from './commands/addStackCommand';
 import addUpdateCommand from './commands/addUpdateCommand';
 
-// Import constants
+// Import classes
 import CacclDeployCommander from './commands/classes/CacclDeployCommander';
+
+// Import constants
 import CACCL_DEPLOY_NON_INTERACTIVE from './commands/constants/CACCL_DEPLOY_NON_INTERACTIVE';
+import CACCL_DEPLOY_VERSION from './commands/constants/CACCL_DEPLOY_VERSION';
 
 // Import helpers
 import byeWithCredentialsError from './commands/helpers/byeWithCredentialsError';
@@ -40,7 +43,6 @@ import { conf, configDefaults, setConfigDefaults } from './conf';
 
 // Import prompts
 import { confirm } from './configPrompts';
-import generateVersion from './shared/helpers/generateVersion';
 import packageJson from '../package.json';
 
 /**
@@ -53,7 +55,6 @@ const main = async () => {
     byeWithCredentialsError();
   }
 
-  const cacclDeployVersion = generateVersion();
   const { description: packageDescription } = packageJson;
 
   /*
@@ -83,7 +84,7 @@ const main = async () => {
   }
 
   const cli = new CacclDeployCommander()
-    .version(cacclDeployVersion)
+    .version(CACCL_DEPLOY_VERSION)
     .description([packageDescription, `config: ${conf.path}`].join('\n'));
 
   addAppsCommand(cli);

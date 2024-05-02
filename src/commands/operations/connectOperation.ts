@@ -1,3 +1,5 @@
+import yn from 'yn';
+
 import {
   EC2_INSTANCE_CONNECT_USER,
   getCfnStackExports,
@@ -11,16 +13,20 @@ import exitWithError from '../helpers/exitWithError';
 import exitWithSuccess from '../helpers/exitWithSuccess';
 
 const connectOperation = async (cmd: CacclDeployCommander) => {
-  if (!cmd.list && !cmd.service) {
+  const opts = cmd.opts();
+  const assumedRole = cmd.getAssumedRole();
+
+  if (!opts.list && !opts.service) {
     exitWithError('One of `--list` or `--service` is required');
   }
 
-  const deployConfig = await cmd.getDeployConfig();
+  const deployConfig = await cmd.getDeployConfig(assumedRole);
 
   const services = new Set();
-  ['dbOptions', 'cacheOptions'].forEach((optsKey) => {
-    if (deployConfig[optsKey]) {
-      services.add(deployConfig[optsKey].engine);
+  ['dbOptions' as const, 'cacheOptions' as const].forEach((optsKey) => {
+    const serviceOptions = deployConfig[optsKey];
+    if (serviceOptions) {
+      services.add(serviceOptions.engine);
     }
   });
   if (yn(deployConfig.docDb)) {
@@ -32,12 +38,12 @@ const connectOperation = async (cmd: CacclDeployCommander) => {
     );
   }
 
-  if (cmd.list) {
+  if (opts.list) {
     exitWithSuccess(['Valid `--service=` options:', ...services].join('\n  '));
   }
 
-  if (!services.has(cmd.service)) {
-    exitWithError(`'${cmd.service}' is not a valid option`);
+  if (!services.has(opts.service)) {
+    exitWithError(`'${opts.service}' is not a valid option`);
   }
 
   const cfnStackName = cmd.getCfnStackName();
@@ -50,55 +56,59 @@ const connectOperation = async (cmd: CacclDeployCommander) => {
     await sendSSHPublicKey({
       instanceAz: bastionHostAz,
       instanceId: bastionHostId,
-      sshKeyPath: cmd.publicKey,
+      sshKeyPath: opts.publicKey,
     });
   } catch (err) {
-    exitWithError(err.message);
+    const message =
+      err instanceof Error
+        ? err.message
+        : `Could not send SSH public key: ${err}`;
+    exitWithError(message);
   }
 
   let endpoint;
   let localPort;
   let clientCommand;
 
-  if (['mysql', 'docdb'].includes(cmd.service)) {
+  if (['mysql', 'docdb'].includes(opts.service)) {
     endpoint = cfnStackExports.dbClusterEndpoint;
     const password = await resolveSecret(dbPasswordSecretArn);
-    if (cmd.service === 'mysql') {
-      localPort = cmd.localPort || '3306';
+    if (opts.service === 'mysql') {
+      localPort = opts.localPort || '3306';
       clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;
     } else {
-      localPort = cmd.localPort || '27017';
+      localPort = opts.localPort || '27017';
       const tlsOpts =
         '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
       clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
     }
-  } else if (cmd.service === 'redis') {
+  } else if (opts.service === 'redis') {
     endpoint = cfnStackExports.cacheEndpoint;
-    localPort = cmd.localPort || '6379';
+    localPort = opts.localPort || '6379';
     clientCommand = `redis-cli -p ${localPort}`;
   } else {
-    exitWithError(`not sure what to do with ${cmd.service}`);
+    exitWithError(`not sure what to do with ${opts.service}`);
   }
 
   const tunnelCommand = [
     'ssh -f -L',
-    `${cmd.localPort || localPort}:${endpoint}`,
+    `${opts.localPort || localPort}:${endpoint}`,
     '-o StrictHostKeyChecking=no',
     `${EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
-    `sleep ${cmd.sleep}`,
+    `sleep ${opts.sleep}`,
   ].join(' ');
 
-  if (cmd.quiet) {
+  if (opts.quiet) {
     exitWithSuccess(tunnelCommand);
   }
 
   exitWithSuccess(
     [
-      `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
+      `Your public key, ${opts.publicKey}, has temporarily been placed on the bastion instance`,
       'You have ~60s to establish the ssh tunnel',
       '',
       `# tunnel command:\n${tunnelCommand}`,
-      `# ${cmd.service} client command:\n${clientCommand}`,
+      `# ${opts.service} client command:\n${clientCommand}`,
     ].join('\n'),
   );
 };

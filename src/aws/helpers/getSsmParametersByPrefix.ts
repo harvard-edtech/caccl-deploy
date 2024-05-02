@@ -7,6 +7,7 @@ import getPaginatedResponse from './getPaginatedResponse';
 /**
  * Fetch a set of parameter store entries based on a name prefix,
  *  e.g. `/caccl-deploy/foo-app`
+ * @author Jay Luker
  * @param {string} prefix
  * @returns {object[]}
  */

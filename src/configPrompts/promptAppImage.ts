@@ -4,6 +4,7 @@ import { Choice } from 'prompts';
 // Import aws
 import prompt from './prompt';
 import {
+  AssumedRole,
   createEcrArn,
   getCurrentRegion,
   getRepoImageList,
@@ -18,7 +19,7 @@ import looksLikeSemver from '../shared/helpers/looksLikeSemver';
 
 // Import helpers
 
-const promptAppImage = async () => {
+const promptAppImage = async (assumedRole: AssumedRole) => {
   const inputType = await prompt({
     type: 'select',
     name: 'value',
@@ -47,7 +48,7 @@ const promptAppImage = async () => {
     }
     case 'select': {
       // TODO: deal with AssumedRole
-      const repoList = await getRepoList();
+      const repoList = await getRepoList(assumedRole);
       const repoChoices = repoList.flatMap((value) => {
         if (!value) return [];
         return {
@@ -67,7 +68,7 @@ const promptAppImage = async () => {
         choices: repoChoices,
       });
 
-      const images = await getRepoImageList(repoChoice.value);
+      const images = await getRepoImageList(assumedRole, repoChoice.value);
       const imageTagsChoices = images.reduce((choices: Choice[], image) => {
         const releaseTag =
           image.imageTags &&
@@ -76,6 +77,10 @@ const promptAppImage = async () => {
           });
 
         if (!releaseTag) return choices;
+
+        if (!image.registryId) {
+          throw new Error('Could not get ECR image registry ID.');
+        }
 
         const appImageValue = createEcrArn({
           region: getCurrentRegion(),

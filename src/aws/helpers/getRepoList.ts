@@ -5,8 +5,6 @@ import AWS from 'aws-sdk';
 import getPaginatedResponse from './getPaginatedResponse';
 import AssumedRole from '../classes/AssumedRole';
 
-// Import helpers
-
 /**
  * @author Jay Luker
  * @returns {string[]} - array of ECR repository names
