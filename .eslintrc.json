@@ -34,7 +34,8 @@
     "node_modules/",
     "*.generated.ts",
     "build/",
-    "cdk/cdk.out/"
+    "cdk/cdk.out/",
+    "dist"
   ],
   "rules": {
     "@typescript-eslint/no-var-requires": "off",
