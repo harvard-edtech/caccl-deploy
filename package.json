@@ -110,7 +110,7 @@
   "scripts": {
     "build": "shx rm -rf dist && tsc -b",
     "dev": "shx rm -rf dist && tsc -b --watch",
-    "run": "./bin/run.js",
+    "cli": "./bin/run.js",
     "lint": "eslint . --ext .ts",
     "postpack": "shx rm -f oclif.manifest.json",
     "posttest": "npm run lint",
