@@ -69,6 +69,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     'profile': Flags.string({
       helpGroup: 'GLOBAL',
       description: 'activate a specific aws config/credential profile',
+      default: () => initAwsProfile("default"),
       parse: initAwsProfile
     }),
     'ecr-access-role-arn': Flags.string({
@@ -105,8 +106,6 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
   protected args!: Args<T>;
 
   public async init(): Promise<void> {
-    console.log(this.argv);
-    console.log(path.join(__dirname, '..'));
     // confirm ASAP that the user's AWS creds/config is good to go
     if (!isConfigured() && process.env.NODE_ENV !== 'test') {
       byeWithCredentialsError();
