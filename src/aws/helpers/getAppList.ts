@@ -35,7 +35,7 @@ const getAppList = async (prefix: string): Promise<string[]> => {
     'Parameters',
   );
   return paramEntries.flatMap((param) => {
-    if (!param.Name || param.Name.startsWith(prefix)) return [];
+    if (!param.Name || !param.Name.startsWith(prefix)) return [];
     return param.Name.split('/')[2];
   });
 };
