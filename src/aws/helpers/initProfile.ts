@@ -26,6 +26,7 @@ const initProfile = (profileName: string) => {
       accessKeyId: profileCreds.aws_access_key_id,
       secretAccessKey: profileCreds.aws_secret_access_key,
     }),
+    region: profileCreds.region,
   });
 };
 
