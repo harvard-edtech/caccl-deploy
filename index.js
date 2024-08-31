@@ -237,7 +237,7 @@ class CacclDeployCommander extends Command {
   }
 }
 
-async function main() {
+async function setupCLI() {
   // confirm ASAP that the user's AWS creds/config is good to go
   if (!aws.isConfigured() && process.env.NODE_ENV !== 'test') {
     byeWithCredentialsError();
@@ -1171,10 +1171,21 @@ async function main() {
       exitWithSuccess('task scheduled');
     });
 
+  return cli;
+}
+
+async function main() {
+  const cli = await setupCLI();
   await cli.parseAsync(process.argv);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+module.exports = {
+  setupCLI,
+};
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
