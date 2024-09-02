@@ -7,7 +7,7 @@
     "caccl-deploy": "index.js"
   },
   "scripts": {
-    "test": "CACCL_DEPLOY_ENV=mock jest",
+    "test": "jest",
     "prettier": "npx prettier --write --ignore-path .gitignore \"**/*.{ts,js}\"",
     "prepare": "husky install"
   },
@@ -85,6 +85,7 @@
     "testMatch": [
       "**/test/**/*.jest.js",
       "**/test/**/*.test.js"
-    ]
+    ],
+    "globalSetup": "./test/setup.js"
   }
 }

@@ -2,8 +2,7 @@ const AWS = require('aws-sdk-mock');
 const { table } = require('table');
 
 const { setupCLI } = require('../../index');
-
-jest.setTimeout(50 * 1000);
+const { conf, setConfigDefaults } = require('../../lib/conf');
 
 describe('caccl-deploy CLI', () => {
   beforeAll(() => {
@@ -33,7 +32,8 @@ describe('caccl-deploy CLI', () => {
         },
       ],
     });
-    const cli = await setupCLI();
+    setConfigDefaults();
+    const cli = await setupCLI(conf);
 
     // Act
     try {

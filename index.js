@@ -79,8 +79,8 @@ const initAwsProfile = (profile) => {
   }
 };
 
-const isProdAccount = async () => {
-  const prodAccounts = conf.get('productionAccounts');
+const isProdAccount = async (innerConf) => {
+  const prodAccounts = innerConf.get('productionAccounts');
   const accountId = await aws.getAccountId();
   return prodAccounts && prodAccounts.includes(accountId);
 };
@@ -91,12 +91,17 @@ const isProdAccount = async () => {
  * @extends Command
  */
 class CacclDeployCommander extends Command {
+  constructor(name, innerConf) {
+    super(name);
+    this.innerConf = innerConf;
+  }
+
   /**
    * custom command creator
    * @param {string} name
    */
   createCommand(name) {
-    const cmd = new CacclDeployCommander(name)
+    const cmd = new CacclDeployCommander(name, this.innerConf)
       /**
        * Enabling the following two command options allows our `action()` block
        * to receive the command object as an argument and to reference command
@@ -204,17 +209,17 @@ class CacclDeployCommander extends Command {
       .option(
         '--ecr-access-role-arn <string>',
         'IAM role ARN for cross account ECR repo access',
-        conf.get('ecrAccessRoleArn'),
+        this.innerConf.get('ecrAccessRoleArn'),
       )
       .requiredOption(
         '--ssm-root-prefix <string>',
         'The root prefix for ssm parameter store entries',
-        conf.get('ssmRootPrefix'),
+        this.innerConf.get('ssmRootPrefix'),
       )
       .requiredOption(
         '--cfn-stack-prefix <string>',
         'cloudformation stack name prefix, e.g. "CacclDeploy-"',
-        conf.get('cfnStackPrefix'),
+        this.innerConf.get('cfnStackPrefix'),
       )
       .option(
         '-y --yes',
@@ -237,7 +242,7 @@ class CacclDeployCommander extends Command {
   }
 }
 
-async function setupCLI() {
+async function setupCLI(innerConf) {
   // confirm ASAP that the user's AWS creds/config is good to go
   if (!aws.isConfigured() && process.env.NODE_ENV !== 'test') {
     byeWithCredentialsError();
@@ -247,12 +252,14 @@ async function setupCLI() {
    * check if this is the first time running and if so create the
    * config file with defaults
    */
-  if (!conf.get('ssmRootPrefix')) {
+  if (!innerConf.get('ssmRootPrefix')) {
     console.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
     console.log(
       [
         'It looks like this is your first time running caccl-deploy. ',
-        `A preferences file has been created at ${chalk.yellow(conf.path)}`,
+        `A preferences file has been created at ${chalk.yellow(
+          innerConf.path,
+        )}`,
         'with the following default values:',
         '',
         ...Object.entries(configDefaults).map(([k, v]) => {
@@ -269,9 +276,9 @@ async function setupCLI() {
     setConfigDefaults();
   }
 
-  const cli = new CacclDeployCommander()
+  const cli = new CacclDeployCommander('caccl-deploy', innerConf)
     .version(cacclDeployVersion)
-    .description([packageDescription, `config: ${conf.path}`].join('\n'));
+    .description([packageDescription, `config: ${innerConf.path}`].join('\n'));
 
   cli
     .command('apps')
@@ -717,7 +724,7 @@ async function setupCLI() {
         !cdkStackProps.deployConfig.dbOptions.removalPolicy
       ) {
         cdkStackProps.deployConfig.dbOptions.removalPolicy =
-          (await isProdAccount()) ? 'RETAIN' : 'DESTROY';
+          (await isProdAccount(innerConf)) ? 'RETAIN' : 'DESTROY';
       }
 
       /**
@@ -1175,7 +1182,7 @@ async function setupCLI() {
 }
 
 async function main() {
-  const cli = await setupCLI();
+  const cli = await setupCLI(conf);
   await cli.parseAsync(process.argv);
 }
 

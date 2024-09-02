@@ -1,6 +1,6 @@
 const { execFileSync } = require('child_process');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const tempy = require('tempy');
 
 describe('cli', () => {
