@@ -560,7 +560,7 @@ async function setupCLI(innerConf) {
       });
 
       if (data.length) {
-        const tableOutput = table([['Respository Name'], ...data]);
+        const tableOutput = table([['Repository Name'], ...data]);
         exitWithSuccess(tableOutput);
       }
       exitWithError('No ECR repositories found');
@@ -590,6 +590,7 @@ async function setupCLI(innerConf) {
        * If `--all` flag is provided this will return true for all tags.
        * Otherwise only tags that look like e.g. "1.1.1" or master/stage
        * will be included.
+       * TODO: discuss this, as opposed to lib/aws.js:291 (getRepoImageList)
        */
       const includeThisTag = (t) => {
         return cmd.all || looksLikeSemver(t) || ['master', 'stage'].includes(t);
