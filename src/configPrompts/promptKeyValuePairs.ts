@@ -1,4 +1,8 @@
+// Import prompt
 import prompt from './prompt.js';
+
+// Import logger
+import logger from '../logger.js';
 
 const promptKeyValuePairs = async (
   label: string,
@@ -10,7 +14,7 @@ const promptKeyValuePairs = async (
   Object.entries(pairs).forEach(([k, v]) => {
     displayList.push(`${k}=${v}`);
   });
-  console.log(`Current ${label}(s):\n${displayList.join('\n')}`);
+  logger.log(`Current ${label}(s):\n${displayList.join('\n')}`);
   const newEntry = await prompt({
     type: 'text',
     name: 'value',

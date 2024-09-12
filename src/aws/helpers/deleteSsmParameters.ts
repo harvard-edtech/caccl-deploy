@@ -1,6 +1,9 @@
 // Import aws-sdk
 import AWS from 'aws-sdk';
 
+// Import logger
+import Logger from '../../logger.js';
+
 /**
  * Delete one or more parameter store entries
  * @param {string[]} paramNames
@@ -18,7 +21,7 @@ const deleteSsmParameters = async (paramNames: string[]) => {
       })
       .promise();
     paramNamesSlice.forEach((name) => {
-      console.log(`ssm parameter ${name} deleted`);
+      Logger.log(`ssm parameter ${name} deleted`);
     });
   }
 };

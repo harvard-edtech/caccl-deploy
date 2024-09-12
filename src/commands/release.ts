@@ -19,8 +19,6 @@ import DeployConfig from '../deployConfig/index.js';
 
 import CfnStackNotFound from '../shared/errors/CfnStackNotFound.js';
 
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 
 export default class Release extends BaseCommand<typeof Release> {
   static override description = 'release a new version of an app';
@@ -77,7 +75,7 @@ export default class Release extends BaseCommand<typeof Release> {
         err instanceof Error &&
         (err instanceof CfnStackNotFound || err.message.includes('Incomplete'))
       ) {
-        exitWithError(err.message);
+        this.exitWithError(err.message);
       }
       throw err;
     }
@@ -91,30 +89,30 @@ export default class Release extends BaseCommand<typeof Release> {
     // check that we're actually releasing a different image
     if (repoArn.imageTag === imageTag && !yes) {
       const confirmMsg = `${app} is already using image tag ${imageTag}`;
-      (await confirm(`${confirmMsg}. Proceed?`)) || exitWithSuccess();
+      (await confirm(`${confirmMsg}. Proceed?`)) || this.exitWithSuccess();
     }
 
     // check that the specified image tag is legit
-    console.log(`Checking that an image exists with the tag ${imageTag}`);
+    this.log(`Checking that an image exists with the tag ${imageTag}`);
     const imageTagExists = await getImageTagExists(
       assumedRole,
       repoArn.repoName,
       imageTag,
     );
     if (!imageTagExists) {
-      exitWithError(`No image with tag ${imageTag} in ${repoArn.repoName}`);
+      this.exitWithError(`No image with tag ${imageTag} in ${repoArn.repoName}`);
     }
 
     // check if it's the latest release and prompt if not
-    console.log(`Checking ${imageTag} is the latest tag`);
+    this.log(`Checking ${imageTag} is the latest tag`);
     const isLatestTag = await getIsLatestTag(
       assumedRole,
       repoArn.repoName,
       imageTag,
     );
     if (!isLatestTag && !yes) {
-      console.log(`${imageTag} is not the most recent release`);
-      (await confirm('Proceed?')) || exitWithSuccess();
+      this.log(`${imageTag} is not the most recent release`);
+      (await confirm('Proceed?')) || this.exitWithSuccess();
     }
 
     // generate the new repo image arn to be deployed
@@ -134,15 +132,15 @@ export default class Release extends BaseCommand<typeof Release> {
 
     // check that we're not using a wildly different version of the cli
     if (!yes && !(await this.stackVersionDiffCheck())) {
-      exitWithSuccess();
+      this.exitWithSuccess();
     }
 
     if (!(await confirmProductionOp(yes))) {
-      exitWithSuccess();
+      this.exitWithSuccess();
     }
 
     // create a new version of the taskdef with the updated image
-    console.log(`Updating ${app} task definitions to use ${newAppImage}`);
+    this.log(`Updating ${app} task definitions to use ${newAppImage}`);
     // the app's service task def
     const newTaskDefArn = await updateTaskDefAppImage(
       taskDefName,
@@ -157,7 +155,7 @@ export default class Release extends BaseCommand<typeof Release> {
     );
 
     // update the ssm parameter
-    console.log('Updating stored deployment configuration');
+    this.log('Updating stored deployment configuration');
     await DeployConfig.update({
       deployConfig,
       appPrefix: this.getAppPrefix(),
@@ -167,16 +165,16 @@ export default class Release extends BaseCommand<typeof Release> {
 
     // restart the service
     if (!noDeploy) {
-      console.log(`Restarting the ${serviceName} service...`);
+      this.log(`Restarting the ${serviceName} service...`);
       await restartEcsService({
         cluster: clusterName,
         service: serviceName,
         newTaskDefArn,
         wait: true,
       });
-      exitWithSuccess('done.');
+      this.exitWithSuccess('done.');
     }
-    exitWithSuccess(
+    this.exitWithSuccess(
       [
         'Redployment skipped',
         'WARNING: service is out-of-sync with stored deployment configuration',

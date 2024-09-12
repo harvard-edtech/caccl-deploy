@@ -5,7 +5,12 @@ import { CacclAppEnvironment } from './appEnvironment';
 import { CacclSshBastion } from './bastion';
 import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclMonitoring } from './dashboard';
-import { CacclDbOptions, createDbConstruct } from './db';
+import { 
+  CacclDbOptions,
+  CacclDocDb,
+  CacclRdsDb,
+  createDbConstruct,
+} from './db';
 import {
   CacclLoadBalancer,
   LoadBalancerSecurityGoups,
@@ -60,7 +65,7 @@ export class CacclDeployStack extends Stack {
      * create the docdb if needed so we can add it's endpoint url
      * to the app container's env
      */
-    let db = null;
+    let db: CacclDocDb | CacclRdsDb | undefined;
     if (props.dbOptions) {
       createBastion = true;
       db = createDbConstruct(this, {

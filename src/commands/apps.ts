@@ -13,9 +13,6 @@ import { BaseCommand } from '../base.js';
 // Import deploy config
 import DeployConfig from '../deployConfig/index.js';
 
-// Import helpers
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 
 export default class Apps extends BaseCommand<typeof Apps> {
   static override description = 'list available app configurations';
@@ -45,7 +42,7 @@ export default class Apps extends BaseCommand<typeof Apps> {
     const apps = await getAppList(ssmRootPrefix);
 
     if (!apps.length) {
-      exitWithError(
+      this.exitWithError(
         `No app configurations found using ssm root prefix ${ssmRootPrefix}`,
       );
     }
@@ -112,6 +109,6 @@ export default class Apps extends BaseCommand<typeof Apps> {
       return [app, ...appData[app]];
     });
 
-    exitWithSuccess(table([tableColumns, ...tableData]));
+    this.exitWithSuccess(table([tableColumns, ...tableData]));
   }
 }

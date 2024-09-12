@@ -13,7 +13,7 @@ import { BaseCommand } from '../base.js';
 
 import { execSync } from 'child_process';
 
-import tempy from 'tempy';
+import { temporaryWriteTask } from 'tempy';
 
 import { cfnStackExists, getAccountId, getCfnStackExports } from '../aws/index.js';
 
@@ -21,8 +21,6 @@ import { confirmProductionOp } from '../configPrompts/index.js';
 
 import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION.js';
 
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 import isProdAccount from '../helpers/isProdAccount.js';
 import DeployConfig from '../deployConfig/index.js';
 
@@ -103,13 +101,13 @@ export default class Stack extends BaseCommand<typeof Stack> {
     if (!cdkArgs.length) {
       cdkArgs.push('list');
     } else if (cdkArgs[0] === 'dump') {
-      exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
+      this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
     } else if (cdkArgs[0] === 'info') {
       if (!stackExists) {
-        exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
+        this.exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
       }
       const stackExports = await getCfnStackExports(cfnStackName);
-      exitWithSuccess(JSON.stringify(stackExports, null, '  '));
+      this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
     } else if (cdkArgs[0] === 'changeset') {
       cdkArgs.shift();
       cdkArgs.unshift('deploy', '--no-execute');
@@ -136,11 +134,11 @@ export default class Stack extends BaseCommand<typeof Stack> {
     ) {
       // check that we're not using a wildly different version of the cli
       if (stackExists && !yes && !(await this.stackVersionDiffCheck())) {
-        exitWithSuccess();
+        this.exitWithSuccess();
       }
       // production failsafe if we're actually changing anything
       if (!(await confirmProductionOp(yes))) {
-        exitWithSuccess();
+        this.exitWithSuccess();
       }
     }
 
@@ -158,7 +156,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
      * Write out the stack properties to a temp json file for
      * the CDK subprocess to pick up
      */
-    await tempy.write.task(
+    await temporaryWriteTask(
       JSON.stringify(cdkStackProps, null, 2),
       async (tempPath) => {
         // tell the CDK subprocess where to find the stack properties file
@@ -176,13 +174,13 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
         try {
           execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
-          exitWithSuccess('done!');
+          this.exitWithSuccess('done!');
         } catch (err) {
           const message =
             err instanceof Error
               ? err.message
               : `Error while executing CDK: ${err}`;
-          exitWithError(message);
+              this.exitWithError(message);
         }
       },
     );

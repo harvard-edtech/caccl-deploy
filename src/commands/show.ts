@@ -7,8 +7,6 @@ import { BaseCommand } from '../base.js'
 // Import deploy config
 import DeployConfig from '../deployConfig/index.js';
 
-// Import helpers
-import exitWithSuccess from '../helpers/exitWithSuccess.js'
 
 export default class Show extends BaseCommand<typeof Show> {
   static override description = "display an app's current configuration";
@@ -53,11 +51,11 @@ export default class Show extends BaseCommand<typeof Show> {
     // we only want to see that sha1 hash (likely for debugging)
     if (sha) {
       const deployConfig = await this.getDeployConfig(assumedRole);
-      exitWithSuccess(DeployConfig.toHash(deployConfig));
+      this.exitWithSuccess(DeployConfig.toHash(deployConfig));
     }
   
     const deployConfig = await this.getDeployConfig(assumedRole, keepSecretArns);
-    exitWithSuccess(
+    this.exitWithSuccess(
       DeployConfig.toString(deployConfig, true, flat),
     );
   }
