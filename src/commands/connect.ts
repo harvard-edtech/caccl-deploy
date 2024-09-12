@@ -14,8 +14,6 @@ import {
 // Import base command
 import { BaseCommand } from '../base.js';
 
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 
 export default class Connect extends BaseCommand<typeof Connect> {
   static override description = "connect to an app's peripheral services (db, redis, etc)";
@@ -74,7 +72,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
     const assumedRole = this.getAssumedRole();
 
     if (!list && !service) {
-      exitWithError('One of `--list` or `--service` is required');
+      this.exitWithError('One of `--list` or `--service` is required');
     }
 
     const deployConfig = await this.getDeployConfig(assumedRole);
@@ -87,7 +85,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
       }
     });
     if (yn(deployConfig.docDb)) {
-      exitWithError(
+      this.exitWithError(
         [
           'Deployment configuration is out-of-date',
           'Replace `docDb*` with `dbOptions: {...}`',
@@ -96,11 +94,11 @@ export default class Connect extends BaseCommand<typeof Connect> {
     }
 
     if (list) {
-      exitWithSuccess(['Valid `--service=` options:', ...services].join('\n  '));
+      this.exitWithSuccess(['Valid `--service=` options:', ...services].join('\n  '));
     }
 
     if (!services.has(service)) {
-      exitWithError(`'${service}' is not a valid option`);
+      this.exitWithError(`'${service}' is not a valid option`);
     }
 
     const cfnStackName = this.getCfnStackName();
@@ -120,7 +118,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
         err instanceof Error
           ? err.message
           : `Could not send SSH public key: ${err}`;
-      exitWithError(message);
+      this.exitWithError(message);
     }
 
     let endpoint;
@@ -144,7 +142,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
       localPort = localPortFlag || '6379';
       clientCommand = `redis-cli -p ${localPort}`;
     } else {
-      exitWithError(`not sure what to do with ${service}`);
+      this.exitWithError(`not sure what to do with ${service}`);
     }
 
     const tunnelCommand = [
@@ -156,10 +154,10 @@ export default class Connect extends BaseCommand<typeof Connect> {
     ].join(' ');
 
     if (quiet) {
-      exitWithSuccess(tunnelCommand);
+      this.exitWithSuccess(tunnelCommand);
     }
 
-    exitWithSuccess(
+    this.exitWithSuccess(
       [
         `Your public key, ${publicKey}, has temporarily been placed on the bastion instance`,
         'You have ~60s to establish the ssh tunnel',

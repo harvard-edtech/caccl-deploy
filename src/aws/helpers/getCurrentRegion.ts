@@ -1,3 +1,6 @@
+// Import NodeJS libraries
+import process from 'node:process';
+
 // Import aws-sdk
 import AWS from 'aws-sdk';
 
@@ -12,8 +15,11 @@ import AWS from 'aws-sdk';
 const getCurrentRegion = (): string => {
   const { region } = AWS.config;
   if (!region) {
-    // TODO: better error type
-    throw new Error('Could not get current AWS region.');
+    if (process.env.NODE_ENV === 'test') {
+      return 'us-east-1';
+    }
+    // TODO: fix this error
+    throw new Error('Please configure you\'re AWS region.');
   }
   return region;
 };

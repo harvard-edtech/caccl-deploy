@@ -10,8 +10,6 @@ import {
 import { BaseCommand } from '../base.js'
 
 // Import helpers
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 
 export default class Repos extends BaseCommand<typeof Repos> {
   static override description = 'list the available ECR repositories';
@@ -32,9 +30,9 @@ export default class Repos extends BaseCommand<typeof Repos> {
     });
 
     if (data.length) {
-      const tableOutput = table([['Respository Name'], ...data]);
-      exitWithSuccess(tableOutput);
+      const tableOutput = table([['Repository Name'], ...data]);
+      this.exitWithSuccess(tableOutput);
     }
-    exitWithError('No ECR repositories found');
+    this.exitWithError('No ECR repositories found');
   }
 }

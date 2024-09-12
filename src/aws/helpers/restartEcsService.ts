@@ -6,6 +6,9 @@ import getCurrentRegion from './getCurrentRegion.js';
 // Import shared helpers
 import sleep from '../../shared/helpers/sleep.js';
 
+// Import logger
+import logger from '../../logger.js';
+
 export type RestartOpts = {
   cluster: string;
   service: string;
@@ -23,7 +26,7 @@ export type RestartOpts = {
 const restartEcsService = async (restartOpts: RestartOpts) => {
   const { cluster, service, newTaskDefArn, wait } = restartOpts;
   const ecs = new AWS.ECS();
-  console.log(
+  logger.log(
     [
       'Console link for monitoring: ',
       `https://console.aws.amazon.com/ecs/home?region=${getCurrentRegion()}`,
@@ -62,11 +65,11 @@ const restartEcsService = async (restartOpts: RestartOpts) => {
 
   let counter = 0;
   while (!allDone) {
-    console.log('Waiting for deployment to stablize...');
+    logger.log('Waiting for deployment to stablize...');
     counter += 1;
     await sleep(2 ** counter * 1000);
   }
-  console.log('all done!');
+  logger.log('all done!');
 };
 
 export default restartEcsService;
