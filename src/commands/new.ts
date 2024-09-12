@@ -30,9 +30,6 @@ import DeployConfig from '../deployConfig/index.js';
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
 import UserCancel from '../shared/errors/UserCancel.js';
 
-// Import helpers
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 
 export default class New extends BaseCommand<typeof New> {
   static override description = 'create a new app deploy config via import and/or prompts';
@@ -72,7 +69,7 @@ export default class New extends BaseCommand<typeof New> {
       appName = app || (await promptAppName());
     } catch (err) {
       if (err instanceof UserCancel) {
-        exitWithSuccess();
+        this.exitWithSuccess();
       }
       throw err;
     }
@@ -82,18 +79,18 @@ export default class New extends BaseCommand<typeof New> {
     if (existingApps.includes(appName)) {
       const cfnStackName = this.getCfnStackName(appName);
       if (await cfnStackExists(cfnStackName)) {
-        exitWithError('A deployed app with that name already exists');
+        this.exitWithError('A deployed app with that name already exists');
       } else {
-        console.log(`Configuration for ${app} already exists`);
+        this.log(`Configuration for ${app} already exists`);
       }
 
       if (yes || (await confirm('Overwrite?'))) {
         if (!(await confirmProductionOp(yes))) {
-          exitWithSuccess();
+          this.exitWithSuccess();
         }
         await DeployConfig.wipeExisting(appPrefix);
       } else {
-        exitWithSuccess();
+        this.exitWithSuccess();
       }
     }
 
@@ -114,9 +111,9 @@ export default class New extends BaseCommand<typeof New> {
       deployConfig = await DeployConfig.generate(assumedRole, importedConfig);
     } catch (err) {
       if (err instanceof UserCancel) {
-        exitWithSuccess();
+        this.exitWithSuccess();
       } else if (err instanceof NoPromptChoices) {
-        exitWithError(
+        this.exitWithError(
           [
             'Something went wrong trying to generate your config: ',
             err.message,
@@ -127,7 +124,7 @@ export default class New extends BaseCommand<typeof New> {
     }
 
     await DeployConfig.syncToSsm(deployConfig, appPrefix);
-    exitWithSuccess(
+    this.exitWithSuccess(
       [
         chalk.yellowBright(figlet.textSync(`${appName}!`)),
         '',

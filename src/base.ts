@@ -21,7 +21,7 @@ import { Command, Flags, Interfaces } from '@oclif/core'
 import yn from 'yn';
 
 // Import aws
-import { isConfigured, AssumedRole, getCfnStackExports } from './aws/index.js';
+import { isConfigured, AssumedRole, getCfnStackExports, initProfile } from './aws/index.js';
 
 // Import config
 import { conf, configDefaults, setConfigDefaults } from './conf.js';
@@ -37,17 +37,17 @@ import CACCL_DEPLOY_NON_INTERACTIVE from './constants/CACCL_DEPLOY_NON_INTERACTI
 import CACCL_DEPLOY_VERSION from './constants/CACCL_DEPLOY_VERSION.js';
 
 // Import helpers
-import byeWithCredentialsError from './helpers/byeWithCredentialsError.js';
-import exitWithSuccess from './helpers/exitWithSuccess.js';
-import exitWithError from './helpers/exitWithError.js';
-import initAwsProfile from './helpers/initAwsProfile.js';
 import warnAboutVersionDiff from './shared/helpers/warnAboutVersionDiff.js';
+
+// Import logger
+import logger from './logger.js';
 
 // Import shared types
 import { DeployConfigData } from './types/index.js';
 
 // Import errors
 import AppNotFound from './shared/errors/AppNotFound.js';
+import AwsProfileNotFound from './shared/errors/AwsProfileNotFound.js';
 
 // Types
 type Flags<T extends typeof Command> = Interfaces.InferredFlags<typeof BaseCommand['baseFlags'] & T['flags']>
@@ -69,8 +69,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     'profile': Flags.string({
       helpGroup: 'GLOBAL',
       description: 'activate a specific aws config/credential profile',
-      default: () => initAwsProfile("default"),
-      parse: initAwsProfile
+      default: 'default',
     }),
     'ecr-access-role-arn': Flags.string({
       helpGroup: 'GLOBAL',
@@ -106,18 +105,39 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
   protected args!: Args<T>;
 
   public async init(): Promise<void> {
-    // confirm ASAP that the user's AWS creds/config is good to go
-    if (!isConfigured() && process.env.NODE_ENV !== 'test') {
-      byeWithCredentialsError();
-    }
+    // Set the logger
+    logger.setLogger(this.log, this.logToStderr);
 
+    // Parse args and flags
+    await super.init()
+    const {args, flags} = await this.parse({
+      flags: this.ctor.flags,
+      baseFlags: (super.ctor as typeof BaseCommand).baseFlags,
+      enableJsonFlag: this.ctor.enableJsonFlag,
+      args: this.ctor.args,
+      strict: this.ctor.strict,
+    })
+    this.flags = flags as Flags<T>;
+    this.args = args as Args<T>;
+  
+    // No need for credentials while testing
+    if (process.env.NODE_ENV !== 'test') {
+      // Initialize the AWS profile
+      this.initAwsProfile(this.flags.profile);
+
+      // confirm ASAP that the user's AWS creds/config is good to go
+      if (!isConfigured()) {
+        this.byeWithCredentialsError();
+      }
+    }
+  
     /*
     * check if this is the first time running and if so create the
     * config file with defaults
     */
     if (!conf.get('ssmRootPrefix')) {
-      console.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
-      console.log(
+      this.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
+      this.log(
         [
           'It looks like this is your first time running caccl-deploy. ',
           `A preferences file has been created at ${chalk.yellow(conf.path)}`,
@@ -133,21 +153,9 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
 
       CACCL_DEPLOY_NON_INTERACTIVE ||
         (await confirm('Continue?', true)) ||
-        exitWithSuccess();
+        this.exitWithSuccess();
       setConfigDefaults();
     }
-
-    await super.init()
-    const {args, flags} = await this.parse({
-      flags: this.ctor.flags,
-      baseFlags: (super.ctor as typeof BaseCommand).baseFlags,
-      enableJsonFlag: this.ctor.enableJsonFlag,
-      args: this.ctor.args,
-      strict: this.ctor.strict,
-    })
-    this.flags = flags as Flags<T>;
-    this.args = args as Args<T>;
-  
   }
 
   /**
@@ -215,7 +223,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
       return deployConfig;
     } catch (err) {
       if (err instanceof AppNotFound) {
-        exitWithError(`${app} app configuration not found!`);
+        this.exitWithError(`${app} app configuration not found!`);
       }
     }
     return DeployConfig.generate(assumedRole);
@@ -251,6 +259,42 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     }
     return this.assumedRole;
   }
+
+  private bye(msg = 'bye!', exitCode = 0) {
+    this.log(msg);
+    this.exit(exitCode);
+  }
+
+  public exitWithSuccess = (msg?: string) => {
+    this.bye(msg);
+  }
+
+  public exitWithError = (msg?: string) => {
+    this.bye(msg, 1);
+  }
+
+  public byeWithCredentialsError = () => {
+    this.exitWithError(
+      [
+        'Looks like there is a problem with your AWS credentials configuration.',
+        'Did you run `aws configure`? Did you set a region? Default profile?',
+      ].join('\n'),
+    );
+  };
+
+  public initAwsProfile = async (profile: string): Promise<string> => {
+    try {
+      initProfile(profile);
+      return profile;
+    } catch (err) {
+      if (err instanceof AwsProfileNotFound) {
+        this.exitWithError(err.message);
+      } else {
+        throw err;
+      }
+    }
+    return profile;
+  };
 
   protected async catch(err: Error & {exitCode?: number}): Promise<any> {
     // add any custom logic to handle errors from the command

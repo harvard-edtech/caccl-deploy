@@ -40,7 +40,8 @@ import readJson from '../shared/helpers/readJson.js';
 // Import shared types
 import AwsTag from '../shared/types/AwsTag.js';
 
-// Import helpers
+// Import logger
+import logger from '../logger.js';
 
 // TODO: JSDoc
 namespace DeployConfig {
@@ -122,9 +123,9 @@ namespace DeployConfig {
       newConfig.appEnvironment,
     );
 
-    console.log('\nYour new config:\n');
-    console.log(JSON.stringify(newConfig, null, 2));
-    console.log('\n');
+    logger.log('\nYour new config:\n');
+    logger.log(JSON.stringify(newConfig, null, 2));
+    logger.log('\n');
     return create(newConfig);
   };
 
@@ -204,8 +205,8 @@ namespace DeployConfig {
           );
         } catch (err) {
           if (err instanceof ExistingSecretWontDelete) {
-            console.log(err.message);
-            console.log('Aborting import and cleaning up.');
+            logger.log(err.message);
+            logger.log('Aborting import and cleaning up.');
             await wipeConfig(appPrefix, flattened);
             return;
           }
@@ -227,7 +228,7 @@ namespace DeployConfig {
       };
 
       await putSsmParameter(paramOpts, awsTags);
-      console.log(`ssm parameter ${paramName} created`);
+      logger.log(`ssm parameter ${paramName} created`);
     }
   };
 

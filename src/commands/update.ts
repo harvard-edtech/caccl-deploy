@@ -11,8 +11,6 @@ import { confirmProductionOp } from '../configPrompts/index.js';
 import DeployConfig from '../deployConfig/index.js';
 
 // Import helpers
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 import validSSMParamName from '../shared/helpers/validSSMParamName.js';
 
 
@@ -50,7 +48,7 @@ export default class Update extends BaseCommand<typeof Update> {
     const deployConfig = await this.getDeployConfig(assumedRole, true);
 
     if (!(await confirmProductionOp(yes))) {
-      exitWithSuccess();
+      this.exitWithSuccess();
     }
 
     try {
@@ -73,7 +71,7 @@ export default class Update extends BaseCommand<typeof Update> {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : `${err}`;
-      exitWithError(`Something went wrong: ${message}`);
+      this.exitWithError(`Something went wrong: ${message}`);
     }
   }
 }

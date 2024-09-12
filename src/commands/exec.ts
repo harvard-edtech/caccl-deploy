@@ -9,8 +9,6 @@ import { execTask, getCfnStackExports } from '../aws/index.js';
 import { confirmProductionOp } from '../configPrompts/index.js';
 
 
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
-
 // TODO: pull out into type (also in execTask)
 type EnvVariable = {
   name: string,
@@ -70,13 +68,13 @@ export default class Exec extends BaseCommand<typeof Exec> {
 
     // check that we're not using a wildly different version of the cli
     if (!yes && !(await this.stackVersionDiffCheck())) {
-      exitWithSuccess();
+      this.exitWithSuccess();
     }
     if (!(await confirmProductionOp(yes))) {
-      exitWithSuccess();
+      this.exitWithSuccess();
     }
 
-    console.log(
+    this.log(
       `Running command '${
         command
       }' on service ${serviceName} using task def ${appOnlyTaskDefName}`,
@@ -88,6 +86,6 @@ export default class Exec extends BaseCommand<typeof Exec> {
       command: command,
       environment: envVarParser(env),
     });
-    exitWithSuccess(`Task ${taskArn} started`);
+    this.exitWithSuccess(`Task ${taskArn} started`);
   }
 }

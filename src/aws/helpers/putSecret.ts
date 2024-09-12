@@ -15,7 +15,8 @@ import sleep from '../../shared/helpers/sleep.js';
 import AwsTag from '../../shared/types/AwsTag.js';
 import SecretOpts from '../../shared/types/SecretOpts.js';
 
-// Import helpers
+// Import logger
+import logger from '../../logger.js';
 
 /**
  * creates or updates a secrets manager entry
@@ -50,7 +51,7 @@ const putSecret = async (
         })
         .promise();
 
-      console.log(`secretsmanager entry ${SecretId} updated`);
+      logger.log(`secretsmanager entry ${SecretId} updated`);
 
       if (tags.length) {
         await sm
@@ -59,7 +60,7 @@ const putSecret = async (
             Tags: tags,
           })
           .promise();
-        console.log(`secretsmanager entry ${SecretId} tagged`);
+        logger.log(`secretsmanager entry ${SecretId} tagged`);
       }
     } else {
       secretResp = await sm
@@ -70,7 +71,7 @@ const putSecret = async (
           Tags: tags,
         })
         .promise();
-      console.log(`secretsmanager entry ${SecretId} created`);
+      logger.log(`secretsmanager entry ${SecretId} created`);
     }
   } catch (err: unknown) {
     if (!(err instanceof Error)) throw err;

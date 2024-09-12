@@ -14,7 +14,8 @@ import { conf } from '../conf.js';
 // Import shared errors
 import UserCancel from '../shared/errors/UserCancel.js';
 
-// Import helpers
+// Import logger
+import logger from '../logger.js';
 
 const confirmProductionOp = async (yes?: boolean) => {
   if (yes) {
@@ -28,7 +29,7 @@ const confirmProductionOp = async (yes?: boolean) => {
   if (!prodAccounts.includes(accountId)) {
     return true;
   }
-  console.log(chalk.redBright(figlet.textSync('Production Account!')));
+  logger.log(chalk.redBright(figlet.textSync('Production Account!')));
   try {
     const ok = await confirm('\nPlease confirm you wish to proceed\n');
     return ok;

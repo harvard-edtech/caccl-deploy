@@ -5,6 +5,9 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Import logger
+import logger from '../../logger.js';
+
 
 const getCommandResult = (cmd: string) => {
   return execSync(cmd, { stdio: 'pipe', cwd: __dirname }).toString().trim();
@@ -33,7 +36,7 @@ const generateVersion = () => {
       err instanceof Error &&
       !err.message.toLowerCase().includes('not a git repository')
     ) {
-      console.log(err);
+      logger.log(String(err));
     }
   }
 
@@ -47,7 +50,7 @@ const generateVersion = () => {
         err instanceof Error &&
         !err.message.includes('no tag exactly matches')
       ) {
-        console.log(err);
+        logger.log(String(err));
       }
     }
 
@@ -58,7 +61,7 @@ const generateVersion = () => {
         version.unshift(`branch=${gitBranch}`);
       }
     } catch (err) {
-      console.log(err);
+      logger.log(String(err));
     }
   }
 

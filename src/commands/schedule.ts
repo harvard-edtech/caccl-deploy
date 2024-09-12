@@ -14,8 +14,6 @@ import { confirm } from '../configPrompts/index.js';
 import DeployConfig from '../deployConfig/index.js';
 
 // Import helpers
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 import validSSMParamName from '../shared/helpers/validSSMParamName.js';
 
 
@@ -88,19 +86,19 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
           ['ID', 'Schedule', 'Command', 'Description'],
           ...tableRows,
         ]);
-        exitWithSuccess(tableOutput);
+        this.exitWithSuccess(tableOutput);
       }
-      exitWithSuccess('No scheduled tasks configured');
+      this.exitWithSuccess('No scheduled tasks configured');
     } else if (deleteFlag) {
       // delete the existing entry
       if (!existingTaskIds.includes(deleteFlag)) {
-        exitWithError(`No scheduled task with id ${deleteFlag}`);
+        this.exitWithError(`No scheduled task with id ${deleteFlag}`);
       }
       const existingTask = existingTasks[deleteFlag];
       if (
         !(yes || (await confirm(`Delete scheduled task ${deleteFlag}?`)))
       ) {
-        exitWithSuccess();
+        this.exitWithSuccess();
       }
       const existingTaskParams = Object.keys(existingTask);
       for (let i = 0; i < existingTaskParams.length; i++) {
@@ -110,17 +108,17 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
           `scheduledTasks/${deleteFlag}/${existingTaskParams[i]}`,
         );
       }
-      exitWithSuccess(`Scheduled task ${deleteFlag} deleted`);
+      this.exitWithSuccess(`Scheduled task ${deleteFlag} deleted`);
     } else if (!(taskSchedule && taskCommand)) {
       // FIXME: need to guarantee that this exits (throw an error?)
-      exitWithError('Invalid options. See `--help` output');
+      this.exitWithError('Invalid options. See `--help` output');
     }
 
     const taskId = taskIdFlag || Math.random().toString(36).substring(2, 16);
     const taskDescription = taskDescriptionFlag || '';
 
     if (!validSSMParamName(taskId)) {
-      exitWithError(
+      this.exitWithError(
         `Invalid ${taskId} value; '/^([a-z0-9:/_-]+)$/i' allowed only`,
       );
     }
@@ -130,7 +128,7 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
         return t === taskId;
       })
     ) {
-      exitWithError(
+      this.exitWithError(
         `A schedule task with id ${taskId} already exists for ${app}`,
       );
     }
@@ -142,6 +140,6 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
     };
 
     await DeployConfig.syncToSsm(deployConfig, this.getAppPrefix(), params);
-    exitWithSuccess('task scheduled');
+    this.exitWithSuccess('task scheduled');
   }
 }

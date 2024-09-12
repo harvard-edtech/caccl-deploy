@@ -10,8 +10,6 @@ import { confirmProductionOp } from '../configPrompts/index.js';
 
 import CfnStackNotFound from '../shared/errors/CfnStackNotFound.js';
 
-import exitWithError from '../helpers/exitWithError.js';
-import exitWithSuccess from '../helpers/exitWithSuccess.js';
 
 export default class Restart extends BaseCommand<typeof Restart> {
   static override description = 'no changes; just force a restart';
@@ -35,15 +33,15 @@ export default class Restart extends BaseCommand<typeof Restart> {
       cfnExports = await getCfnStackExports(cfnStackName);
     } catch (err) {
       if (err instanceof CfnStackNotFound) {
-        exitWithError(err.message);
+        this.exitWithError(err.message);
       }
       throw err;
     }
     const { clusterName, serviceName } = cfnExports;
-    console.log(`Restarting service ${serviceName} on cluster ${clusterName}`);
+    this.log(`Restarting service ${serviceName} on cluster ${clusterName}`);
 
     if (!(await confirmProductionOp(this.flags.yes))) {
-      exitWithSuccess();
+      this.exitWithSuccess();
     }
 
     // restart the service
@@ -52,6 +50,6 @@ export default class Restart extends BaseCommand<typeof Restart> {
       service: serviceName,
       wait: true,
     });
-    exitWithSuccess('done');
+    this.exitWithSuccess('done');
   }
 }

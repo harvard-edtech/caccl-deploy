@@ -5,6 +5,9 @@ import AWS from 'aws-sdk';
 import ecrArnToImageId from './ecrArnToImageId.js';
 import getTaskDefinition from './getTaskDefinition.js';
 
+// Import logger
+import logger from '../../logger.js';
+
 /**
  * Updates a Fargate task definition, replacing the app container's
  *   ECR image URI value
@@ -74,7 +77,7 @@ const updateTaskDefAppImage = async (
   });
 
   const registerResp = await ecs.registerTaskDefinition(newTaskDef).promise();
-  console.log('done');
+  logger.log('done');
 
   return registerResp.taskDefinition?.taskDefinitionArn;
 };
