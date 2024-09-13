@@ -23,10 +23,11 @@ const getInfraStackList = async (): Promise<string[]> => {
       const outputKeys = stack.Outputs.map((output) => {
         return output.OutputKey;
       });
-      if (outputKeys.indexOf('InfraStackName') >= 0) {
+      if (outputKeys.includes('InfraStackName')) {
         return stack.StackName;
       }
     }
+
     // Flat map 'filters' this out
     return [];
   });

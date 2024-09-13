@@ -1,102 +1,100 @@
 {
-	"Version": "2012-10-17",
-	"Statement": [
-		{
-			"Effect": "Allow",
-			"Action": [
-				"acm:Get*",
-				"acm:List*",
-				"acm:Describe*",
-				"cloudformation:*",
-				"cloudwatch:*",
-				"ec2-instance-connect:*",
-				"ec2:*",
-				"elasticache:*",
-				"elasticloadbalancing:*",
-				"events:*",
-				"ecs:*",
-				"ecr:*",
-				"lambda:*",
-				"logs:*",
-				"rds:*",
-				"s3:Get*",
-				"s3:List*",
-				"s3:PutObject",
-				"sns:*",
-				"ssm:*Parameter*",
-				"ssm:AddTagsToResource"
-			],
-			"Resource": "*"
-		},
-		{
-			"Effect": "Allow",
-			"Action": [
-				"secretsmanager:Get*",
-				"secretsmanager:List*",
-				"secretsmanager:Create*",
-				"secretsmanager:Delete*"
-			],
-			"Resource": "*"
-		},
-		{
-			"Action": [
-				"iam:AddRoleToInstanceProfile",
-				"iam:CreateInstanceProfile",
-				"iam:CreateRole",
-				"iam:DeleteInstanceProfile",
-				"iam:DeleteRole",
-				"iam:DeleteRolePolicy",
-				"iam:DetachRolePolicy",
-				"iam:GetRole",
-				"iam:GetRolePolicy",
-				"iam:PutRolePolicy",
-				"iam:RemoveRoleFromInstanceProfile"
-			],
-			"Effect": "Allow",
-			"Resource": "*"
-		},
-		{
-			"Action": "pi:*",
-			"Effect": "Allow",
-			"Resource": "arn:aws:pi:*:*:metrics/*"
-		},
-		{
-			"Action": "iam:PassRole",
-			"Effect": "Allow",
-			"Resource": [
-				"*"
-			],
-			"Condition": {
-				"StringLike": {
-					"iam:PassedToService": [
-						"ecs-tasks.amazonaws.com",
-						"ec2.amazonaws.com",
-						"ec2.amazonaws.com.cn",
-						"application-autoscaling.amazonaws.com",
-						"application-autoscaling.amazonaws.com.cn"
-					]
-				}
-			}
-		},
-		{
-			"Effect": "Allow",
-			"Action": "iam:CreateServiceLinkedRole",
-			"Resource": "*",
-			"Condition": {
-				"StringLike": {
-					"iam:AWSServiceName": [
-						"autoscaling.amazonaws.com",
-						"ecs.amazonaws.com",
-						"ecs.application-autoscaling.amazonaws.com",
-						"spot.amazonaws.com",
-						"spotfleet.amazonaws.com",
-						"elasticloadbalancing.amazonaws.com",
-						"elasticache.amazonaws.com",
-						"rds.amazonaws.com",
-						"rds.application-autoscaling.amazonaws.com"
-					]
-				}
-			}
-		}
-	]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "acm:Get*",
+        "acm:List*",
+        "acm:Describe*",
+        "cloudformation:*",
+        "cloudwatch:*",
+        "ec2-instance-connect:*",
+        "ec2:*",
+        "elasticache:*",
+        "elasticloadbalancing:*",
+        "events:*",
+        "ecs:*",
+        "ecr:*",
+        "lambda:*",
+        "logs:*",
+        "rds:*",
+        "s3:Get*",
+        "s3:List*",
+        "s3:PutObject",
+        "sns:*",
+        "ssm:*Parameter*",
+        "ssm:AddTagsToResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:Get*",
+        "secretsmanager:List*",
+        "secretsmanager:Create*",
+        "secretsmanager:Delete*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "iam:AddRoleToInstanceProfile",
+        "iam:CreateInstanceProfile",
+        "iam:CreateRole",
+        "iam:DeleteInstanceProfile",
+        "iam:DeleteRole",
+        "iam:DeleteRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:RemoveRoleFromInstanceProfile"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": "pi:*",
+      "Effect": "Allow",
+      "Resource": "arn:aws:pi:*:*:metrics/*"
+    },
+    {
+      "Action": "iam:PassRole",
+      "Effect": "Allow",
+      "Resource": ["*"],
+      "Condition": {
+        "StringLike": {
+          "iam:PassedToService": [
+            "ecs-tasks.amazonaws.com",
+            "ec2.amazonaws.com",
+            "ec2.amazonaws.com.cn",
+            "application-autoscaling.amazonaws.com",
+            "application-autoscaling.amazonaws.com.cn"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": [
+            "autoscaling.amazonaws.com",
+            "ecs.amazonaws.com",
+            "ecs.application-autoscaling.amazonaws.com",
+            "spot.amazonaws.com",
+            "spotfleet.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com",
+            "elasticache.amazonaws.com",
+            "rds.amazonaws.com",
+            "rds.application-autoscaling.amazonaws.com"
+          ]
+        }
+      }
+    }
+  ]
 }

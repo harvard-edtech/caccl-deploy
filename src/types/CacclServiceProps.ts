@@ -6,10 +6,10 @@ import ICacclTaskDef from './ICacclTaskDef.js';
 
 type CacclServiceProps = {
   cluster: ecs.Cluster;
-  taskDef: ICacclTaskDef;
-  taskCount: number;
-  loadBalancerSg: ec2.SecurityGroup;
   enableExecuteCommand?: boolean;
+  loadBalancerSg: ec2.SecurityGroup;
+  taskCount: number;
+  taskDef: ICacclTaskDef;
 };
 
 export default CacclServiceProps;

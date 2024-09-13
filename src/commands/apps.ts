@@ -1,19 +1,16 @@
 // Import oclif
 import { Flags } from '@oclif/core';
-
 // Import table
 import { table } from 'table';
 
 // Import aws
 import { getAppList, getCfnStacks } from '../aws/index.js';
-
 // Import base command
 import { BaseCommand } from '../base.js';
-
 // Import deploy config
 import DeployConfig from '../deployConfig/index.js';
 
-
+// eslint-disable-next-line no-use-before-define
 export default class Apps extends BaseCommand<typeof Apps> {
   static override description = 'list available app configurations';
 
@@ -24,24 +21,25 @@ export default class Apps extends BaseCommand<typeof Apps> {
 
   static override flags = {
     'full-status': Flags.boolean({
-      char: 'f',
       aliases: ['full-status', 'f'],
+      char: 'f',
       default: false,
-      description: 'show the full status of each app including CFN stack and config state',
+      description:
+        'show the full status of each app including CFN stack and config state',
     }),
   };
 
   public async run(): Promise<void> {
     // Destructure flags
     const {
-      'ssm-root-prefix': ssmRootPrefix,
       'cfn-stack-prefix': cfnStackPrefix,
       'full-status': fullStatus,
+      'ssm-root-prefix': ssmRootPrefix,
     } = this.flags;
 
     const apps = await getAppList(ssmRootPrefix);
 
-    if (!apps.length) {
+    if (apps.length === 0) {
       this.exitWithError(
         `No app configurations found using ssm root prefix ${ssmRootPrefix}`,
       );
@@ -50,8 +48,7 @@ export default class Apps extends BaseCommand<typeof Apps> {
     const appData: Record<string, string[]> = {};
     const tableColumns = ['App'];
 
-    for (let i = 0; i < apps.length; i++) {
-      const app = apps[i];
+    for (const app of apps) {
       appData[app] = [];
     }
 
@@ -64,8 +61,7 @@ export default class Apps extends BaseCommand<typeof Apps> {
       );
       const cfnStacks = await getCfnStacks(cfnStackPrefix);
 
-      for (let i = 0; i < apps.length; i++) {
-        const app = apps[i];
+      for (const app of apps) {
         const cfnStackName = this.getCfnStackName(app);
 
         const appPrefix = this.getAppPrefix(app);
@@ -95,8 +91,9 @@ export default class Apps extends BaseCommand<typeof Apps> {
         if (cfnStackDeployConfigHashOutput) {
           const deployConfigHash = DeployConfig.toHash(deployConfig);
           const cfnOutputValue = cfnStackDeployConfigHashOutput.OutputValue;
-          configDrift = cfnOutputValue !== deployConfigHash ? 'yes' : 'no';
+          configDrift = cfnOutputValue === deployConfigHash ? 'no' : 'yes';
         }
+
         appData[app].push(cfnStack.StackStatus, configDrift);
 
         const cfnStackCacclDeployVersion = cfnStack.Outputs.find((o) => {
@@ -105,6 +102,7 @@ export default class Apps extends BaseCommand<typeof Apps> {
         appData[app].push(cfnStackCacclDeployVersion?.OutputValue ?? 'N/A');
       }
     }
+
     const tableData = Object.keys(appData).map((app) => {
       return [app, ...appData[app]];
     });

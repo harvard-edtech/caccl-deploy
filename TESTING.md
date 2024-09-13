@@ -1,16 +1,14 @@
 # Testing
 
-Manual testing of CLI:
- 0. apps, repos, images
-    - issue with `show`
+Manual testing of CLI: 0. apps, repos, images - issue with `show`
 
 May not be necessary to test stack creation. Just test that the right params are passed to CDK.
 Could also potentially compare the templates that are output, using the `--synth` flag.
 Should output into the `cdk/cdk.out` directory
 
 Scenario 1:
- 1. `new`, `show`, `delete`, and `update`
-  
+
+1.  `new`, `show`, `delete`, and `update`
 
 Find way to remove the `plugin` command and display in `help`
 

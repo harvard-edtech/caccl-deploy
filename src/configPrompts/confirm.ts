@@ -10,10 +10,10 @@ import prompt from './prompt.js';
  */
 const confirm = async (message: string, defaultsToYes?: boolean) => {
   const response = await prompt({
-    type: 'confirm',
-    name: 'yesorno',
     initial: defaultsToYes,
     message,
+    name: 'yesorno',
+    type: 'confirm',
   });
   return response.yesorno;
 };

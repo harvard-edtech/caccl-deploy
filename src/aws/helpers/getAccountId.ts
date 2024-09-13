@@ -16,6 +16,7 @@ const getAccountId = async (): Promise<string> => {
   if (!accountId) {
     throw new AwsAccountNotFound('Could not retrieve users account ID.');
   }
+
   return accountId;
 };
 

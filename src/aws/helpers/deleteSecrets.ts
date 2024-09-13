@@ -10,14 +10,14 @@ import logger from '../../logger.js';
  */
 const deleteSecrets = async (secretArns: string[]): Promise<void> => {
   const sm = new AWS.SecretsManager();
-  for (let i = 0; i < secretArns.length; i += 1) {
+  for (const secretArn of secretArns) {
     await sm
       .deleteSecret({
-        SecretId: secretArns[i],
         ForceDeleteWithoutRecovery: true,
+        SecretId: secretArn,
       })
       .promise();
-    logger.log(`secret ${secretArns[i]} deleted`);
+    logger.log(`secret ${secretArn} deleted`);
   }
 };
 

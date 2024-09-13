@@ -1,18 +1,9 @@
 // Import prompt functions
-import confirm from './confirm.js';
-import confirmProductionOp from './confirmProductionOp.js';
-import promptAppImage from './promptAppImage.js';
-import promptAppName from './promptAppName.js';
-import promptCertificateArn from './promptCertificateArn.js';
-import promptInfraStackName from './promptInfraStackName.js';
-import promptKeyValuePairs from './promptKeyValuePairs.js';
 
-export {
-  confirm,
-  confirmProductionOp,
-  promptAppName,
-  promptInfraStackName,
-  promptCertificateArn,
-  promptAppImage,
-  promptKeyValuePairs,
-};
+export { default as confirm } from './confirm.js';
+export { default as confirmProductionOp } from './confirmProductionOp.js';
+export { default as promptAppImage } from './promptAppImage.js';
+export { default as promptAppName } from './promptAppName.js';
+export { default as promptCertificateArn } from './promptCertificateArn.js';
+export { default as promptInfraStackName } from './promptInfraStackName.js';
+export { default as promptKeyValuePairs } from './promptKeyValuePairs.js';

@@ -1,18 +1,18 @@
 // Import shared helpers
-import prompt from './prompt.js';
 import validSSMParamName from '../shared/helpers/validSSMParamName.js';
+import prompt from './prompt.js';
 
 // Import helpers
 
 const promptAppName = async () => {
   const appName = await prompt({
-    type: 'text',
-    name: 'value',
     message: 'Enter a name for your app',
-    validate: (v) => {
-      return !validSSMParamName(v)
-        ? 'app name can only contain alphanumeric and/or the characters ".-_"'
-        : true;
+    name: 'value',
+    type: 'text',
+    validate(v) {
+      return validSSMParamName(v)
+        ? true
+        : 'app name can only contain alphanumeric and/or the characters ".-_"';
     },
   });
   return appName.value;

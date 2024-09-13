@@ -1,16 +1,15 @@
-import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { execSync } from 'node:child_process';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Import logger
 import logger from '../../logger.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const getCommandResult = (cmd: string) => {
-  return execSync(cmd, { stdio: 'pipe', cwd: __dirname }).toString().trim();
+  return execSync(cmd, { cwd: __dirname, stdio: 'pipe' }).toString().trim();
 };
 
 const generateVersion = () => {
@@ -30,13 +29,13 @@ const generateVersion = () => {
   try {
     const gitLsThisFile = getCommandResult(`git ls-files ${__filename}`);
     inGitRepo = gitLsThisFile !== '';
-  } catch (err) {
+  } catch (error) {
     // error will be capitalized depending on version of git
     if (
-      err instanceof Error &&
-      !err.message.toLowerCase().includes('not a git repository')
+      error instanceof Error &&
+      !error.message.toLowerCase().includes('not a git repository')
     ) {
-      logger.log(String(err));
+      logger.log(String(error));
     }
   }
 
@@ -45,12 +44,12 @@ const generateVersion = () => {
     try {
       const gitTag = getCommandResult('git describe --exact-match --abbrev=0');
       version.push(`tag=${gitTag}`);
-    } catch (err) {
+    } catch (error) {
       if (
-        err instanceof Error &&
-        !err.message.includes('no tag exactly matches')
+        error instanceof Error &&
+        !error.message.includes('no tag exactly matches')
       ) {
-        logger.log(String(err));
+        logger.log(String(error));
       }
     }
 
@@ -60,8 +59,8 @@ const generateVersion = () => {
       if (gitBranch.length > 0) {
         version.unshift(`branch=${gitBranch}`);
       }
-    } catch (err) {
-      logger.log(String(err));
+    } catch (error) {
+      logger.log(String(error));
     }
   }
 

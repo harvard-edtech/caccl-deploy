@@ -1,24 +1,23 @@
+/* eslint-disable camelcase */
 // Import AWS CDK lib
 import {
+  Duration,
+  SecretValue,
+  Stack,
   aws_cloudwatch as cloudwatch,
   aws_ec2 as ec2,
   aws_ecs as ecs,
   aws_rds as rds,
-  Stack,
-  SecretValue,
-  Duration,
 } from 'aws-cdk-lib';
-
 // Import AWS constructs
 import { Construct } from 'constructs';
 
-// Import shared types
-import CacclDbBase from './CacclDbBase.js';
 import { CacclDbProps } from '../../../types/index.js';
-
 // Import constants
 import DEFAULT_AURORA_MYSQL_ENGINE_VERSION from '../constants/DEFAULT_AURORA_MYSQL_ENGINE_VERSION.js';
 import DEFAULT_DB_INSTANCE_TYPE from '../constants/DEFAULT_DB_INSTANCE_TYPE.js';
+import CacclDbBase from './CacclDbBase.js';
+// Import shared types
 
 // Import classes
 
@@ -28,20 +27,20 @@ class CacclRdsDb extends CacclDbBase {
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id, props);
 
-    const { vpc, appEnv } = props;
+    const { appEnv, options, vpc } = props;
     const {
+      databaseName,
+      engineVersion = DEFAULT_AURORA_MYSQL_ENGINE_VERSION,
       instanceCount = 1,
       instanceType = DEFAULT_DB_INSTANCE_TYPE,
-      engineVersion = DEFAULT_AURORA_MYSQL_ENGINE_VERSION,
-      databaseName,
-    } = props.options;
+    } = options;
 
     /**
      * strangely the major version is not automatically derived from whatever
      * version string is used here. This just pulls it off the engineVersion string
      * e.g. '8.0.mysql_aurora.3.02.0' -> '8.0'
      */
-    const majorVersion = engineVersion.substring(0, 3);
+    const majorVersion = engineVersion.slice(0, 3);
     const auroraMysqlEngineVersion = rds.DatabaseClusterEngine.auroraMysql({
       version: rds.AuroraMysqlEngineVersion.of(engineVersion, majorVersion),
     });
@@ -52,7 +51,7 @@ class CacclRdsDb extends CacclDbBase {
     this.clusterParameterGroupParams.lower_case_table_names = '1';
 
     // bin log filtering is baked in to aurora/mysql v8
-    if (parseInt(majorVersion, 10) < 8) {
+    if (Number.parseInt(majorVersion, 10) < 8) {
       this.clusterParameterGroupParams.aurora_enable_repl_bin_log_filtering =
         '1';
     }
@@ -61,8 +60,8 @@ class CacclRdsDb extends CacclDbBase {
       this,
       'ClusterParameterGroup',
       {
-        engine: auroraMysqlEngineVersion,
         description: `RDS parameter group for ${Stack.of(this).stackName}`,
+        engine: auroraMysqlEngineVersion,
         parameters: this.clusterParameterGroupParams,
       },
     );
@@ -77,37 +76,37 @@ class CacclRdsDb extends CacclDbBase {
       this,
       'InstanceParameterGroup',
       {
-        engine: auroraMysqlEngineVersion,
         description: `RDS instance parameter group for ${
           Stack.of(this).stackName
         }`,
+        engine: auroraMysqlEngineVersion,
         parameters: this.instanceParameterGroupParams,
       },
     );
 
     this.dbCluster = new rds.DatabaseCluster(this, 'RdsDbCluster', {
-      engine: auroraMysqlEngineVersion,
-      clusterIdentifier: `${Stack.of(this).stackName}-db-cluster`,
-      credentials: {
-        username: 'root',
-        password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
-      },
-      parameterGroup: clusterParameterGroup,
-      instances: instanceCount,
-      defaultDatabaseName: databaseName,
-      instanceProps: {
-        vpc,
-        instanceType: new ec2.InstanceType(instanceType),
-        enablePerformanceInsights,
-        parameterGroup: instanceParameterGroup,
-        vpcSubnets: {
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        },
-        securityGroups: [this.dbSg],
-      },
       backup: {
         retention: Duration.days(14),
       },
+      clusterIdentifier: `${Stack.of(this).stackName}-db-cluster`,
+      credentials: {
+        password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
+        username: 'root',
+      },
+      defaultDatabaseName: databaseName,
+      engine: auroraMysqlEngineVersion,
+      instanceProps: {
+        enablePerformanceInsights,
+        instanceType: new ec2.InstanceType(instanceType),
+        parameterGroup: instanceParameterGroup,
+        securityGroups: [this.dbSg],
+        vpc,
+        vpcSubnets: {
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
+      },
+      instances: instanceCount,
+      parameterGroup: clusterParameterGroup,
       removalPolicy: this.removalPolicy,
     });
 
@@ -133,103 +132,86 @@ class CacclRdsDb extends CacclDbBase {
     this.addSecurityGroupIngress(vpc.vpcCidrBlock);
   }
 
-  makeInstanceMetrics(
-    metricName: string,
-    extraProps = {},
-  ): cloudwatch.Metric[] {
-    return this.dbCluster.instanceIdentifiers.map((id) => {
-      const metric = new cloudwatch.Metric({
-        metricName,
-        namespace: this.metricNamespace,
-        dimensionsMap: { DBInstanceIdentifier: id },
-        label: id,
-        ...extraProps,
-      }).with({ period: Duration.minutes(1) });
-
-      return metric.attachTo(this.dbCluster);
-    });
-  }
-
   createMetricsAndAlarms(): void {
     this.metrics = {
-      ReadIOPS: this.makeInstanceMetrics('ReadIOPS'),
-      WriteIOPS: this.makeInstanceMetrics('WriteIOPS'),
-      CPUUtilization: this.makeInstanceMetrics('CPUUtilization', {
-        unit: cloudwatch.Unit.PERCENT,
-      }),
-      FreeableMemory: this.makeInstanceMetrics('FreeableMemory'),
       BufferCacheHitRatio: this.makeInstanceMetrics('BufferCacheHitRatio', {
         unit: cloudwatch.Unit.PERCENT,
       }),
+      CPUUtilization: this.makeInstanceMetrics('CPUUtilization', {
+        unit: cloudwatch.Unit.PERCENT,
+      }),
       DatabaseConnections: this.makeInstanceMetrics('DatabaseConnections'),
-      DiskQueueDepth: this.makeInstanceMetrics('DiskQueueDepth'),
-      ReadLatency: this.makeInstanceMetrics('ReadLatency', {
-        unit: cloudwatch.Unit.MILLISECONDS,
-      }),
-      WriteLatency: this.makeInstanceMetrics('WriteLatency', {
-        unit: cloudwatch.Unit.MILLISECONDS,
-      }),
       DatabaseCursorsTimedOut: this.makeInstanceMetrics(
         'DatabaseCursorsTimedOut',
         { statistic: 'sum' },
       ),
-      Transactions: this.makeInstanceMetrics('ActiveTransactions'),
+      DiskQueueDepth: this.makeInstanceMetrics('DiskQueueDepth'),
+      FreeableMemory: this.makeInstanceMetrics('FreeableMemory'),
       Queries: this.makeInstanceMetrics('Queries'),
+      ReadIOPS: this.makeInstanceMetrics('ReadIOPS'),
+      ReadLatency: this.makeInstanceMetrics('ReadLatency', {
+        unit: cloudwatch.Unit.MILLISECONDS,
+      }),
+      Transactions: this.makeInstanceMetrics('ActiveTransactions'),
+      WriteIOPS: this.makeInstanceMetrics('WriteIOPS'),
+      WriteLatency: this.makeInstanceMetrics('WriteLatency', {
+        unit: cloudwatch.Unit.MILLISECONDS,
+      }),
     };
 
     this.alarms = [
       ...this.metrics.ReadIOPS.map((metric: cloudwatch.Metric, idx: number) => {
         return new cloudwatch.Alarm(this, `CPUUtilizationAlarm-${idx}`, {
-          metric,
-          threshold: 50,
-          evaluationPeriods: 3,
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
           } cpu utilization alarm`,
+          evaluationPeriods: 3,
+          metric,
+          threshold: 50,
         });
       }),
       ...this.metrics.BufferCacheHitRatio.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `BufferCacheHitRatioAlarm-${idx}`, {
-          metric,
-          threshold: 90,
-          evaluationPeriods: 3,
-          comparisonOperator:
-            cloudwatch.ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
           } buffer cache hit ratio alarm`,
+          comparisonOperator:
+            cloudwatch.ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
+          evaluationPeriods: 3,
+          metric,
+          threshold: 90,
         });
       }),
       ...this.metrics.DiskQueueDepth.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `DiskQueueDepth-${idx}`, {
-          metric,
-          threshold: 1,
-          evaluationPeriods: 3,
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
           } disk queue depth`,
+          evaluationPeriods: 3,
+          metric,
+          threshold: 1,
         });
       }),
       ...this.metrics.ReadLatency.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `ReadLatency-${idx}`, {
-          metric,
-          threshold: 20,
-          evaluationPeriods: 3,
-          treatMissingData: cloudwatch.TreatMissingData.IGNORE,
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
           } read latency alarm`,
+          evaluationPeriods: 3,
+          metric,
+          threshold: 20,
+          treatMissingData: cloudwatch.TreatMissingData.IGNORE,
         });
       }),
       ...this.metrics.WriteLatency.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `WriteLatency-${idx}`, {
-          metric,
-          threshold: 100,
-          evaluationPeriods: 3,
-          treatMissingData: cloudwatch.TreatMissingData.IGNORE,
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
           } write latency alarm`,
+          evaluationPeriods: 3,
+          metric,
+          threshold: 100,
+          treatMissingData: cloudwatch.TreatMissingData.IGNORE,
         });
       }),
       ...this.metrics.DatabaseCursorsTimedOut.map((metric, idx) => {
@@ -237,12 +219,12 @@ class CacclRdsDb extends CacclDbBase {
           this,
           `DatabaseCursorsTimedOutAlarm-${idx}`,
           {
-            metric,
-            threshold: 1,
-            evaluationPeriods: 1,
             alarmDescription: `${Stack.of(this).stackName} ${
               metric.label
             } cursors timed out alarm`,
+            evaluationPeriods: 1,
+            metric,
+            threshold: 1,
           },
         );
       }),
@@ -253,6 +235,23 @@ class CacclRdsDb extends CacclDbBase {
     const { region } = Stack.of(this);
     const dbClusterId = this.dbCluster.clusterIdentifier;
     return `https://console.aws.amazon.com/rds/home?region=${region}#database:id=${dbClusterId};is-cluster=true`;
+  }
+
+  makeInstanceMetrics(
+    metricName: string,
+    extraProps = {},
+  ): cloudwatch.Metric[] {
+    return this.dbCluster.instanceIdentifiers.map((id) => {
+      const metric = new cloudwatch.Metric({
+        dimensionsMap: { DBInstanceIdentifier: id },
+        label: id,
+        metricName,
+        namespace: this.metricNamespace,
+        ...extraProps,
+      }).with({ period: Duration.minutes(1) });
+
+      return metric.attachTo(this.dbCluster);
+    });
   }
 }
 

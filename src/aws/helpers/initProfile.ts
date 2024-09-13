@@ -19,6 +19,7 @@ const initProfile = (profileName: string) => {
       `Tried to init a non-existent profile: '${profileName}'`,
     );
   }
+
   const profileCreds = awsCredentials[profileName];
 
   AWS.config.update({

@@ -1,11 +1,11 @@
 import { aws_cloudwatch as cloudwatch, aws_ecs as ecs } from 'aws-cdk-lib';
 
 interface ICacclService {
-  loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
+  alarms: cloudwatch.Alarm[];
 
   ecsService: ecs.FargateService;
 
-  alarms: cloudwatch.Alarm[];
+  loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
 }
 
 export default ICacclService;

@@ -5,7 +5,7 @@
  * @returns true if the string is valid, else false.
  */
 const validSSMParamName = (name: string): boolean => {
-  return /^([a-z0-9:/_-]+)$/i.test(name);
+  return /^([\w/:-]+)$/i.test(name);
 };
 
 export default validSSMParamName;
