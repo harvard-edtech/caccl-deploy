@@ -17,7 +17,7 @@ const putSsmParameter = async (
   const paramOptions = { ...opts };
 
   const paramResp = await ssm.putParameter(paramOptions).promise();
-  if (tags.length) {
+  if (tags.length > 0) {
     await ssm
       .addTagsToResource({
         ResourceId: paramOptions.Name,
@@ -26,6 +26,7 @@ const putSsmParameter = async (
       })
       .promise();
   }
+
   return paramResp;
 };
 

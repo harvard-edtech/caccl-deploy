@@ -7,17 +7,17 @@ import CacclConfSchema from './shared/types/CacclConfSchema.js';
 // Construct options
 const confOpts: Conf.Options<CacclConfSchema> = {
   schema: {
-    ssmRootPrefix: {
+    cfnStackPrefix: {
       type: 'string',
     },
     ecrAccessRoleArn: {
       type: 'string',
     },
-    cfnStackPrefix: {
-      type: 'string',
-    },
     productionAccounts: {
       type: 'array',
+    },
+    ssmRootPrefix: {
+      type: 'string',
     },
   },
 };
@@ -27,18 +27,19 @@ if (process.env.CACCL_DEPLOY_CONF_DIR !== undefined) {
   confOpts.cwd = process.env.CACCL_DEPLOY_CONF_DIR;
 }
 
+// eslint-disable-next-line new-cap
 const conf = new Conf.default(confOpts);
 
 const configDefaults = {
-  ssmRootPrefix: '/caccl-deploy',
   cfnStackPrefix: 'CacclDeploy-',
   productionAccounts: [],
+  ssmRootPrefix: '/caccl-deploy',
 };
 
 const setConfigDefaults = () => {
-  Object.entries(configDefaults).forEach(([k, v]) => {
+  for (const [k, v] of Object.entries(configDefaults)) {
     conf.set(k, v);
-  });
+  }
 };
 
 export { conf, configDefaults, setConfigDefaults };

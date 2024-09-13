@@ -9,32 +9,32 @@ import CacclNotificationsProps from './CacclNotificationsProps.js';
 import CacclScheduledTask from './CacclScheduledTask.js';
 
 const DeployConfigData = z.object({
+  appEnvironment: z.object({}).catchall(z.string()).optional(),
   //
   appImage: z.string(),
-  proxyImage: z.string().optional(),
-  taskCpu: z.number().optional(),
-  taskMemory: z.number().optional(),
-  logRetentionDays: z.number().optional(),
-  gitRepoVolume: z.object({}).catchall(z.string()).optional(),
-  // CloudFormation infrastructure stack name
-  infraStackName: z.string(),
-  // Container image ARN
-  notifications: CacclNotificationsProps.optional(),
-  certificateArn: z.string().optional(),
-  appEnvironment: z.object({}).catchall(z.string()).optional(),
-  tags: z.object({}).catchall(z.string()).optional(),
-  scheduledTasks: z.object({}).catchall(CacclScheduledTask).optional(),
-  taskCount: z.string(),
-  firewallSgId: z.string().optional(),
-  lbOptions: CacclLoadBalancerExtraOptions.optional(),
   cacheOptions: CacclCacheOptions.optional(),
+  certificateArn: z.string().optional(),
   dbOptions: CacclDbOptions.optional(),
-  enableExecuteCommand: z.union([z.string(), z.boolean()]).optional(),
   // DEPRECATED:
   docDb: z.any(),
   docDbInstanceCount: z.number().optional(),
   docDbInstanceType: z.string().optional(),
   docDbProfiler: z.boolean().optional(),
+  enableExecuteCommand: z.union([z.string(), z.boolean()]).optional(),
+  firewallSgId: z.string().optional(),
+  gitRepoVolume: z.object({}).catchall(z.string()).optional(),
+  // CloudFormation infrastructure stack name
+  infraStackName: z.string(),
+  lbOptions: CacclLoadBalancerExtraOptions.optional(),
+  logRetentionDays: z.number().optional(),
+  // Container image ARN
+  notifications: CacclNotificationsProps.optional(),
+  proxyImage: z.string().optional(),
+  scheduledTasks: z.object({}).catchall(CacclScheduledTask).optional(),
+  tags: z.object({}).catchall(z.string()).optional(),
+  taskCount: z.string(),
+  taskCpu: z.number().optional(),
+  taskMemory: z.number().optional(),
 });
 
 /**

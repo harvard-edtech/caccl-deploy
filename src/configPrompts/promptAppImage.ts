@@ -1,8 +1,6 @@
 // Import prompts
 import { Choice } from 'prompts';
 
-// Import aws
-import prompt from './prompt.js';
 import {
   AssumedRole,
   createEcrArn,
@@ -10,20 +8,17 @@ import {
   getRepoImageList,
   getRepoList,
 } from '../aws/index.js';
-
 // Import shared errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
-
 // Import shared helpers
 import looksLikeSemver from '../shared/helpers/looksLikeSemver.js';
+import prompt from './prompt.js';
+// Import aws
 
 // Import helpers
 
 const promptAppImage = async (assumedRole: AssumedRole) => {
   const inputType = await prompt({
-    type: 'select',
-    name: 'value',
-    message: 'How would you like to select your image?',
     choices: [
       {
         title: 'Select from a list of ECR repos',
@@ -34,18 +29,22 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
         value: 'string',
       },
     ],
+    message: 'How would you like to select your image?',
+    name: 'value',
+    type: 'select',
   });
   let appImage;
   switch (inputType.value) {
     case 'string': {
       const inputString = await prompt({
-        type: 'text',
-        name: 'value',
         message: 'Enter the image id',
+        name: 'value',
+        type: 'text',
       });
       appImage = inputString.value;
       break;
     }
+
     case 'select': {
       // TODO: deal with AssumedRole
       const repoList = await getRepoList(assumedRole);
@@ -57,15 +56,15 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
         };
       });
 
-      if (!repoChoices.length) {
+      if (repoChoices.length === 0) {
         throw new NoPromptChoices('No ECR repositories');
       }
 
       const repoChoice = await prompt({
-        type: 'select',
-        name: 'value',
-        message: 'Select the ECR repo',
         choices: repoChoices,
+        message: 'Select the ECR repo',
+        name: 'value',
+        type: 'select',
       });
 
       const images = await getRepoImageList(assumedRole, repoChoice.value);
@@ -83,10 +82,10 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
         }
 
         const appImageValue = createEcrArn({
-          region: getCurrentRegion(),
           account: image.registryId,
-          repoName: repoChoice.value,
           imageTag: releaseTag,
+          region: getCurrentRegion(),
+          repoName: repoChoice.value,
         });
 
         if (releaseTag) {
@@ -95,25 +94,29 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
             value: appImageValue,
           });
         }
+
         return choices;
       }, []);
 
-      if (!imageTagsChoices.length) {
+      if (imageTagsChoices.length === 0) {
         throw new NoPromptChoices('No valid image tags to choose from');
       }
 
       const imageTagChoice = await prompt({
-        type: 'select',
-        name: 'value',
-        message: 'Select a release tag',
         choices: imageTagsChoices,
+        message: 'Select a release tag',
+        name: 'value',
+        type: 'select',
       });
       appImage = imageTagChoice.value;
       break;
     }
-    default:
+
+    default: {
       break;
+    }
   }
+
   return appImage;
 };
 

@@ -1,15 +1,15 @@
 import { aws_ecs as ecs, aws_logs as logs } from 'aws-cdk-lib';
 
 interface ICacclTaskDef {
-  taskDef: ecs.FargateTaskDefinition;
+  appContainer: ecs.ContainerDefinition;
 
   appOnlyTaskDef: ecs.FargateTaskDefinition;
 
+  logGroup: logs.LogGroup;
+
   proxyContainer: ecs.ContainerDefinition;
 
-  appContainer: ecs.ContainerDefinition;
-
-  logGroup: logs.LogGroup;
+  taskDef: ecs.FargateTaskDefinition;
 }
 
 export default ICacclTaskDef;

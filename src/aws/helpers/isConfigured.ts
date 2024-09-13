@@ -11,7 +11,7 @@ const isConfigured = (): boolean => {
     return [AWS, AWS.config.credentials, AWS.config.region].every((thing) => {
       return thing !== undefined && thing !== null;
     });
-  } catch (err) {
+  } catch {
     return false;
   }
 };

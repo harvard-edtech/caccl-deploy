@@ -3,10 +3,10 @@
  * @author Benedikt Arnarsson
  */
 type CacclConfSchema = {
-  ssmRootPrefix: string;
-  ecrAccessRoleArn: string;
   cfnStackPrefix: string;
+  ecrAccessRoleArn: string;
   productionAccounts: string[];
+  ssmRootPrefix: string;
 };
 
 export default CacclConfSchema;

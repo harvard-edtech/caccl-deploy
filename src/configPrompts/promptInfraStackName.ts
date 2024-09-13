@@ -1,9 +1,8 @@
 // Import aws
-import prompt from './prompt.js';
 import { getInfraStackList } from '../aws/index.js';
-
 // Import shared errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
+import prompt from './prompt.js';
 
 // Import helpers
 
@@ -21,15 +20,15 @@ const promptInfraStackName = async () => {
     };
   });
 
-  if (!infraStackChoices.length) {
+  if (infraStackChoices.length === 0) {
     throw new NoPromptChoices('No infrastructure stacks');
   }
 
   const infraStackName = await prompt({
-    type: 'select',
-    name: 'value',
-    message: 'Select a base infrastructure stack to deploy to',
     choices: infraStackChoices,
+    message: 'Select a base infrastructure stack to deploy to',
+    name: 'value',
+    type: 'select',
   });
   return infraStackName.value;
 };

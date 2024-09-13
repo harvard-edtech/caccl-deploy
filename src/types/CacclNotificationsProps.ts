@@ -11,11 +11,10 @@ const CacclNotificationsProps = z.object({
   slack: z.string().optional(),
 });
 
-// TODO: JSDoc
-type CacclNotificationsProps = z.infer<typeof CacclNotificationsProps> & {
-  service: ICacclService;
-  loadBalancer: ICacclLoadBalancer;
+type CacclNotificationsProps = {
   db?: ICacclDb;
-};
+  loadBalancer: ICacclLoadBalancer;
+  service: ICacclService;
+} & z.infer<typeof CacclNotificationsProps>;
 
 export default CacclNotificationsProps;

@@ -1,46 +1,46 @@
 // Import AWS CDK lib
 import {
+  CfnOutput,
+  RemovalPolicy,
+  Stack,
   aws_ecs as ecs,
   aws_logs as logs,
-  Stack,
-  RemovalPolicy,
-  CfnOutput,
 } from 'aws-cdk-lib';
-
 // Import AWS constructs
 import { Construct } from 'constructs';
 
-// Import shared types
-import CacclContainerImage from './CacclContainerImage.js';
-import CacclGitRepoVolumeContainer from './CacclGitRepoVolumeContainer.js';
 import { CacclTaskDefProps } from '../../../types/index.js';
-
 // Import constants
 import DEFAULT_PROXY_REPO_NAME from '../constants/DEFAULT_PROXY_REPO_NAME.js';
+import CacclContainerImage from './CacclContainerImage.js';
+// Import shared types
+import CacclGitRepoVolumeContainer from './CacclGitRepoVolumeContainer.js';
 
 // Import classes
 
 class CacclTaskDef extends Construct {
-  taskDef: ecs.FargateTaskDefinition;
+  appContainer: ecs.ContainerDefinition;
 
   appOnlyTaskDef: ecs.FargateTaskDefinition;
 
+  logGroup: logs.LogGroup;
+
   proxyContainer: ecs.ContainerDefinition;
 
-  appContainer: ecs.ContainerDefinition;
-
-  logGroup: logs.LogGroup;
+  taskDef: ecs.FargateTaskDefinition;
 
   constructor(scope: Construct, id: string, props: CacclTaskDefProps) {
     super(scope, id);
 
     const {
-      appImage,
-      proxyImage = `${DEFAULT_PROXY_REPO_NAME}:latest`,
       appEnvironment,
+      appImage,
+      gitRepoVolume,
+      logRetentionDays = 90,
+      proxyImage = `${DEFAULT_PROXY_REPO_NAME}:latest`,
       taskCpu = 256, // in cpu units; 256 == .25 vCPU
       taskMemory = 512, // in MiB
-      logRetentionDays = 90,
+      vpcCidrBlock,
     } = props;
 
     const appContainerImage = new CacclContainerImage(this, 'AppImage', {
@@ -61,19 +61,19 @@ class CacclTaskDef extends Construct {
 
     // params for the fargate service's app container
     const appContainerParams = {
-      image: appContainerImage.image,
-      taskDefinition: this.taskDef, // using the standard task def
-      essential: true,
       environment: appEnvironment?.env,
-      secrets: appEnvironment?.secrets,
+      essential: true,
+      image: appContainerImage.image,
       logging: ecs.LogDriver.awsLogs({
-        streamPrefix: 'app',
         logGroup: new logs.LogGroup(this, 'AppLogGroup', {
           logGroupName: `/${Stack.of(this).stackName}/app`,
           removalPolicy: RemovalPolicy.DESTROY,
           retention: logRetentionDays,
         }),
+        streamPrefix: 'app',
       }),
+      secrets: appEnvironment?.secrets,
+      taskDefinition: this.taskDef, // using the standard task def
     };
 
     // the container definition associated with our fargate service task def
@@ -113,26 +113,26 @@ class CacclTaskDef extends Construct {
      * because of how the value can't come with the
      * rest of the task def configuration
      */
-    if (props.vpcCidrBlock !== undefined) {
-      environment.VPC_CIDR = props.vpcCidrBlock;
-    } else {
+    if (vpcCidrBlock === undefined) {
       throw new Error('proxy contianer environment needs the vpc cidr!');
+    } else {
+      environment.VPC_CIDR = vpcCidrBlock;
     }
 
     // this container is the proxy
     this.proxyContainer = new ecs.ContainerDefinition(this, 'ProxyContainer', {
-      image: proxyContainerImage.image,
       environment,
       essential: true,
-      taskDefinition: this.taskDef,
+      image: proxyContainerImage.image,
       logging: ecs.LogDriver.awsLogs({
-        streamPrefix: 'proxy',
         logGroup: new logs.LogGroup(this, 'ProxyLogGroup', {
           logGroupName: `/${Stack.of(this).stackName}/proxy`,
           removalPolicy: RemovalPolicy.DESTROY,
           retention: logRetentionDays,
         }),
+        streamPrefix: 'proxy',
       }),
+      taskDefinition: this.taskDef,
     });
 
     this.proxyContainer.addPortMappings({
@@ -158,8 +158,8 @@ class CacclTaskDef extends Construct {
      * a repo into a configured mount point. the repo can be private, in which case the url would need
      * to include the user:pass info, therefore the repo url value has to come from secrets manager
      */
-    if (props.gitRepoVolume) {
-      const { repoUrlSecretArn, appContainerPath } = props.gitRepoVolume;
+    if (gitRepoVolume) {
+      const { appContainerPath, repoUrlSecretArn } = gitRepoVolume;
 
       if (repoUrlSecretArn === undefined) {
         throw new Error(
@@ -174,10 +174,10 @@ class CacclTaskDef extends Construct {
       }
 
       new CacclGitRepoVolumeContainer(this, 'VolumeContainer', {
-        repoUrlSecretArn,
-        appContainerPath,
-        taskDefinition: this.taskDef,
         appContainer: this.appContainer,
+        appContainerPath,
+        repoUrlSecretArn,
+        taskDefinition: this.taskDef,
       });
     }
   }

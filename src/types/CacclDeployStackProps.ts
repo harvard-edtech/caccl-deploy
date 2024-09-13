@@ -9,22 +9,21 @@ import CacclNotificationsProps from './CacclNotificationsProps.js';
 import CacclScheduledTask from './CacclScheduledTask.js';
 import CacclTaskDefProps from './CacclTaskDefProps.js';
 
-// TODO: JSDoc
 interface CacclDeployStackProps extends StackProps {
-  vpcId?: string;
-  certificateArn?: string;
-  ecsClusterName?: string;
-  appEnvironment: Record<string, string>;
-  taskDefProps: CacclTaskDefProps;
-  taskCount: number;
-  notifications: Partial<CacclNotificationsProps>;
   albLogBucketName?: string;
+  appEnvironment: Record<string, string>;
   cacheOptions?: CacclCacheOptions;
+  certificateArn?: string;
   dbOptions?: CacclDbOptions;
-  scheduledTasks?: Record<string, CacclScheduledTask>;
-  lbOptions?: CacclLoadBalancerExtraOptions;
-  firewallSgId?: string;
+  ecsClusterName?: string;
   enableExecuteCommand?: boolean;
+  firewallSgId?: string;
+  lbOptions?: CacclLoadBalancerExtraOptions;
+  notifications: Partial<CacclNotificationsProps>;
+  scheduledTasks?: Record<string, CacclScheduledTask>;
+  taskCount: number;
+  taskDefProps: CacclTaskDefProps;
+  vpcId?: string;
 }
 
 export default CacclDeployStackProps;

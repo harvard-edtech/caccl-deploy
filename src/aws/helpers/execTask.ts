@@ -12,10 +12,10 @@ export type EnvVariable = {
 
 export type ExecOptions = {
   clusterName: string;
-  serviceName: string;
-  taskDefName: string;
   command: string;
   environment: EnvVariable[];
+  serviceName: string;
+  taskDefName: string;
 };
 
 /**
@@ -38,10 +38,10 @@ const execTask = async (
 
   const {
     clusterName,
-    serviceName,
-    taskDefName,
     command,
     environment = [],
+    serviceName,
+    taskDefName,
   } = execOptions;
 
   const service = await getService(clusterName, serviceName);
@@ -52,19 +52,19 @@ const execTask = async (
   const execResp = await ecs
     .runTask({
       cluster: clusterName,
-      taskDefinition: taskDefName,
-      networkConfiguration,
       launchType: 'FARGATE',
-      platformVersion: '1.3.0',
+      networkConfiguration,
       overrides: {
         containerOverrides: [
           {
-            name: 'AppOnlyContainer',
             command: ['/bin/sh', '-c', command],
             environment,
+            name: 'AppOnlyContainer',
           },
         ],
       },
+      platformVersion: '1.3.0',
+      taskDefinition: taskDefName,
     })
     .promise();
 

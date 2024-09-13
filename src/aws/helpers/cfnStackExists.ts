@@ -1,6 +1,6 @@
 // Import shared errors
-import getCfnStackExports from './getCfnStackExports.js';
 import CfnStackNotFound from '../../shared/errors/CfnStackNotFound.js';
+import getCfnStackExports from './getCfnStackExports.js';
 
 // Import helpers
 
@@ -13,11 +13,12 @@ const cfnStackExists = async (stackName: string): Promise<boolean> => {
   try {
     await getCfnStackExports(stackName);
     return true;
-  } catch (err) {
-    if (!(err instanceof CfnStackNotFound)) {
-      throw err;
+  } catch (error) {
+    if (!(error instanceof CfnStackNotFound)) {
+      throw error;
     }
   }
+
   return false;
 };
 

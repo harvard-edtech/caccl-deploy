@@ -1,18 +1,15 @@
 // Import aws-sdk
 import AWS, { ECS } from 'aws-sdk';
 
-import getCurrentRegion from './getCurrentRegion.js';
-
-// Import shared helpers
-import sleep from '../../shared/helpers/sleep.js';
-
-// Import logger
 import logger from '../../logger.js';
+// Import shared helpers
+import getCurrentRegion from './getCurrentRegion.js';
+// Import logger
 
 export type RestartOpts = {
   cluster: string;
-  service: string;
   newTaskDefArn?: string;
+  service: string;
   wait: boolean;
 };
 
@@ -24,7 +21,7 @@ export type RestartOpts = {
  * @param {boolean} wait
  */
 const restartEcsService = async (restartOpts: RestartOpts) => {
-  const { cluster, service, newTaskDefArn, wait } = restartOpts;
+  const { cluster, newTaskDefArn, service, wait } = restartOpts;
   const ecs = new AWS.ECS();
   logger.log(
     [
@@ -37,8 +34,8 @@ const restartEcsService = async (restartOpts: RestartOpts) => {
 
   const updateServiceParams: ECS.UpdateServiceRequest = {
     cluster,
-    service,
     forceNewDeployment: true,
+    service,
   };
 
   if (newTaskDefArn) {
@@ -52,23 +49,15 @@ const restartEcsService = async (restartOpts: RestartOpts) => {
   if (!wait) {
     return;
   }
-  let allDone = false;
+
+  logger.log('Waiting for deployment to stabilize...');
   await ecs
     .waitFor('servicesStable', {
       cluster,
       services: [service],
     })
-    .promise()
-    .then(() => {
-      allDone = true;
-    });
+    .promise();
 
-  let counter = 0;
-  while (!allDone) {
-    logger.log('Waiting for deployment to stablize...');
-    counter += 1;
-    await sleep(2 ** counter * 1000);
-  }
   logger.log('all done!');
 };
 

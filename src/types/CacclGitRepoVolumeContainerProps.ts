@@ -2,10 +2,10 @@
 import { aws_ecs as ecs } from 'aws-cdk-lib';
 
 type CacclGitRepoVolumeContainerProps = {
-  taskDefinition: ecs.TaskDefinition;
   appContainer: ecs.ContainerDefinition;
-  repoUrlSecretArn: string;
   appContainerPath: string;
+  repoUrlSecretArn: string;
+  taskDefinition: ecs.TaskDefinition;
 };
 
 export default CacclGitRepoVolumeContainerProps;

@@ -1,42 +1,46 @@
 import {
+  CfnOutput,
+  RemovalPolicy,
+  Stack,
   aws_cloudwatch as cloudwatch,
   aws_docdb as docdb,
   aws_ec2 as ec2,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
-  Stack,
-  CfnOutput,
-  RemovalPolicy,
 } from 'aws-cdk-lib';
-
 import { Construct } from 'constructs';
 
 // Import shared types
 import { CacclDbProps, ICacclDb } from '../../../types/index.js';
-
 // Import constants
 import DEFAULT_REMOVAL_POLICY from '../constants/DEFAULT_REMOVAL_POLICY.js';
 
 abstract class CacclDbBase extends Construct implements ICacclDb {
-  // the hostname of the cluster's endpoint
-  host: string;
+  // collection of cloudwatch metric alarms
+  alarms: cloudwatch.Alarm[];
 
-  // cluster endpoint port
-  port: string;
-
-  // will get the generated master password for the db
-  dbPasswordSecret: secretsmanager.Secret;
-
-  // overrides that get set in the cluster-level parameter group,
   // e.g. enabling performance monitoring
   clusterParameterGroupParams: { [key: string]: string } = {};
 
-  // overrides for the instance-level param group
-  // e.g. turning on slow query logging
-  instanceParameterGroupParams: { [key: string]: string } = {};
-
   // the actual cluster construct
   dbCluster: docdb.DatabaseCluster | rds.DatabaseCluster;
+
+  // overrides that get set in the cluster-level parameter group,
+  // will get the generated master password for the db
+  dbPasswordSecret: secretsmanager.Secret;
+
+  // overrides for the instance-level param group
+  // the database security group
+  dbSg: ec2.SecurityGroup;
+
+  // the "etcetera" policy for the parameter group(s) and security group
+  etcRemovalPolicy: RemovalPolicy;
+
+  // the hostname of the cluster's endpoint
+  host: string;
+
+  // e.g. turning on slow query logging
+  instanceParameterGroupParams: { [key: string]: string } = {};
 
   // cloudwatch metrics namespace
   metricNamespace: string;
@@ -44,24 +48,18 @@ abstract class CacclDbBase extends Construct implements ICacclDb {
   // collection of metric constructs
   metrics: { [key: string]: cloudwatch.Metric[] };
 
-  // collection of cloudwatch metric alarms
-  alarms: cloudwatch.Alarm[];
+  // cluster endpoint port
+  port: string;
 
   // basic removal policy for the cluster/instances
   removalPolicy: RemovalPolicy;
-
-  // the database security group
-  dbSg: ec2.SecurityGroup;
-
-  // the "etcetera" policy for the parameter group(s) and security group
-  etcRemovalPolicy: RemovalPolicy;
 
   // TODO: JSDoc for constructor
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id);
 
-    const { vpc } = props;
-    const { removalPolicy = DEFAULT_REMOVAL_POLICY } = props.options;
+    const { options, vpc } = props;
+    const { removalPolicy = DEFAULT_REMOVAL_POLICY } = options;
 
     // removal policy for the cluster & instances
     this.removalPolicy = (<any>RemovalPolicy)[removalPolicy];
@@ -81,8 +79,8 @@ abstract class CacclDbBase extends Construct implements ICacclDb {
           Stack.of(this).stackName
         }`,
         generateSecretString: {
-          passwordLength: 16,
           excludePunctuation: true,
+          passwordLength: 16,
         },
       },
     );
@@ -96,9 +94,9 @@ abstract class CacclDbBase extends Construct implements ICacclDb {
      * stack resources
      */
     this.dbSg = new ec2.SecurityGroup(this, 'DbSecurityGroup', {
-      vpc,
-      description: 'security group for the db cluster',
       allowAllOutbound: false,
+      description: 'security group for the db cluster',
+      vpc,
     });
 
     this.dbSg.applyRemovalPolicy(this.etcRemovalPolicy);
@@ -109,6 +107,13 @@ abstract class CacclDbBase extends Construct implements ICacclDb {
      * not allowing IPv6 traffic so they had to add a warning?
      */
     this.dbSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.allTcp());
+  }
+
+  addSecurityGroupIngress(vpcCidrBlock: string) {
+    this.dbCluster.connections.allowDefaultPortInternally();
+    this.dbCluster.connections.allowDefaultPortFrom(
+      ec2.Peer.ipv4(vpcCidrBlock),
+    );
   }
 
   // FIXME: doesn't do anything?
@@ -122,13 +127,6 @@ abstract class CacclDbBase extends Construct implements ICacclDb {
       exportName: `${Stack.of(this).stackName}-db-password-secret-arn`,
       value: this.dbPasswordSecret.secretArn,
     });
-  }
-
-  addSecurityGroupIngress(vpcCidrBlock: string) {
-    this.dbCluster.connections.allowDefaultPortInternally();
-    this.dbCluster.connections.allowDefaultPortFrom(
-      ec2.Peer.ipv4(vpcCidrBlock),
-    );
   }
 
   abstract createMetricsAndAlarms(): void;

@@ -1,6 +1,6 @@
 // Import NodeJS libs
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Read a file into a string. Uses default utf8 encoding.

@@ -1,65 +1,61 @@
 // Import path
-import path, { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { Flags } from '@oclif/core';
+// Import oclif
+import { execSync } from 'node:child_process';
+import path, { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { temporaryWriteTask } from 'tempy';
+
+import {
+  cfnStackExists,
+  getAccountId,
+  getCfnStackExports,
+} from '../aws/index.js';
+// Import base command
+import { BaseCommand } from '../base.js';
+import { confirmProductionOp } from '../configPrompts/index.js';
+import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION.js';
+import DeployConfig from '../deployConfig/index.js';
+import isProdAccount from '../helpers/isProdAccount.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Import oclif
-import { Flags } from '@oclif/core'
-
-// Import base command
-import { BaseCommand } from '../base.js';
-
-import { execSync } from 'child_process';
-
-import { temporaryWriteTask } from 'tempy';
-
-import { cfnStackExists, getAccountId, getCfnStackExports } from '../aws/index.js';
-
-import { confirmProductionOp } from '../configPrompts/index.js';
-
-import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION.js';
-
-import isProdAccount from '../helpers/isProdAccount.js';
-import DeployConfig from '../deployConfig/index.js';
-
 type EnvAdditions = {
+  AWS_PROFILE?: string;
   AWS_REGION: string;
   CDK_DISABLE_VERSION_CHECK: string;
-  AWS_PROFILE?: string;
   CDK_STACK_PROPS_FILE_PATH?: string;
 };
 
+// eslint-disable-next-line no-use-before-define
 export default class Stack extends BaseCommand<typeof Stack> {
-  static override description = "diff, deploy, or delete the app's AWS resources";
+  static override description =
+    "diff, deploy, or delete the app's AWS resources";
 
-  static override examples = [
-    '<%= config.bin %> <%= command.id %>',
-  ];
+  static override examples = ['<%= config.bin %> <%= command.id %>'];
 
   static override flags = {
-    'app': Flags.string({
+    app: Flags.string({
       char: 'a',
-      required: true,
       description: 'name of the app to work with',
+      required: true,
     }),
-  }
+  };
 
   static override strict = false;
 
   public async run(): Promise<void> {
     // Destructure flags
-    const {
-      yes,
-      profile,
-    } = this.flags;
+    const { profile, yes } = this.flags;
     // get this without resolved secrets for passing to cdk
-    const assumedRole = this.getAssumedRole()
+    const assumedRole = this.getAssumedRole();
     const deployConfig = await this.getDeployConfig(assumedRole, true);
 
     // get it again with resolved secrets so we can make our hash
-    const deployConfigHash = DeployConfig.toHash(await this.getDeployConfig(assumedRole));
+    const deployConfigHash = DeployConfig.toHash(
+      await this.getDeployConfig(assumedRole),
+    );
 
     /**
      * Get the important ids/names from our infrastructure stack:
@@ -69,24 +65,23 @@ export default class Stack extends BaseCommand<typeof Stack> {
      */
     const cfnStackName = this.getCfnStackName();
     const stackExists = await cfnStackExists(cfnStackName);
-    const { vpcId, ecsClusterName, albLogBucketName } = await getCfnStackExports(
-      deployConfig.infraStackName,
-    );
+    const { albLogBucketName, ecsClusterName, vpcId } =
+      await getCfnStackExports(deployConfig.infraStackName);
 
     /**
      * Create an object structure with all the info
      * the CDK stack operation will need
      */
     const cdkStackProps = {
-      vpcId,
-      ecsClusterName,
       albLogBucketName,
-      cacclDeployVersion: CACCL_DEPLOY_VERSION,
-      deployConfigHash,
-      stackName: cfnStackName,
       awsAccountId: await getAccountId(),
       awsRegion: process.env.AWS_REGION || 'us-east-1',
+      cacclDeployVersion: CACCL_DEPLOY_VERSION,
       deployConfig,
+      deployConfigHash,
+      ecsClusterName,
+      stackName: cfnStackName,
+      vpcId,
     };
 
     const envAdditions: EnvAdditions = {
@@ -98,20 +93,37 @@ export default class Stack extends BaseCommand<typeof Stack> {
     const cdkArgs = [...this.argv]; // FIXME:
 
     // default cdk operation is `list`
-    if (!cdkArgs.length) {
+    if (cdkArgs.length === 0) {
       cdkArgs.push('list');
-    } else if (cdkArgs[0] === 'dump') {
-      this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
-    } else if (cdkArgs[0] === 'info') {
-      if (!stackExists) {
-        this.exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
+    } else
+      switch (cdkArgs[0]) {
+        case 'dump': {
+          this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
+
+          break;
+        }
+
+        case 'info': {
+          if (!stackExists) {
+            this.exitWithError(
+              `Stack ${cfnStackName} has not been deployed yet`,
+            );
+          }
+
+          const stackExports = await getCfnStackExports(cfnStackName);
+          this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
+
+          break;
+        }
+
+        case 'changeset': {
+          cdkArgs.shift();
+          cdkArgs.unshift('deploy', '--no-execute');
+
+          break;
+        }
+        // No default
       }
-      const stackExports = await getCfnStackExports(cfnStackName);
-      this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
-    } else if (cdkArgs[0] === 'changeset') {
-      cdkArgs.shift();
-      cdkArgs.unshift('deploy', '--no-execute');
-    }
 
     // tell cdk to use the same profile
     if (profile !== undefined) {
@@ -120,10 +132,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
     }
 
     // disable cdk prompting if user included `--yes` flag
-    if (
-      yes &&
-      (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))
-    ) {
+    if (yes && (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))) {
       cdkArgs.push('--require-approval-never');
     }
 
@@ -136,6 +145,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
       if (stackExists && !yes && !(await this.stackVersionDiffCheck())) {
         this.exitWithSuccess();
       }
+
       // production failsafe if we're actually changing anything
       if (!(await confirmProductionOp(yes))) {
         this.exitWithSuccess();
@@ -147,9 +157,8 @@ export default class Stack extends BaseCommand<typeof Stack> {
       cdkStackProps.deployConfig.dbOptions &&
       !cdkStackProps.deployConfig.dbOptions.removalPolicy
     ) {
-      cdkStackProps.deployConfig.dbOptions.removalPolicy = (await isProdAccount())
-        ? 'RETAIN'
-        : 'DESTROY';
+      cdkStackProps.deployConfig.dbOptions.removalPolicy =
+        (await isProdAccount()) ? 'RETAIN' : 'DESTROY';
     }
 
     /**
@@ -163,24 +172,24 @@ export default class Stack extends BaseCommand<typeof Stack> {
         envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
 
         const execOpts = {
-          stdio: 'inherit' as const,
-          // exec the cdk process in the cdk directory
-          // FIXME: put `cdk` in oclif data dir and set cwd to that
           // but how do I access node_modules then...
           cwd: path.join(__dirname, '../..'),
+          // exec the cdk process in the cdk directory
+          // FIXME: put `cdk` in oclif data dir and set cwd to that
           // inject our additional env vars
           env: { ...process.env, ...envAdditions },
+          stdio: 'inherit' as const,
         };
 
         try {
           execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
           this.exitWithSuccess('done!');
-        } catch (err) {
+        } catch (error) {
           const message =
-            err instanceof Error
-              ? err.message
-              : `Error while executing CDK: ${err}`;
-              this.exitWithError(message);
+            error instanceof Error
+              ? error.message
+              : `Error while executing CDK: ${error}`;
+          this.exitWithError(message);
         }
       },
     );

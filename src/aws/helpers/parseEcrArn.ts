@@ -21,11 +21,11 @@ const parseEcrArn = (arn: string): EcrImage => {
   const [relativeId, imageTag] = parts.slice(-2);
   const repoName = relativeId.replace('repository/', '');
   return {
-    service: parts[2],
-    region: parts[3],
     account: parts[4],
-    repoName,
     imageTag,
+    region: parts[3],
+    repoName,
+    service: parts[2],
   };
 };
 

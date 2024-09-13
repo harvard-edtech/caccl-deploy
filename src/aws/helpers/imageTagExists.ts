@@ -1,8 +1,7 @@
 // Import helpers
-import getRepoImageList from './getRepoImageList.js';
-
-// Import classes
 import AssumedRole from '../classes/AssumedRole.js';
+import getRepoImageList from './getRepoImageList.js';
+// Import classes
 
 /**
  * Confirms that a repo/tag combo exists

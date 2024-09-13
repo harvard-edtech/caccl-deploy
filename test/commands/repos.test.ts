@@ -51,12 +51,7 @@ describe('repos', () => {
       expect(error.message).to.equal('EEXIT: 0');
     }
     expect(stdout).to.contain(
-      table([
-        ['Repository Name'],
-        ['test-1'],
-        ['test-2'],
-        ['test-3'],
-      ]),
+      table([['Repository Name'], ['test-1'], ['test-2'], ['test-3']]),
     );
   });
-})
+});

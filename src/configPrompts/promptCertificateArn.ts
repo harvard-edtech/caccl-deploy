@@ -1,9 +1,8 @@
 // Import aws
-import prompt from './prompt.js';
 import { getAcmCertList } from '../aws/index.js';
-
 // Import shared errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
+import prompt from './prompt.js';
 
 // Import helpers
 
@@ -18,15 +17,15 @@ const promptCertificateArn = async () => {
     };
   });
 
-  if (!certChoices.length) {
+  if (certChoices.length === 0) {
     throw new NoPromptChoices('No ACM certificates to choose from');
   }
 
   const certificateArn = await prompt({
-    type: 'select',
-    name: 'value',
-    message: 'Select the hostname associated with your ACM certificate',
     choices: certChoices,
+    message: 'Select the hostname associated with your ACM certificate',
+    name: 'value',
+    type: 'select',
   });
   return certificateArn.value;
 };

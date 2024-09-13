@@ -1,6 +1,5 @@
 // Import aws
 import { getAccountId } from '../aws/index.js';
-
 // Import config
 import { conf } from '../conf.js';
 

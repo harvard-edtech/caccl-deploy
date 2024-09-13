@@ -14,6 +14,7 @@ const wipeConfig = async (
       if (v.toString().startsWith('arn:aws:secretsmanager')) {
         arns.push(v);
       }
+
       return arns;
     },
     [],

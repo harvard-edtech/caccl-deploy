@@ -1,16 +1,15 @@
 // Import types
 import ICacclAppEnvironment from './ICacclAppEnvironment.js';
 
-// TODO: JSDoc
 type CacclTaskDefProps = {
-  appImage: string;
-  proxyImage?: string;
-  vpcCidrBlock?: string;
   appEnvironment?: ICacclAppEnvironment;
+  appImage: string;
+  gitRepoVolume?: Record<string, string>;
+  logRetentionDays?: number;
+  proxyImage?: string;
   taskCpu?: number;
   taskMemory?: number;
-  logRetentionDays?: number;
-  gitRepoVolume?: Record<string, string>;
+  vpcCidrBlock?: string;
 };
 
 export default CacclTaskDefProps;

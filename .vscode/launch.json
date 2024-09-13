@@ -5,7 +5,7 @@
       "type": "node",
       "request": "launch",
       "name": "Mocha: current file",
-      "env": { 
+      "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
         "TS_NODE_FILES": "true"
       },

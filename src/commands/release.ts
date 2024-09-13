@@ -1,25 +1,21 @@
-import { Flags} from '@oclif/core'
-
-// Import base command
-import { BaseCommand } from '../base.js';
+import { Flags } from '@oclif/core';
 
 import {
   createEcrArn,
   getCfnStackExports,
-  isLatestTag as getIsLatestTag,
   imageTagExists as getImageTagExists,
+  isLatestTag as getIsLatestTag,
   parseEcrArn,
   restartEcsService,
   updateTaskDefAppImage,
 } from '../aws/index.js';
-
+// Import base command
+import { BaseCommand } from '../base.js';
 import { confirm, confirmProductionOp } from '../configPrompts/index.js';
-
 import DeployConfig from '../deployConfig/index.js';
-
 import CfnStackNotFound from '../shared/errors/CfnStackNotFound.js';
 
-
+// eslint-disable-next-line no-use-before-define
 export default class Release extends BaseCommand<typeof Release> {
   static override description = 'release a new version of an app';
 
@@ -30,29 +26,30 @@ export default class Release extends BaseCommand<typeof Release> {
   static override flags = {
     'app': Flags.string({
       char: 'a',
-      required: true,
       description: 'name of the app to work with',
+      required: true,
     }),
     'image-tag': Flags.string({
       char: 'i',
-      required: true,
       description: 'the docker image version tag to release',
+      required: true,
     }),
     'no-deploy': Flags.boolean({
-      description: "Update the Fargate Task Definition but don't restart the service",
       default: false,
+      description:
+        "Update the Fargate Task Definition but don't restart the service",
     }),
-  }
+  };
 
   public async run(): Promise<void> {
     // Destructure flags
     const {
+      app,
       'image-tag': imageTag,
       'no-deploy': noDeploy,
-      app,
       yes,
     } = this.flags;
-  
+
     const assumedRole = this.getAssumedRole();
     // see the README section on cross-account ECR access
     if (this.ecrAccessRoleArn !== undefined) {
@@ -65,19 +62,21 @@ export default class Release extends BaseCommand<typeof Release> {
     let cfnExports: Record<string, string>;
     try {
       cfnExports = await getCfnStackExports(cfnStackName);
-      ['taskDefName', 'clusterName', 'serviceName'].forEach((exportValue) => {
+      for (const exportValue of ['taskDefName', 'clusterName', 'serviceName']) {
         if (cfnExports[exportValue] === undefined) {
           throw new Error(`Incomplete app stack: missing ${exportValue}`);
         }
-      });
-    } catch (err) {
-      if (
-        err instanceof Error &&
-        (err instanceof CfnStackNotFound || err.message.includes('Incomplete'))
-      ) {
-        this.exitWithError(err.message);
       }
-      throw err;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error instanceof CfnStackNotFound ||
+          error.message.includes('Incomplete'))
+      ) {
+        this.exitWithError(error.message);
+      }
+
+      throw error;
     }
 
     /**
@@ -100,7 +99,9 @@ export default class Release extends BaseCommand<typeof Release> {
       imageTag,
     );
     if (!imageTagExists) {
-      this.exitWithError(`No image with tag ${imageTag} in ${repoArn.repoName}`);
+      this.exitWithError(
+        `No image with tag ${imageTag} in ${repoArn.repoName}`,
+      );
     }
 
     // check if it's the latest release and prompt if not
@@ -118,7 +119,7 @@ export default class Release extends BaseCommand<typeof Release> {
     // generate the new repo image arn to be deployed
     const newAppImage = createEcrArn({
       ...repoArn,
-      imageTag: imageTag,
+      imageTag,
     });
 
     /**
@@ -127,7 +128,7 @@ export default class Release extends BaseCommand<typeof Release> {
      * to get/extract it via the api. `taskDefName` here is also known as the
      * "family" and doesn't include the task def revision/version number
      */
-    const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } =
+    const { appOnlyTaskDefName, clusterName, serviceName, taskDefName } =
       cfnExports;
 
     // check that we're not using a wildly different version of the cli
@@ -157,8 +158,8 @@ export default class Release extends BaseCommand<typeof Release> {
     // update the ssm parameter
     this.log('Updating stored deployment configuration');
     await DeployConfig.update({
-      deployConfig,
       appPrefix: this.getAppPrefix(),
+      deployConfig,
       param: 'appImage',
       value: newAppImage,
     });
@@ -168,12 +169,13 @@ export default class Release extends BaseCommand<typeof Release> {
       this.log(`Restarting the ${serviceName} service...`);
       await restartEcsService({
         cluster: clusterName,
-        service: serviceName,
         newTaskDefArn,
+        service: serviceName,
         wait: true,
       });
       this.exitWithSuccess('done.');
     }
+
     this.exitWithSuccess(
       [
         'Redployment skipped',

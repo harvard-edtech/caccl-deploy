@@ -6,7 +6,6 @@ import { Construct } from 'constructs';
 
 // Import shared types
 import { CacclGitRepoVolumeContainerProps } from '../../../types/index.js';
-
 // Import constants
 import VOLUME_CONTAINER_MOUNT_PATH from '../constants/VOLUME_CONTAINER_MOUNT_PATH.js';
 import VOLUME_NAME from '../constants/VOLUME_NAME.js';
@@ -21,7 +20,7 @@ class CacclGitRepoVolumeContainer extends Construct {
   ) {
     super(scope, id);
 
-    const { taskDefinition, appContainer, repoUrlSecretArn, appContainerPath } =
+    const { appContainer, appContainerPath, repoUrlSecretArn, taskDefinition } =
       props;
 
     // the volume itself is added to the task definition
@@ -40,14 +39,14 @@ class CacclGitRepoVolumeContainer extends Construct {
       this,
       'GitRepoVolumeContainer',
       {
-        image: ecs.ContainerImage.fromRegistry('alpine/git'),
         command: ['git clone --branch master $GIT_REPO_URL /var/gitrepo'],
         entryPoint: ['sh', '-c'],
         essential: false,
-        taskDefinition,
+        image: ecs.ContainerImage.fromRegistry('alpine/git'),
         secrets: {
           GIT_REPO_URL: repoUrlSecret,
         },
+        taskDefinition,
       },
     );
 
@@ -64,8 +63,8 @@ class CacclGitRepoVolumeContainer extends Construct {
     });
 
     appContainer.addContainerDependencies({
-      container: this.container,
       condition: ecs.ContainerDependencyCondition.SUCCESS,
+      container: this.container,
     });
   }
 }

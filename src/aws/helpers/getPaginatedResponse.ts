@@ -3,7 +3,7 @@
 // import { Paginator } from '@aws-sdk/types';
 import { AWSError, Request } from 'aws-sdk';
 
-type NextTokenKey = { NextToken?: string } & { [k: string]: any };
+type NextTokenKey = { [k: string]: any } & { NextToken?: string };
 
 /**
  * Convenience function for fetching larger responses that might
@@ -30,16 +30,19 @@ const getPaginatedResponse = async <
     if (nextTokenArg !== undefined) {
       paramsCopy.NextToken = nextTokenArg;
     }
+
     const resp = await func(paramsCopy).promise();
     if (itemKey in resp) {
       // FIXME: need method of asserting that TRes[TKey] will be an array here
       // @ts-ignore
       items.push(...resp[itemKey]);
     }
+
     if (resp.NextToken !== undefined) {
       await getItems(resp.NextToken);
     }
   }
+
   await getItems();
   return items;
 };

@@ -1,5 +1,5 @@
 // Import aws-sdk
-import AWS, { Service, STS } from 'aws-sdk';
+import AWS, { STS, Service } from 'aws-sdk';
 
 // Import helpers
 import getAccountId from '../helpers/getAccountId.js';
@@ -18,14 +18,6 @@ class AssumedRole {
   }
 
   /**
-   * Set an IAM role for AWS clients to assume
-   * @param {string} roleArn
-   */
-  public setAssumedRoleArn(roleArn: string) {
-    this.assumedRoleArn = roleArn;
-  }
-
-  /**
    * Returns an AWS service client that has been reconfigured with
    * temporary credentials from assuming an IAM role
    * @param {class} ClientClass
@@ -41,6 +33,7 @@ class AssumedRole {
     ) {
       return client;
     }
+
     if (this.assumedRoleCredentials === undefined) {
       const sts = new AWS.STS();
       const resp = await sts
@@ -55,14 +48,24 @@ class AssumedRole {
           `Could not retrieve credentials for assumed role: ${this.assumedRoleArn}`,
         );
       }
+
       this.assumedRoleCredentials = credentials;
     }
+
     client.config.update({
       accessKeyId: this.assumedRoleCredentials.AccessKeyId,
       secretAccessKey: this.assumedRoleCredentials.SecretAccessKey,
       sessionToken: this.assumedRoleCredentials.SessionToken,
     });
     return client;
+  }
+
+  /**
+   * Set an IAM role for AWS clients to assume
+   * @param {string} roleArn
+   */
+  public setAssumedRoleArn(roleArn: string) {
+    this.assumedRoleArn = roleArn;
   }
 }
 

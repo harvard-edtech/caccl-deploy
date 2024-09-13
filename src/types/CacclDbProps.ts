@@ -4,11 +4,11 @@ import CacclDbOptions from './CacclDbOptions.js';
 import ICacclAppEnvironment from './ICacclAppEnvironment.js';
 
 type CacclDbProps = {
-  // the vpc the db will be put into
-  vpc: ec2.Vpc;
-  options: CacclDbOptions;
   // so that we can add this construct's environment variables
   appEnv: ICacclAppEnvironment;
+  options: CacclDbOptions;
+  // the vpc the db will be put into
+  vpc: ec2.Vpc;
 };
 
 export default CacclDbProps;

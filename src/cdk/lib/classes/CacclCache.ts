@@ -1,12 +1,11 @@
 // Import AWS CDK lib
 import {
+  CfnOutput,
+  Stack,
   aws_cloudwatch as cloudwatch,
   aws_ec2 as ec2,
   aws_elasticache as elasticache,
-  Stack,
-  CfnOutput,
 } from 'aws-cdk-lib';
-
 // Import AWS constructs
 import { Construct } from 'constructs';
 
@@ -14,23 +13,23 @@ import { Construct } from 'constructs';
 import { CacclCacheProps } from '../../../types/index.js';
 
 class CacclCache extends Construct {
+  alarms: cloudwatch.Alarm[];
+
   cache: elasticache.CfnCacheCluster;
 
   cacheSg: ec2.SecurityGroup;
 
   metrics: { [key: string]: cloudwatch.Metric };
 
-  alarms: cloudwatch.Alarm[];
-
   constructor(scope: Construct, id: string, props: CacclCacheProps) {
     super(scope, id);
 
-    const { vpc, appEnv } = props;
+    const { appEnv, options, vpc } = props;
     const {
+      cacheNodeType = 'cache.t3.medium',
       engine = 'redis',
       numCacheNodes = 1,
-      cacheNodeType = 'cache.t3.medium',
-    } = props.options;
+    } = options;
 
     const subnetGroup = new elasticache.CfnSubnetGroup(
       this,
@@ -44,9 +43,9 @@ class CacclCache extends Construct {
     );
 
     this.cacheSg = new ec2.SecurityGroup(this, 'CacheSecurityGroup', {
-      vpc,
-      description: 'security group for the elasticache cluster',
       allowAllOutbound: false,
+      description: 'security group for the elasticache cluster',
+      vpc,
     });
 
     this.cacheSg.addIngressRule(
@@ -63,10 +62,10 @@ class CacclCache extends Construct {
     this.cacheSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.allTcp());
 
     this.cache = new elasticache.CfnCacheCluster(this, 'CacheCluster', {
-      engine,
-      numCacheNodes,
       cacheNodeType,
       cacheSubnetGroupName: subnetGroup.ref,
+      engine,
+      numCacheNodes,
       vpcSecurityGroupIds: [this.cacheSg.securityGroupId],
     });
 

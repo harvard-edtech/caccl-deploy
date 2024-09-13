@@ -1,16 +1,17 @@
+/* eslint-disable unicorn/consistent-destructuring */
 import {
-  aws_cloudwatch as cloudwatch,
-  aws_elasticloadbalancingv2 as elb,
   CfnOutput,
   Stack,
+  aws_cloudwatch as cloudwatch,
+  aws_elasticloadbalancingv2 as elb,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 // Import shared types
 
+import { CacclMonitoringProps } from '../../../types/index.js';
 import CacclDbBase from './CacclDbBase.js';
 import CacclScheduledTasks from './CacclScheduledTasks.js';
-import { CacclMonitoringProps } from '../../../types/index.js';
 
 class CacclMonitoring extends Construct {
   dashboard: cloudwatch.Dashboard;
@@ -35,35 +36,35 @@ class CacclMonitoring extends Construct {
     const dashboardLink = `https://console.aws.amazon.com/cloudwatch/home?region=${this.region}#dashboards:name=${dashboardName}`;
 
     new CfnOutput(this, 'DashboardLink', {
-      value: dashboardLink,
       exportName: `${stackName}-cloudwatch-dashboard-link`,
+      value: dashboardLink,
     });
 
     const lbLink = `https://console.aws.amazon.com/ec2/v2/home?region=${this.region}#LoadBalancers:tag:caccl_deploy_stack_name=${stackName}`;
 
     this.dashboard.addWidgets(
       new cloudwatch.TextWidget({
+        height: 1,
         markdown: [
           `### Load Balancer: [${loadBalancer.loadBalancerName}](${lbLink})`,
           '[Explanation of Metrics](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html)',
         ].join(' | '),
         width: 24,
-        height: 1,
       }),
     );
 
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'RequestCount',
-        left: [cacclLoadBalancer.metrics.RequestCount],
-        width: 12,
         height: 6,
+        left: [cacclLoadBalancer.metrics.RequestCount],
+        title: 'RequestCount',
+        width: 12,
       }),
       new cloudwatch.GraphWidget({
-        title: 'TargetResponseTime',
-        left: [cacclLoadBalancer.metrics.TargetResponseTime],
-        width: 12,
         height: 6,
+        left: [cacclLoadBalancer.metrics.TargetResponseTime],
+        title: 'TargetResponseTime',
+        width: 12,
       }),
     );
 
@@ -71,20 +72,20 @@ class CacclMonitoring extends Construct {
       new cloudwatch.AlarmStatusWidget({
         alarms: cacclLoadBalancer.alarms,
         height: 6,
-        width: 8,
         title: 'Load Balancer Alarm States',
+        width: 8,
       }),
       new cloudwatch.GraphWidget({
-        title: 'NewConnectionCount',
+        height: 6,
         left: [cacclLoadBalancer.metrics.NewConnectionCount],
+        title: 'NewConnectionCount',
         width: 8,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'ActiveConnectionCount',
-        left: [cacclLoadBalancer.metrics.ActiveConnectionCount],
-        width: 8,
         height: 6,
+        left: [cacclLoadBalancer.metrics.ActiveConnectionCount],
+        title: 'ActiveConnectionCount',
+        width: 8,
       }),
     );
 
@@ -92,8 +93,8 @@ class CacclMonitoring extends Construct {
       const metricName = `HTTP ${i}xx Count`;
       const httpCode = `TARGET_${i}XX_COUNT` as keyof typeof elb.HttpCodeTarget;
       return new cloudwatch.GraphWidget({
-        title: metricName,
         left: [loadBalancer.metricHttpCodeTarget(elb.HttpCodeTarget[httpCode])],
+        title: metricName,
       });
     });
     this.dashboard.addWidgets(...httpCodeWidgets);
@@ -102,20 +103,20 @@ class CacclMonitoring extends Construct {
 
     this.dashboard.addWidgets(
       new cloudwatch.TextWidget({
+        height: 1,
         markdown: `### ECS Service: [${ecsService.serviceName}](${serviceLink})`,
         width: 24,
-        height: 1,
       }),
     );
 
     const makeCIMetric = (metricName: string, extraProps = {}) => {
       const metric = new cloudwatch.Metric({
-        metricName,
-        namespace: 'ECS/ContainerInsights',
         dimensionsMap: {
           ClusterName: ecsService.cluster.clusterName,
           ServiceName: ecsService.serviceName,
         },
+        metricName,
+        namespace: 'ECS/ContainerInsights',
         ...extraProps,
       });
       metric.attachTo(ecsService);
@@ -124,31 +125,31 @@ class CacclMonitoring extends Construct {
 
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'CPUUtilization',
+        height: 6,
         left: [
           makeCIMetric('CpuUtilized', { unit: cloudwatch.Unit.PERCENT }),
           makeCIMetric('CpuReserved', { unit: cloudwatch.Unit.PERCENT }),
         ],
+        title: 'CPUUtilization',
         width: 12,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'MemoryUtilization',
-        left: [makeCIMetric('MemoryUtilized'), makeCIMetric('MemoryReserved')],
-        width: 12,
         height: 6,
+        left: [makeCIMetric('MemoryUtilized'), makeCIMetric('MemoryReserved')],
+        title: 'MemoryUtilization',
+        width: 12,
       }),
     );
 
     const servcieAlarmWidget = [];
 
-    if (cacclService.alarms.length) {
+    if (cacclService.alarms.length > 0) {
       servcieAlarmWidget.push(
         new cloudwatch.AlarmStatusWidget({
           alarms: cacclService.alarms,
-          width: 8,
           height: 6,
           title: 'ECS Service Alarm States',
+          width: 8,
         }),
       );
     }
@@ -156,25 +157,26 @@ class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       ...servcieAlarmWidget,
       new cloudwatch.GraphWidget({
-        title: 'Storage Read/Write Bytes',
+        height: 6,
         left: [makeCIMetric('StorageReadBytes')],
         right: [makeCIMetric('StorageWriteBytes')],
+        title: 'Storage Read/Write Bytes',
         width: 12,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'Tasks & Deployments',
+        height: 6,
         left: [
           makeCIMetric('DesiredTaskCount'),
           makeCIMetric('PendingTaskCount'),
           makeCIMetric('RunningTaskCount'),
         ],
         right: [ecsService.metric('DeploymentCount')],
+        title: 'Tasks & Deployments',
         width: 12,
-        height: 6,
       }),
     );
 
+    // eslint-disable-next-line unicorn/consistent-function-scoping
     const makeLogLink = (logGroup: string) => {
       const escapedLg = logGroup.split('/').join('$252F');
       return `* [${logGroup}](https://console.aws.amazon.com/cloudwatch/home?region=${this.region}#logsV2:log-groups/log-group/${escapedLg})`;
@@ -182,13 +184,13 @@ class CacclMonitoring extends Construct {
 
     this.dashboard.addWidgets(
       new cloudwatch.TextWidget({
+        height: 4,
         markdown: [
           '### Logs\n',
           makeLogLink(`/${stackName}/app`),
           makeLogLink(`/${stackName}/proxy`),
         ].join('\n'),
         width: 24,
-        height: 4,
       }),
     );
   }
@@ -198,52 +200,52 @@ class CacclMonitoring extends Construct {
 
     this.dashboard.addWidgets(
       new cloudwatch.TextWidget({
+        height: 1,
         markdown: `### Database Cluster: [${
           dbCluster.clusterIdentifier
         }](${db.getDashboardLink()})`,
         width: 24,
-        height: 1,
       }),
     );
 
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'Read/Write IOPS',
+        height: 6,
         left: db.metrics.ReadIOPS,
         right: db.metrics.WriteIOPS,
+        title: 'Read/Write IOPS',
         width: 12,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'CPU & Memory',
+        height: 6,
         left: db.metrics.CPUUtilization,
         right: db.metrics.FreeableMemory,
+        title: 'CPU & Memory',
         width: 12,
-        height: 6,
       }),
     );
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'Read/Write Latency',
+        height: 6,
         left: db.metrics.ReadLatency,
         right: db.metrics.WriteLatency,
+        title: 'Read/Write Latency',
         width: 12,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'Transactions/Queries',
+        height: 6,
         left: db.metrics.Transactions,
         right: db.metrics.Queries,
+        title: 'Transactions/Queries',
         width: 12,
-        height: 6,
       }),
     );
     this.dashboard.addWidgets(
       new cloudwatch.AlarmStatusWidget({
         alarms: db.alarms,
-        width: 24,
         height: 6,
         title: 'Database Alarm States',
+        width: 24,
       }),
     );
     this.dashboard.addWidgets(
@@ -268,38 +270,38 @@ class CacclMonitoring extends Construct {
 
     this.dashboard.addWidgets(
       new cloudwatch.TextWidget({
+        height: 1,
         markdown: `###  Scheduled Tasks Function: [${func.functionName}](${functionUrl})`,
         width: 24,
-        height: 1,
       }),
     );
 
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
-        title: 'Duration',
+        height: 6,
         left: [func.metricDuration()],
+        title: 'Duration',
         width: 8,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'Invocations',
+        height: 6,
         left: [func.metricInvocations()],
+        title: 'Invocations',
         width: 8,
-        height: 6,
       }),
       new cloudwatch.GraphWidget({
-        title: 'Errors',
-        left: [func.metricErrors()],
-        width: 8,
         height: 6,
+        left: [func.metricErrors()],
+        title: 'Errors',
+        width: 8,
       }),
     );
     this.dashboard.addWidgets(
       new cloudwatch.AlarmStatusWidget({
         alarms: scheduledTasks.alarms,
-        width: 24,
         height: 6,
         title: 'Scheduled Tasks Function Alarm States',
+        width: 24,
       }),
     );
   }

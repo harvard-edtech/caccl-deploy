@@ -1,12 +1,11 @@
 // Import aws-sdk
 import AWS from 'aws-sdk';
 
+// Import logger
+import logger from '../../logger.js';
 // Import helpers
 import ecrArnToImageId from './ecrArnToImageId.js';
 import getTaskDefinition from './getTaskDefinition.js';
-
-// Import logger
-import logger from '../../logger.js';
 
 /**
  * Updates a Fargate task definition, replacing the app container's
@@ -58,7 +57,7 @@ const updateTaskDefAppImage = async (
    * delete invalid params that are returned by `returnTaskDefinition` but
    * not allowed by `registerTaskDefinition`
    */
-  const registerTaskDefinitionParams = [
+  const registerTaskDefinitionParams = new Set([
     'containerDefinitions',
     'cpu',
     'executionRoleArn',
@@ -69,12 +68,12 @@ const updateTaskDefAppImage = async (
     'requiresCompatibilities',
     'taskRoleArn',
     'volumes',
-  ];
-  Object.keys(newTaskDef).forEach((k) => {
-    if (!registerTaskDefinitionParams.includes(k)) {
+  ]);
+  for (const k of Object.keys(newTaskDef)) {
+    if (!registerTaskDefinitionParams.has(k)) {
       delete newTaskDef[k];
     }
-  });
+  }
 
   const registerResp = await ecs.registerTaskDefinition(newTaskDef).promise();
   logger.log('done');

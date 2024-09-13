@@ -1,9 +1,9 @@
 // Import aws-sdk
 import AWS from 'aws-sdk';
 
-// Import class
-import getPaginatedResponse from './getPaginatedResponse.js';
 import AssumedRole from '../classes/AssumedRole.js';
+import getPaginatedResponse from './getPaginatedResponse.js';
+// Import class
 
 /**
  * @author Jay Luker
@@ -36,6 +36,7 @@ const getRepoList = async (assumedRole: AssumedRole): Promise<string[]> => {
       if (isAnEdtechAppRepo && repo.repositoryName) {
         return [repo.repositoryName];
       }
+
       return emptyArr;
     }),
   );

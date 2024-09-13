@@ -19,8 +19,8 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization":false
-},
+    "strictPropertyInitialization": false
+  },
   "include": ["./src/**/*", "src/types/**/*"],
   "ts-node": {
     "esm": true

@@ -3,15 +3,14 @@ import {
   aws_elasticloadbalancingv2 as elb,
 } from 'aws-cdk-lib';
 
-// TODO: JSDoc
 interface ICacclLoadBalancer {
-  loadBalancer: elb.ApplicationLoadBalancer;
+  alarms: cloudwatch.Alarm[];
 
   httpsListener: elb.ApplicationListener;
 
-  metrics: Record<string, cloudwatch.Metric>;
+  loadBalancer: elb.ApplicationLoadBalancer;
 
-  alarms: cloudwatch.Alarm[];
+  metrics: Record<string, cloudwatch.Metric>;
 }
 
 export default ICacclLoadBalancer;

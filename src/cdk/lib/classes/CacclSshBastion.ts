@@ -1,9 +1,8 @@
-import { aws_ec2 as ec2, Stack, CfnOutput } from 'aws-cdk-lib';
+import { CfnOutput, Stack, aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 // Import shared types
 import { CacclSshBastionProps } from '../../../types/index.js';
-
 // Import constants
 import DEFAULT_AMI_MAP from '../constants/DEFAULT_AMI_MAP.js';
 
@@ -13,14 +12,14 @@ class CacclSshBastion extends Construct {
   constructor(scope: Construct, id: string, props: CacclSshBastionProps) {
     super(scope, id);
 
-    const { vpc, sg } = props;
+    const { sg, vpc } = props;
 
     this.instance = new ec2.BastionHostLinux(this, 'SshBastionHost', {
-      vpc,
-      subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
-      securityGroup: sg,
       machineImage: ec2.MachineImage.genericLinux(DEFAULT_AMI_MAP),
+      securityGroup: sg,
+      subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
+      vpc,
     });
 
     new CfnOutput(this, 'DbBastionHostIp', {

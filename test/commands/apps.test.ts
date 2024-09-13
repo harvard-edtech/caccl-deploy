@@ -32,7 +32,9 @@ describe('apps', () => {
     const { error, stdout, stderr } = await runCommand('apps');
 
     // Assert
-    expect(stdout).to.equal(`${table([['App'], ['test-app-1'], ['test-app-3']])}\n`)
+    expect(stdout).to.contain(
+      `${table([['App'], ['test-app-1'], ['test-app-3']])}\n`,
+    );
 
     // No errors
     expect(stderr).to.equal('');

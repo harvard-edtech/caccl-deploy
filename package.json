@@ -52,8 +52,8 @@
     "chai": "^4",
     "eslint": "^8",
     "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-config-oclif": "^5",
-    "eslint-config-oclif-typescript": "^3",
+    "eslint-config-oclif": "^5.2.1",
+    "eslint-config-oclif-typescript": "^3.1.11",
     "eslint-config-prettier": "^9",
     "eslint-formatter-table": "^7.32.1",
     "eslint-import-resolver-typescript": "^3.5.1",
@@ -82,7 +82,8 @@
     "src/cdk",
     "src/cdk/lib",
     "src/cdk/assets",
-    "src/cdk/*.ts"
+    "src/cdk/*.ts",
+    "src"
   ],
   "homepage": "https://github.com/harvard-edtech/caccl-deploy",
   "keywords": [
@@ -105,8 +106,8 @@
   },
   "lint-staged": {
     "**/*.{ts,js}": [
-      "npx prettier --write --ignore-path .gitignore",
-      "npx eslint --fix"
+      "prettier --config .prettierrc.json --write --ignore-path .gitignore",
+      "eslint -c .eslintrc.json --fix"
     ]
   },
   "repository": "harvard-edtech/caccl-deploy",
@@ -114,7 +115,10 @@
     "build": "shx rm -rf dist && tsc -b",
     "dev": "shx rm -rf dist && tsc -b --watch",
     "cli": "./bin/run.js",
-    "lint": "eslint . --ext .ts",
+    "lint": "eslint -c .eslintrc.json .",
+    "lint-fix": "eslint -c .eslintrc.json .  --fix",
+    "format": "prettier --config .prettierrc.json --write --ignore-path .gitignore .",
+    "prepare": "husky install || true",
     "postpack": "shx rm -f oclif.manifest.json",
     "prepack": "oclif manifest && oclif readme",
     "test": "TS_NODE_TRANSPILE_ONLY=true TS_NODE_FILES=true mocha --require test/hooks.ts \"test/**/*.test.ts\"",

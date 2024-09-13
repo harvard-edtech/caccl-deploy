@@ -1,10 +1,16 @@
-import { aws_ec2 as ec2, aws_ecs as ecs, Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps, aws_ec2 as ec2, aws_ecs as ecs } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 // Import shared types
 
 // Import helpers
 
+import {
+  CacclDeployStackProps,
+  CacclNotificationsProps,
+  LoadBalancerSecurityGroups,
+} from '../../../types/index.js';
+import createDbConstruct from '../helpers/createDbConstruct.js';
 // Import classes
 import CacclAppEnvironment from './CacclAppEnvironment.js';
 import CacclCache from './CacclCache.js';
@@ -15,29 +21,22 @@ import CacclScheduledTasks from './CacclScheduledTasks.js';
 import CacclService from './CacclService.js';
 import CacclSshBastion from './CacclSshBastion.js';
 import CacclTaskDef from './CacclTaskDef.js';
-import {
-  CacclDeployStackProps,
-  CacclNotificationsProps,
-  LoadBalancerSecurityGroups,
-} from '../../../types/index.js';
-import createDbConstruct from '../helpers/createDbConstruct.js';
 
 class CacclDeployStack extends Stack {
   constructor(scope: Construct, id: string, props: CacclDeployStackProps) {
     super(scope, id, props as StackProps);
 
     let vpc;
-    let cluster;
 
     // should we create an ssh bastion for access to db/cache/etc
     let createBastion = false;
 
-    if (props.vpcId !== undefined) {
+    if (props.vpcId === undefined) {
+      throw new Error('deployConfig must define a vpcId');
+    } else {
       vpc = ec2.Vpc.fromLookup(this, 'Vpc', {
         vpcId: props.vpcId,
       }) as ec2.Vpc;
-    } else {
-      throw new Error('deployConfig must define a vpcId');
     }
 
     const appEnv = new CacclAppEnvironment(this, 'AppEnvironment', {
@@ -53,38 +52,37 @@ class CacclDeployStack extends Stack {
     if (props.dbOptions) {
       createBastion = true;
       db = createDbConstruct(this, {
-        vpc,
-        options: props.dbOptions,
         appEnv,
+        options: props.dbOptions,
+        vpc,
       });
     }
 
     if (props.cacheOptions) {
       createBastion = true;
       new CacclCache(this, 'Cache', {
-        vpc,
-        options: props.cacheOptions,
         appEnv,
+        options: props.cacheOptions,
+        vpc,
       });
     }
 
-    if (props.ecsClusterName !== undefined) {
-      cluster = ecs.Cluster.fromClusterAttributes(this, 'Cluster', {
-        vpc,
-        clusterName: props.ecsClusterName,
-        securityGroups: [],
-      }) as ecs.Cluster;
-    } else {
-      cluster = new ecs.Cluster(this, 'Cluster', {
-        clusterName: props.stackName,
-        containerInsights: true,
-        vpc,
-      });
-    }
+    const cluster =
+      props.ecsClusterName === undefined
+        ? new ecs.Cluster(this, 'Cluster', {
+            clusterName: props.stackName,
+            containerInsights: true,
+            vpc,
+          })
+        : (ecs.Cluster.fromClusterAttributes(this, 'Cluster', {
+            clusterName: props.ecsClusterName,
+            securityGroups: [],
+            vpc,
+          }) as ecs.Cluster);
 
     const taskDef = new CacclTaskDef(this, 'TaskDef', {
-      vpcCidrBlock: vpc.vpcCidrBlock,
       appEnvironment: appEnv,
+      vpcCidrBlock: vpc.vpcCidrBlock,
       ...props.taskDefProps,
     });
 
@@ -103,15 +101,15 @@ class CacclDeployStack extends Stack {
 
       // we also need a separate, app-specific security group for miscellaneous
       lbSecurityGroups.misc = new ec2.SecurityGroup(this, 'MiscSecurityGroup', {
-        vpc,
         description:
           'security group for miscellaneous app-specific ingress rules',
+        vpc,
       });
     } else {
       // primary will be a new, "open" security group
       const newSg = new ec2.SecurityGroup(this, 'FirewallSecurityGroup', {
-        vpc,
         description: 'security group for the load balancer and app service',
+        vpc,
       });
 
       // by default apps are public
@@ -123,7 +121,7 @@ class CacclDeployStack extends Stack {
 
     const service = new CacclService(this, 'EcsService', {
       cluster,
-      taskDef,
+      enableExecuteCommand: props.enableExecuteCommand,
       /**
        * The security group passed into the CacclService is used in a traffic source ingress rule.
        * i.e., the resulting ECS servcie will get its own security group with a single ingress rule that allows
@@ -131,14 +129,14 @@ class CacclDeployStack extends Stack {
        */
       loadBalancerSg: lbSecurityGroups.primary,
       taskCount: props.taskCount,
-      enableExecuteCommand: props.enableExecuteCommand,
+      taskDef,
     });
 
     const loadBalancer = new CacclLoadBalancer(this, 'LoadBalancer', {
-      certificateArn: props.certificateArn,
-      loadBalancerTarget: service.loadBalancerTarget,
       albLogBucketName: props.albLogBucketName,
+      certificateArn: props.certificateArn,
       extraOptions: props.lbOptions,
+      loadBalancerTarget: service.loadBalancerTarget,
       securityGroups: lbSecurityGroups,
       vpc,
     });
@@ -150,8 +148,8 @@ class CacclDeployStack extends Stack {
 
     const notifyProps: CacclNotificationsProps = {
       ...props.notifications,
-      service,
       loadBalancer,
+      service,
     };
 
     if (db) {
@@ -170,21 +168,22 @@ class CacclDeployStack extends Stack {
         bastionSg = lbSecurityGroups.primary;
       } else {
         bastionSg = new ec2.SecurityGroup(this, 'BastionSecurityGroup', {
-          vpc,
           description: 'security group for the ssh bastion host',
+          vpc,
         });
         bastionSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22));
       }
-      new CacclSshBastion(this, 'SshBastion', { vpc, sg: bastionSg });
+
+      new CacclSshBastion(this, 'SshBastion', { sg: bastionSg, vpc });
     }
 
     if (props.scheduledTasks) {
       const scheduledTasks = new CacclScheduledTasks(this, 'ScheduledTasks', {
-        vpc,
-        scheduledTasks: props.scheduledTasks,
         clusterName: cluster.clusterName,
+        scheduledTasks: props.scheduledTasks,
         serviceName: service.ecsService.serviceName,
         taskDefinition: taskDef.appOnlyTaskDef,
+        vpc,
       });
       dashboard.addScheduledTasksSection(scheduledTasks);
     }

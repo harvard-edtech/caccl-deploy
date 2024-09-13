@@ -1,8 +1,7 @@
 // Import helpers
-import getRepoImageList from './getRepoImageList.js';
-
-// Import classes
 import AssumedRole from '../classes/AssumedRole.js';
+import getRepoImageList from './getRepoImageList.js';
+// Import classes
 
 /**
  * Confirms that a tag is the latest for a repo
@@ -18,7 +17,7 @@ const isLatestTag = async (
 ): Promise<boolean> => {
   const imageList = await getRepoImageList(assumedRole, repoName);
   return (
-    !!imageList.length &&
+    imageList.length > 0 &&
     !!imageList[0].imageTags &&
     imageList[0].imageTags.includes(tag)
   );

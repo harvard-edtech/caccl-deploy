@@ -2,12 +2,11 @@
 import { z } from 'zod';
 
 const CacclCacheOptions = z.object({
+  cacheNodeType: z.string().optional(),
   engine: z.string(),
   numCacheNodes: z.number().optional(),
-  cacheNodeType: z.string().optional(),
 });
 
-// TODO: JSDoc
 type CacclCacheOptions = z.infer<typeof CacclCacheOptions>;
 
 export default CacclCacheOptions;
