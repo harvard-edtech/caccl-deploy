@@ -1,17 +1,9 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 // Import flat
 import flat from 'flat';
-
 // Import object-hash
 import { sha1 } from 'object-hash';
 
-// Import shared types
-import create from './helpers/create.js';
-import fromFlattened from './helpers/fromFlattened.js';
-import wipeConfig from './helpers/wipeConfig.js';
-import { DeployConfigData } from '../types/index.js';
-
-// Import from aws
 import {
   AssumedRole,
   deleteSecrets,
@@ -21,29 +13,22 @@ import {
   putSsmParameter,
   resolveSecret,
 } from '../aws/index.js';
-
-// Import config prompts
 import {
-  promptInfraStackName,
-  promptCertificateArn,
   promptAppImage,
+  promptCertificateArn,
+  promptInfraStackName,
   promptKeyValuePairs,
 } from '../configPrompts/index.js';
-
-// Import shared errors
+import logger from '../logger.js';
 import AppNotFound from '../shared/errors/AppNotFound.js';
 import ExistingSecretWontDelete from '../shared/errors/ExistingSecretWontDelete.js';
-
-// Import shared helpers
 import readJson from '../shared/helpers/readJson.js';
-
-// Import shared types
 import AwsTag from '../shared/types/AwsTag.js';
+import { DeployConfigData } from '../types/index.js';
+import create from './helpers/create.js';
+import fromFlattened from './helpers/fromFlattened.js';
+import wipeConfig from './helpers/wipeConfig.js';
 
-// Import logger
-import logger from '../logger.js';
-
-// TODO: JSDoc
 namespace DeployConfig {
   /*------------------------------------------------------------------------*/
   /* ---------------------------- Constructors ---------------------------- */
@@ -69,15 +54,14 @@ namespace DeployConfig {
     keepSecretArns?: boolean,
   ): Promise<DeployConfigData> => {
     const ssmParams = await getSsmParametersByPrefix(appPrefix);
-    if (!ssmParams.length) {
+    if (ssmParams.length === 0) {
       throw new AppNotFound(
         `No configuration found using app prefix ${appPrefix}`,
       );
     }
 
     const flattened: Record<string, string> = {};
-    for (let i = 0; i < ssmParams.length; i += 1) {
-      const param = ssmParams[i];
+    for (const param of ssmParams) {
       if (!param.Name || !param.Value) continue;
       // trim off the prefix of the parameter name (path)
       // e.g. '/foo/bar/baz/12345' becomes 'baz/12345'
@@ -90,6 +74,7 @@ namespace DeployConfig {
 
       flattened[paramName] = value;
     }
+
     return fromFlattened(flattened);
   };
 
@@ -157,10 +142,11 @@ namespace DeployConfig {
   export const tagsForAws = (deployConfig: DeployConfigData): AwsTag[] => {
     if (
       deployConfig.tags === undefined ||
-      !Object.keys(deployConfig.tags).length
+      Object.keys(deployConfig.tags).length === 0
     ) {
       return [];
     }
+
     return Object.entries(deployConfig.tags).map(([Key, Value]) => {
       return { Key, Value };
     });
@@ -176,11 +162,8 @@ namespace DeployConfig {
     const paramEntries = Object.entries(flattened);
     const awsTags = tagsForAws(deployConfig);
 
-    for (let i = 0; i < paramEntries.length; i += 1) {
-      const [flattenedName, rawValue] = paramEntries[i];
-
+    for (const [flattenedName, rawValue] of paramEntries) {
       if (!rawValue || typeof rawValue === 'object') {
-        // eslint-disable-next-line no-continue
         continue;
       }
 
@@ -197,20 +180,21 @@ namespace DeployConfig {
         try {
           paramValue = await putSecret(
             {
+              Description: 'Created and managed by caccl-deploy.',
               Name: paramName,
               SecretString: rawValue,
-              Description: 'Created and managed by caccl-deploy.',
             },
             awsTags,
           );
-        } catch (err) {
-          if (err instanceof ExistingSecretWontDelete) {
-            logger.log(err.message);
+        } catch (error) {
+          if (error instanceof ExistingSecretWontDelete) {
+            logger.log(error.message);
             logger.log('Aborting import and cleaning up.');
             await wipeConfig(appPrefix, flattened);
             return;
           }
         }
+
         isSecret = true;
       }
 
@@ -220,11 +204,11 @@ namespace DeployConfig {
       ].join(' ');
 
       const paramOpts = {
-        Name: paramName,
-        Value: paramValue,
-        Type: 'String',
-        Overwrite: true,
         Description: paramDescription,
+        Name: paramName,
+        Overwrite: true,
+        Type: 'String',
+        Value: paramValue,
       };
 
       await putSsmParameter(paramOpts, awsTags);
@@ -238,13 +222,13 @@ namespace DeployConfig {
 
   // FIXME: does not address flattening
   export const update = async (opts: {
-    deployConfig: DeployConfigData;
     appPrefix: string;
+    deployConfig: DeployConfigData;
     param: string;
     value: string;
   }): Promise<DeployConfigData> => {
     // Destructure opts
-    const { deployConfig, appPrefix, param, value } = opts;
+    const { appPrefix, deployConfig, param, value } = opts;
 
     // Create new deployConfig
     const newDeployConfig = DeployConfigData.parse({
@@ -270,9 +254,11 @@ namespace DeployConfig {
     if (value === undefined) {
       throw new Error(`${param} doesn't exist`);
     }
+
     if (value.startsWith('arn:aws:secretsmanager')) {
       await deleteSecrets([value]);
     }
+
     const paramPath = [appPrefix, param].join('/');
     await deleteSsmParameters([paramPath]);
   };
@@ -284,16 +270,17 @@ namespace DeployConfig {
     let existingConfig;
     try {
       existingConfig = await fromSsmParams(ssmPrefix, true);
-    } catch (err) {
-      if (err instanceof AppNotFound) {
+    } catch (error) {
+      if (error instanceof AppNotFound) {
         if (ignoreMissing) {
           return;
         }
+
         throw new AppNotFound(
           `No configuration found using prefix ${ssmPrefix}`,
         );
       } else {
-        throw err;
+        throw error;
       }
     }
 

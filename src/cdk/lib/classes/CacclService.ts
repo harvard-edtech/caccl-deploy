@@ -1,12 +1,11 @@
 // Import AWS CDK lib
 import {
+  CfnOutput,
+  Stack,
   aws_cloudwatch as cloudwatch,
   aws_ec2 as ec2,
   aws_ecs as ecs,
-  CfnOutput,
-  Stack,
 } from 'aws-cdk-lib';
-
 // Import AWS constructs
 import { Construct } from 'constructs';
 
@@ -14,43 +13,43 @@ import { Construct } from 'constructs';
 import { CacclServiceProps } from '../../../types/index.js';
 
 class CacclService extends Construct {
-  loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
+  alarms: cloudwatch.Alarm[];
 
   ecsService: ecs.FargateService;
 
-  alarms: cloudwatch.Alarm[];
+  loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
 
   constructor(scope: Construct, id: string, props: CacclServiceProps) {
     super(scope, id);
 
     const {
       cluster,
-      taskDef,
-      taskCount,
-      loadBalancerSg,
       enableExecuteCommand = false,
+      loadBalancerSg,
+      taskCount,
+      taskDef,
     } = props;
 
     const serviceSg = new ec2.SecurityGroup(this, 'SecurityGroup', {
-      vpc: cluster.vpc,
       description: 'ecs service security group',
+      vpc: cluster.vpc,
     });
     // Load balancer to tasks
     serviceSg.connections.allowFrom(loadBalancerSg, ec2.Port.tcp(443));
 
     this.ecsService = new ecs.FargateService(this, 'FargateService', {
-      cluster,
-      securityGroups: [serviceSg],
-      platformVersion: ecs.FargatePlatformVersion.VERSION1_4,
-      taskDefinition: taskDef.taskDef,
-      desiredCount: taskCount,
-      minHealthyPercent: 100,
-      maxHealthyPercent: 200,
       circuitBreaker: {
         rollback: true,
       },
-      propagateTags: ecs.PropagatedTagSource.SERVICE,
+      cluster,
+      desiredCount: taskCount,
       enableExecuteCommand,
+      maxHealthyPercent: 200,
+      minHealthyPercent: 100,
+      platformVersion: ecs.FargatePlatformVersion.VERSION1_4,
+      propagateTags: ecs.PropagatedTagSource.SERVICE,
+      securityGroups: [serviceSg],
+      taskDefinition: taskDef.taskDef,
     });
 
     // this is the thing that gets handed off to the load balancer

@@ -31,7 +31,10 @@ const mochaHooks = {
 
     const awsCredPath = path.join(tempDir, 'credentials');
     process.env.AWS_SHARED_CREDENTIALS_FILE = awsCredPath;
-    fs.writeFileSync(awsCredPath, '[default]\naws_access_key_id=fakeaccesskeyid\naws_secret_access_key=fakeaccesskey');
+    fs.writeFileSync(
+      awsCredPath,
+      '[default]\naws_access_key_id=fakeaccesskeyid\naws_secret_access_key=fakeaccesskey',
+    );
 
     // Setup config
     setConfigDefaults();
@@ -40,9 +43,7 @@ const mochaHooks = {
   afterEach() {
     // @ts-ignore
     AWSMock.restore();
-  }
+  },
 };
 
-export {
-  mochaHooks,
-};
+export { mochaHooks };

@@ -1,12 +1,10 @@
 // Import NodeJS libs
-import fs from 'fs';
-import path from 'path';
-
-// Import AWS CDK lib
 import { aws_ecr as ecr, aws_ecs as ecs } from 'aws-cdk-lib';
-
 // Import AWS constructs
 import { Construct } from 'constructs';
+import fs from 'node:fs';
+// Import AWS CDK lib
+import path from 'node:path';
 
 // Import shared types
 import { CacclContainerImageOptions } from '../../../types/index.js';
@@ -29,7 +27,7 @@ class CacclContainerImage extends Construct {
         if (splitArn.length === 7) {
           // tag is appended to arn
           repoArn = splitArn.slice(0, 6).join(':');
-          repoTag = splitArn.slice(-1).join();
+          repoTag = splitArn.slice(-1).join(',');
         } else {
           repoArn = appImage;
         }
@@ -43,19 +41,20 @@ class CacclContainerImage extends Construct {
       } else {
         this.image = ecs.ContainerImage.fromRegistry(appImage);
       }
-    } else if (buildPath !== undefined) {
-      if (!fs.existsSync(path.join(buildPath, 'Dockerfile'))) {
-        console.error(`No Dockerfile found at ${buildPath}`);
-        process.exit(1);
-      }
-      this.image = ecs.ContainerImage.fromAsset(buildPath);
-    } else {
+    } else if (buildPath === undefined) {
       console.error('Missing configuration options for building the app image');
       console.error('At least one of the following must be defined:');
       console.error(' * deployConfig.appImage.repoName');
       console.error(' * deployConfig.appImage.buildPath');
       console.error(' * the $APP_DIR environment variable');
       process.exit(1);
+    } else {
+      if (!fs.existsSync(path.join(buildPath, 'Dockerfile'))) {
+        console.error(`No Dockerfile found at ${buildPath}`);
+        process.exit(1);
+      }
+
+      this.image = ecs.ContainerImage.fromAsset(buildPath);
     }
   }
 }

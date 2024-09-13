@@ -1,8 +1,7 @@
 // Import prompt
-import prompt from './prompt.js';
-
 // Import logger
 import logger from '../logger.js';
+import prompt from './prompt.js';
 
 const promptKeyValuePairs = async (
   label: string,
@@ -11,15 +10,16 @@ const promptKeyValuePairs = async (
 ): Promise<Record<string, string>> => {
   const pairs = { ...current };
   const displayList: string[] = [];
-  Object.entries(pairs).forEach(([k, v]) => {
+  for (const [k, v] of Object.entries(pairs)) {
     displayList.push(`${k}=${v}`);
-  });
+  }
+
   logger.log(`Current ${label}(s):\n${displayList.join('\n')}`);
   const newEntry = await prompt({
-    type: 'text',
-    name: 'value',
     message: `Enter a new ${label}, e.g. ${example}. Leave empty to continue.`,
-    validate: (v) => {
+    name: 'value',
+    type: 'text',
+    validate(v) {
       return v !== '' && v.split('=').length !== 2
         ? 'invalid entry format'
         : true;
@@ -30,6 +30,7 @@ const promptKeyValuePairs = async (
     pairs[newKey] = newValue;
     return promptKeyValuePairs(label, example, pairs);
   }
+
   return pairs;
 };
 

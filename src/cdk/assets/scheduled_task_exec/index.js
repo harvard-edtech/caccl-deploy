@@ -33,18 +33,18 @@ exports.handler = async (event) => {
   const execResp = await ecs
     .runTask({
       cluster: ECS_CLUSTER,
-      taskDefinition: ECS_TASK_DEFINITION,
-      networkConfiguration,
       launchType: 'FARGATE',
-      platformVersion: '1.4.0',
+      networkConfiguration,
       overrides: {
         containerOverrides: [
           {
-            name: 'AppOnlyContainer',
             command: ['/bin/sh', '-c', execCommand],
+            name: 'AppOnlyContainer',
           },
         ],
       },
+      platformVersion: '1.4.0',
+      taskDefinition: ECS_TASK_DEFINITION,
     })
     .promise();
   const { taskArn } = execResp.tasks[0];

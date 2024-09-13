@@ -3,7 +3,6 @@ import AWS from 'aws-sdk';
 
 // Import shared helpers
 import readFile from '../../shared/helpers/readFile.js';
-
 // Import constants
 import EC2_INSTANCE_CONNECT_USER from '../constants/EC2_INSTANCE_CONNECT_USER.js';
 

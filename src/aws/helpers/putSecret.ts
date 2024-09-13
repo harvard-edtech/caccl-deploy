@@ -1,22 +1,18 @@
 // Import aws-sdk
 import AWS from 'aws-sdk';
 
-// Import shared errors
-import secretExists from './secretExists.js';
+import logger from '../../logger.js';
 import ExistingSecretWontDelete from '../../shared/errors/ExistingSecretWontDelete.js';
-
 // Import shared errors
 import SecretNotCreated from '../../shared/errors/SecretNotCreated.js';
-
 // Import shared helpers
 import sleep from '../../shared/helpers/sleep.js';
-
 // Import shared types
 import AwsTag from '../../shared/types/AwsTag.js';
 import SecretOpts from '../../shared/types/SecretOpts.js';
-
+import secretExists from './secretExists.js';
 // Import logger
-import logger from '../../logger.js';
+// Import shared errors
 
 /**
  * creates or updates a secrets manager entry
@@ -37,7 +33,7 @@ const putSecret = async (
 ): Promise<string> => {
   const sm = new AWS.SecretsManager();
 
-  const { Name: SecretId, Description, SecretString } = secretOpts;
+  const { Description, Name: SecretId, SecretString } = secretOpts;
 
   let secretResp;
   try {
@@ -45,15 +41,15 @@ const putSecret = async (
     if (exists) {
       secretResp = await sm
         .updateSecret({
-          SecretId,
           Description,
+          SecretId,
           SecretString,
         })
         .promise();
 
       logger.log(`secretsmanager entry ${SecretId} updated`);
 
-      if (tags.length) {
+      if (tags.length > 0) {
         await sm
           .tagResource({
             SecretId,
@@ -65,30 +61,33 @@ const putSecret = async (
     } else {
       secretResp = await sm
         .createSecret({
-          Name: SecretId,
           Description,
+          Name: SecretId,
           SecretString,
           Tags: tags,
         })
         .promise();
       logger.log(`secretsmanager entry ${SecretId} created`);
     }
-  } catch (err: unknown) {
-    if (!(err instanceof Error)) throw err;
-    if (err.message.includes('already scheduled for deletion')) {
+  } catch (error: unknown) {
+    if (!(error instanceof Error)) throw error;
+    if (error.message.includes('already scheduled for deletion')) {
       if (retries < 5) {
         // eslint-disable-next-line no-param-reassign
         retries += 1;
         await sleep(2 ** retries * 1000);
         return putSecret(secretOpts, tags, retries);
       }
+
       console.error('putSecret failed after 5 retries');
       throw new ExistingSecretWontDelete(
         `Failed to overwrite existing secret ${SecretId}`,
       );
     }
-    throw err;
+
+    throw error;
   }
+
   if (!secretResp.ARN)
     throw new SecretNotCreated(`Could not create secret ${SecretId}`);
   return secretResp.ARN;

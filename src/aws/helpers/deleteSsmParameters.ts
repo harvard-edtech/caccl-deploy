@@ -20,9 +20,9 @@ const deleteSsmParameters = async (paramNames: string[]) => {
         Names: paramNamesSlice,
       })
       .promise();
-    paramNamesSlice.forEach((name) => {
+    for (const name of paramNamesSlice) {
       Logger.log(`ssm parameter ${name} deleted`);
-    });
+    }
   }
 };
 

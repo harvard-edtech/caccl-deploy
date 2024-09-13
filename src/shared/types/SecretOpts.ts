@@ -4,8 +4,8 @@
  * @author Benedikt Arnarsson
  */
 type SecretOpts = {
-  Name: string;
   Description: string;
+  Name: string;
   SecretString: string;
 };
 

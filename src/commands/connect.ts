@@ -1,8 +1,6 @@
-import { Flags } from '@oclif/core'
-
-import yn from 'yn';
+import { Flags } from '@oclif/core';
 import untildify from 'untildify';
-
+import yn from 'yn';
 
 import {
   EC2_INSTANCE_CONNECT_USER,
@@ -10,61 +8,60 @@ import {
   resolveSecret,
   sendSSHPublicKey,
 } from '../aws/index.js';
-
 // Import base command
 import { BaseCommand } from '../base.js';
 
-
+// eslint-disable-next-line no-use-before-define
 export default class Connect extends BaseCommand<typeof Connect> {
-  static override description = "connect to an app's peripheral services (db, redis, etc)";
+  static override description =
+    "connect to an app's peripheral services (db, redis, etc)";
 
-  static override examples = [
-    '<%= config.bin %> <%= command.id %>',
-  ]
+  static override examples = ['<%= config.bin %> <%= command.id %>'];
 
   static override flags = {
     'app': Flags.string({
       char: 'a',
-      required: true,
       description: 'name of the app to work with',
+      required: true,
     }),
     'list': Flags.boolean({
       char: 'l',
       default: false,
       description: 'list the things to connect to',
     }),
-    'service': Flags.string({
-      char: 's',
-      description: 'service to connect to; use `--list` to see what is available',
-      required: true,
-    }),
-    'public-key': Flags.string({
-      char: 'k',
-      description: 'path to the ssh public key file to use',
-      default: untildify('~/.ssh/id_rsa.pub'),
-    }),
     'local-port': Flags.string({
       description: 'attach tunnel to a non-default local port',
     }),
+    'public-key': Flags.string({
+      char: 'k',
+      default: untildify('~/.ssh/id_rsa.pub'),
+      description: 'path to the ssh public key file to use',
+    }),
     'quiet': Flags.boolean({
       char: 'q',
-      description: 'output only the ssh tunnel command',
       default: false,
+      description: 'output only the ssh tunnel command',
+    }),
+    'service': Flags.string({
+      char: 's',
+      description:
+        'service to connect to; use `--list` to see what is available',
+      required: true,
     }),
     'sleep': Flags.string({
       char: 'S',
-      description: 'keep the tunnel alive for this long without activity',
       default: '60',
+      description: 'keep the tunnel alive for this long without activity',
     }),
-  }
+  };
 
   public async run(): Promise<void> {
     // Destructure flags
     const {
+      list,
       'local-port': localPortFlag,
       'public-key': publicKey,
       quiet,
-      list,
       service,
       sleep,
     } = this.flags;
@@ -78,12 +75,13 @@ export default class Connect extends BaseCommand<typeof Connect> {
     const deployConfig = await this.getDeployConfig(assumedRole);
 
     const services = new Set();
-    ['dbOptions' as const, 'cacheOptions' as const].forEach((optsKey) => {
+    for (const optsKey of ['dbOptions' as const, 'cacheOptions' as const]) {
       const serviceOptions = deployConfig[optsKey];
       if (serviceOptions) {
         services.add(serviceOptions.engine);
       }
-    });
+    }
+
     if (yn(deployConfig.docDb)) {
       this.exitWithError(
         [
@@ -94,7 +92,9 @@ export default class Connect extends BaseCommand<typeof Connect> {
     }
 
     if (list) {
-      this.exitWithSuccess(['Valid `--service=` options:', ...services].join('\n  '));
+      this.exitWithSuccess(
+        ['Valid `--service=` options:', ...services].join('\n  '),
+      );
     }
 
     if (!services.has(service)) {
@@ -104,8 +104,14 @@ export default class Connect extends BaseCommand<typeof Connect> {
     const cfnStackName = this.getCfnStackName();
     const cfnStackExports = await getCfnStackExports(cfnStackName);
 
-    const { bastionHostAz, bastionHostId, bastionHostIp, dbPasswordSecretArn } =
-      cfnStackExports;
+    const {
+      bastionHostAz,
+      bastionHostId,
+      bastionHostIp,
+      cacheEndpoint,
+      dbClusterEndpoint,
+      dbPasswordSecretArn,
+    } = cfnStackExports;
 
     try {
       await sendSSHPublicKey({
@@ -113,11 +119,11 @@ export default class Connect extends BaseCommand<typeof Connect> {
         instanceId: bastionHostId,
         sshKeyPath: publicKey,
       });
-    } catch (err) {
+    } catch (error) {
       const message =
-        err instanceof Error
-          ? err.message
-          : `Could not send SSH public key: ${err}`;
+        error instanceof Error
+          ? error.message
+          : `Could not send SSH public key: ${error}`;
       this.exitWithError(message);
     }
 
@@ -125,8 +131,8 @@ export default class Connect extends BaseCommand<typeof Connect> {
     let localPort;
     let clientCommand;
 
-    if (['mysql', 'docdb'].includes(service)) {
-      endpoint = cfnStackExports.dbClusterEndpoint;
+    if (['docdb', 'mysql'].includes(service)) {
+      endpoint = dbClusterEndpoint;
       const password = await resolveSecret(dbPasswordSecretArn);
       if (service === 'mysql') {
         localPort = localPortFlag || '3306';
@@ -138,7 +144,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
         clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
       }
     } else if (service === 'redis') {
-      endpoint = cfnStackExports.cacheEndpoint;
+      endpoint = cacheEndpoint;
       localPort = localPortFlag || '6379';
       clientCommand = `redis-cli -p ${localPort}`;
     } else {

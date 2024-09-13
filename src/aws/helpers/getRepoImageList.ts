@@ -1,12 +1,11 @@
 // Import aws-sdk
 import AWS from 'aws-sdk';
 
-// Import shared helpers
-import getPaginatedResponse from './getPaginatedResponse.js';
 import looksLikeSemver from '../../shared/helpers/looksLikeSemver.js';
-
 // Import classes
 import AssumedRole from '../classes/AssumedRole.js';
+import getPaginatedResponse from './getPaginatedResponse.js';
+// Import shared helpers
 
 /**
  * @author Jay Luker
@@ -24,11 +23,11 @@ const getRepoImageList = async (
   const images = await getPaginatedResponse(
     ecr.describeImages.bind(ecr),
     {
-      repositoryName: repo,
-      maxResults: 1000,
       filter: {
         tagStatus: 'TAGGED',
       },
+      maxResults: 1000,
+      repositoryName: repo,
     },
     'imageDetails',
   );
@@ -40,9 +39,11 @@ const getRepoImageList = async (
     if (a.imagePushedAt < b.imagePushedAt) {
       return 1;
     }
+
     if (a.imagePushedAt > b.imagePushedAt) {
       return -1;
     }
+
     return 0;
   });
 
@@ -55,6 +56,7 @@ const getRepoImageList = async (
       });
     });
   }
+
   return images;
 };
 

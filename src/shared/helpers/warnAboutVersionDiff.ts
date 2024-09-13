@@ -37,6 +37,7 @@ const warnAboutVersionDiff = (
   if (!semver.valid(v1) || !semver.valid(v2)) {
     return true;
   }
+
   // warn if diff is greater than a patch version
   return !semver.satisfies(v1, `${v2.slice(0, -1)}x`);
 };

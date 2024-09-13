@@ -44,7 +44,11 @@ describe('images', () => {
     expect(stdout).to.equal(
       `${table([
         ['Pushed On', 'Tags', 'ARNs'],
-        [moment(1725416968).format(), 'main', 'arn:aws:ecr:us-east-1:test-registry-id:repository/test:main'],
+        [
+          moment(1725416968).format(),
+          'main',
+          'arn:aws:ecr:us-east-1:test-registry-id:repository/test:main',
+        ],
       ])}\n`,
     );
 
@@ -86,9 +90,21 @@ describe('images', () => {
     expect(stdout).to.equal(
       `${table([
         ['Pushed On', 'Tags', 'ARNs'],
-        [moment(1725416968).format(), 'main', 'arn:aws:ecr:us-east-1:test-registry-id:repository/test:main'],
-        [moment(1725416068).format(), '1.0', 'arn:aws:ecr:us-east-1:test-registry-id:repository/test:1.0'],
-        [moment(1725410968).format(), 'feature/test', 'arn:aws:ecr:us-east-1:test-registry-id:repository/test:feature/test'],
+        [
+          moment(1725416968).format(),
+          'main',
+          'arn:aws:ecr:us-east-1:test-registry-id:repository/test:main',
+        ],
+        [
+          moment(1725416068).format(),
+          '1.0',
+          'arn:aws:ecr:us-east-1:test-registry-id:repository/test:1.0',
+        ],
+        [
+          moment(1725410968).format(),
+          'feature/test',
+          'arn:aws:ecr:us-east-1:test-registry-id:repository/test:feature/test',
+        ],
       ])}\n`,
     );
 

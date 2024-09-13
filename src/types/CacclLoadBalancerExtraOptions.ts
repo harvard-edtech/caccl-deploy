@@ -6,7 +6,6 @@ const CacclLoadBalancerExtraOptions = z.object({
   targetDeregistrationDelay: z.number().optional(),
 });
 
-// TODO: JSDoc
 type CacclLoadBalancerExtraOptions = z.infer<
   typeof CacclLoadBalancerExtraOptions
 >;

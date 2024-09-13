@@ -3,7 +3,6 @@ import { Construct } from 'constructs';
 
 // Import shared types
 import { CacclDbProps } from '../../../types/index.js';
-
 // Import classes
 import CacclDocDb from '../classes/CacclDocDb.js';
 import CacclRdsDb from '../classes/CacclRdsDb.js';
@@ -18,12 +17,17 @@ import CacclRdsDb from '../classes/CacclRdsDb.js';
 const createDbConstruct = (scope: Construct, props: CacclDbProps) => {
   const { options } = props;
   switch (options.engine.toLowerCase()) {
-    case 'docdb':
+    case 'docdb': {
       return new CacclDocDb(scope, 'DocDb', props);
-    case 'mysql':
+    }
+
+    case 'mysql': {
       return new CacclRdsDb(scope, 'RdsDb', props);
-    default:
-      throw Error(`Invalid dbOptions.engine value: ${options.engine}`);
+    }
+
+    default: {
+      throw new Error(`Invalid dbOptions.engine value: ${options.engine}`);
+    }
   }
 };
 
