@@ -1,6 +1,7 @@
 import {
   aws_ecs as ecs,
   aws_logs as logs,
+  aws_iam as iam,
   Stack,
   RemovalPolicy,
   CfnOutput,
@@ -62,6 +63,14 @@ export class CacclTaskDef extends Construct {
       cpu: taskCpu,
       memoryLimitMiB: taskMemory,
     });
+
+    const sendEmailPolicy = new iam.PolicyStatement({
+      actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+      resources: ['*'],
+    });
+
+    this.taskDef.addToTaskRolePolicy(sendEmailPolicy);
+    this.appOnlyTaskDef.addToTaskRolePolicy(sendEmailPolicy);
 
     // params for the fargate service's app container
     const appContainerParams = {

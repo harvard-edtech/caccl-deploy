@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- task role now gets SES permissions to send email
+
 ### Modified
 
 - dropped node v12 and v14 from testing matrix; added v20
