@@ -231,7 +231,7 @@ export class CacclDocDb extends CacclDbBase {
     appEnv.addEnvironmentVar('MONGO_HOST', `${this.host}:${this.port}`);
     appEnv.addEnvironmentVar(
       'MONGO_OPTIONS',
-      'tls=true&tlsAllowInvalidCertificates=true',
+      'tls=true&tlsAllowInvalidCertificates=true&retryWrites=False',
     );
     appEnv.addSecret(
       'MONGO_PASS',

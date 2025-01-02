@@ -92,9 +92,9 @@ DB_PASSWORD=`aws secretsmanager get-secret-value --secret-id $DB_PASSWORD_SECRET
 version_four="4.0.0"
 if [ "$(printf '%s\n' "$version_four" "$MONGO_VERSION" | sort -V | head -n1)" = "$version_four" ]; then
     echo "Using mongo > v4"
-    MONGO_OPTIONS="--tls --tlsAllowInvalidHostnames --tlsAllowInvalidCertificates"
+    MONGO_OPTIONS="--tls --tlsAllowInvalidHostnames --tlsAllowInvalidCertificates --retryWrites=false"
 else
-    MONGO_OPTIONS="--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates"
+    MONGO_OPTIONS="--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates --retryWrites=false"
 fi
 
 # we need the bastion host's availability zone and public ip to copy our key there and set up the ssh tunnel
