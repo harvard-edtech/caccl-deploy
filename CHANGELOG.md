@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.16.0] - 2025-01-08
+
 ### Added
 
 - task role now gets SES permissions to send email
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Modified
 
 - dropped node v12 and v14 from testing matrix; added v20
+- added `retryWrites=false` to doc db options
 
 ## [0.15.0] - 2024-02-05
 
