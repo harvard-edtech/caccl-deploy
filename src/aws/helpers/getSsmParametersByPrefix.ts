@@ -1,28 +1,38 @@
-// Import aws-sdk
-import AWS, { SSM } from 'aws-sdk';
+import {
+  GetParametersByPathCommand,
+  GetParametersByPathCommandInput,
+  Parameter,
+  SSMClient,
+} from '@aws-sdk/client-ssm';
 
-// Import helpers
-import getPaginatedResponse from './getPaginatedResponse.js';
+import getPaginatedResponseV2 from './getPaginatedResponseV2.js';
 
 /**
  * Fetch a set of parameter store entries based on a name prefix,
  *  e.g. `/caccl-deploy/foo-app`
- * @author Jay Luker
- * @param {string} prefix
- * @returns {object[]}
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {string} prefix application SSM prefix.
+ * @param {string} [profile='default'] AWS profile.
+ * @returns {Parameter[]} SSM parameters associated with the app configuration.
  */
 const getSsmParametersByPrefix = async (
   prefix: string,
-): Promise<SSM.Types.ParameterList> => {
-  const ssm = new AWS.SSM();
-  await ssm.getParametersByPath().promise();
-  return getPaginatedResponse(
-    ssm.getParametersByPath.bind(ssm),
+  profile = 'default',
+): Promise<Parameter[]> => {
+  const client = new SSMClient({ profile });
+  return getPaginatedResponseV2(
+    async (_input: GetParametersByPathCommandInput) => {
+      const command = new GetParametersByPathCommand(_input);
+      const res = await client.send(command);
+      return {
+        NextToken: res.NextToken,
+        items: res.Parameters,
+      };
+    },
     {
       Path: prefix,
       Recursive: true,
     },
-    'Parameters',
   );
 };
 

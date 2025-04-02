@@ -1,8 +1,10 @@
-// Import aws-sdk
-import AWS from 'aws-sdk';
+import {
+  DescribeParametersCommand,
+  DescribeParametersCommandInput,
+  SSMClient,
+} from '@aws-sdk/client-ssm';
 
-// Import helpers
-import getPaginatedResponse from './getPaginatedResponse.js';
+import getPaginatedResponseV2 from './getPaginatedResponseV2.js';
 
 /**
  * Return all the unique app parameter namespaces, i.e., all the
@@ -11,13 +13,17 @@ import getPaginatedResponse from './getPaginatedResponse.js';
  * The SSM API doesn't have a great way to search/filter for parameter
  * store entries
  *
- * @author Jay Luker
+ * @author Jay Luker, Benedikt Arnarsson
  * @param {string} prefix - name prefix used by the app CloudFormation stacks
- * @returns {string[]}
+ * @param {profile} [profile='default'] AWS profile
+ * @returns {string[]} list of app namespaces
  */
-const getAppList = async (prefix: string): Promise<string[]> => {
-  const ssm = new AWS.SSM();
-  const searchParams = {
+const getAppList = async (
+  prefix: string,
+  profile = 'default',
+): Promise<string[]> => {
+  const client = new SSMClient({ profile });
+  const searchParams: DescribeParametersCommandInput = {
     MaxResults: 50, // lord i hope we never have this many apps
     ParameterFilters: [
       {
@@ -29,11 +35,14 @@ const getAppList = async (prefix: string): Promise<string[]> => {
     ],
   };
 
-  const paramEntries = await getPaginatedResponse(
-    ssm.describeParameters.bind(ssm),
-    searchParams,
-    'Parameters',
-  );
+  const paramEntries = await getPaginatedResponseV2(async (_input) => {
+    const command = new DescribeParametersCommand(_input);
+    const res = await client.send(command);
+    return {
+      NextToken: res.NextToken,
+      items: res.Parameters,
+    };
+  }, searchParams);
   return paramEntries.flatMap((param) => {
     if (!param.Name || !param.Name.startsWith(prefix)) return [];
     return param.Name.split('/')[2];

@@ -2,7 +2,6 @@ import { execSync } from 'node:child_process';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Import logger
 import logger from '../../logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,6 +11,11 @@ const getCommandResult = (cmd: string) => {
   return execSync(cmd, { cwd: __dirname, stdio: 'pipe' }).toString().trim();
 };
 
+/**
+ * Generate the CLI version from the package.json.
+ * @author Benedikt Arnarsson
+ * @returns {string} the semver compatible version of the caccl-deploy CLI.
+ */
 const generateVersion = () => {
   // Get version from package.json
   const packageVersion = '1.0.0';

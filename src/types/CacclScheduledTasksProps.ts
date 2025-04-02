@@ -1,9 +1,11 @@
-// Import AWS CDK lib
 import { aws_ec2 as ec2, aws_ecs as ecs } from 'aws-cdk-lib';
 
-// Import types
 import CacclScheduledTask from './CacclScheduledTask.js';
 
+/**
+ * Properties for constructing a CDK scheduled task with CACCL deploy.
+ * @author Benedikt Arnarsson
+ */
 type CacclScheduledTasksProps = {
   clusterName: string;
   scheduledTasks: { [key: string]: CacclScheduledTask };

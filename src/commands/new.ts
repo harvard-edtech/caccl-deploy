@@ -1,26 +1,18 @@
-// Import chalk
 import { Flags } from '@oclif/core';
 import chalk from 'chalk';
-// Import figlet
 import figlet from 'figlet';
 
-// Import oclif
-
-// Import aws
 import { cfnStackExists, getAppList } from '../aws/index.js';
-// Import base command
 import { BaseCommand } from '../base.js';
-// Import config prompts
 import {
   confirm,
   confirmProductionOp,
   promptAppName,
 } from '../configPrompts/index.js';
-// Import deploy config
 import DeployConfig from '../deployConfig/index.js';
-// Import errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
 import UserCancel from '../shared/errors/UserCancel.js';
+import DeployConfigData from '../types/DeployConfigData.js';
 
 // eslint-disable-next-line no-use-before-define
 export default class New extends BaseCommand<typeof New> {
@@ -42,19 +34,10 @@ export default class New extends BaseCommand<typeof New> {
 
   public async run(): Promise<void> {
     // Destructure flags
-    const {
-      app,
-      import: importFlag,
-      'ssm-root-prefix': ssmRootPrefix,
-      yes,
-    } = this.flags;
+    const { app, import: importFlag } = this.flags;
+    const { profile, ssmRootPrefix, yes } = this.context;
 
-    const assumedRole = this.getAssumedRole();
-    if (this.ecrAccessRoleArn !== undefined) {
-      assumedRole.setAssumedRoleArn(this.ecrAccessRoleArn);
-    }
-
-    const existingApps = await getAppList(ssmRootPrefix);
+    const existingApps = await getAppList(ssmRootPrefix, profile);
 
     let appName;
     try {
@@ -71,18 +54,18 @@ export default class New extends BaseCommand<typeof New> {
 
     if (existingApps.includes(appName)) {
       const cfnStackName = this.getCfnStackName(appName);
-      if (await cfnStackExists(cfnStackName)) {
+      if (await cfnStackExists(cfnStackName, profile)) {
         this.exitWithError('A deployed app with that name already exists');
       } else {
         this.log(`Configuration for ${app} already exists`);
       }
 
       if (yes || (await confirm('Overwrite?'))) {
-        if (!(await confirmProductionOp(yes))) {
+        if (!(await confirmProductionOp(this.context))) {
           this.exitWithSuccess();
         }
 
-        await DeployConfig.wipeExisting(appPrefix);
+        await DeployConfig.wipeExisting(appPrefix, true, profile);
       } else {
         this.exitWithSuccess();
       }
@@ -93,7 +76,7 @@ export default class New extends BaseCommand<typeof New> {
      * What gets imported will be passed to the `generate`
      * operation to complete any missing settings
      */
-    let importedConfig;
+    let importedConfig: Partial<DeployConfigData> = {};
     if (importFlag !== undefined) {
       importedConfig = /^http(s):\//.test(importFlag)
         ? await DeployConfig.fromUrl(importFlag)
@@ -102,7 +85,7 @@ export default class New extends BaseCommand<typeof New> {
 
     let deployConfig;
     try {
-      deployConfig = await DeployConfig.generate(assumedRole, importedConfig);
+      deployConfig = await DeployConfig.generate(this.context, importedConfig);
     } catch (error) {
       if (error instanceof UserCancel) {
         this.exitWithSuccess();
@@ -118,7 +101,11 @@ export default class New extends BaseCommand<typeof New> {
       throw error;
     }
 
-    await DeployConfig.syncToSsm(deployConfig, appPrefix);
+    await DeployConfig.syncToSsm({
+      appPrefix,
+      deployConfig,
+      profile,
+    });
     this.exitWithSuccess(
       [
         chalk.yellowBright(figlet.textSync(`${appName}!`)),

@@ -1,35 +1,49 @@
-// Import aws-sdk
-import AWS from 'aws-sdk';
+import {
+  DescribeImagesCommand,
+  DescribeImagesCommandInput,
+  ECRClient,
+  ImageDetail,
+  TagStatus,
+} from '@aws-sdk/client-ecr';
 
 import looksLikeSemver from '../../shared/helpers/looksLikeSemver.js';
-// Import classes
-import AssumedRole from '../classes/AssumedRole.js';
-import getPaginatedResponse from './getPaginatedResponse.js';
-// Import shared helpers
+import CacclDeployContext from '../../types/CacclDeployContext.js';
+import getAssumedRoleCredentials from './getAssumedRoleCredentials.js';
+import getPaginatedResponseV3 from './getPaginatedResponseV3.js';
 
 /**
- * @author Jay Luker
+ * Get information about all ECR images in a specified repository.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {CacclDeployContext} context - CACCL deploy context
  * @param {string} repo - ECR repository name, e.g. 'hdce/fooapp'
  * @param {boolean} all - return all tags; don't filter for master, stage,
  *   tags that look like semver, etc
- * @returns {object[]}
+ * @returns {ImageDetail[]} ECR image details.
  */
 const getRepoImageList = async (
-  assumedRole: AssumedRole,
+  context: CacclDeployContext,
   repo: string,
   all?: boolean,
-) => {
-  const ecr = await assumedRole.getAssumedRoleClient(AWS.ECR);
-  const images = await getPaginatedResponse(
-    ecr.describeImages.bind(ecr),
-    {
-      filter: {
-        tagStatus: 'TAGGED',
-      },
-      maxResults: 1000,
-      repositoryName: repo,
+): Promise<ImageDetail[]> => {
+  const client = new ECRClient(await getAssumedRoleCredentials(context));
+  const input = {
+    filter: {
+      tagStatus: TagStatus.TAGGED,
     },
-    'imageDetails',
+    maxResults: 1000,
+    repositoryName: repo,
+  };
+
+  const images = await getPaginatedResponseV3(
+    async (_input: DescribeImagesCommandInput) => {
+      const command = new DescribeImagesCommand(_input);
+      const res = await client.send(command);
+      return {
+        items: res.imageDetails,
+        nextToken: res.nextToken,
+      };
+    },
+    input,
   );
 
   // sort the images by the date they were pushed to ECR

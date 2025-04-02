@@ -4,39 +4,19 @@
  * Base oclif Command to setup 'global' flags and context.
  * @author Benedikt Arnarsson
  */
-// Import oclif
 import { Command, Flags, Interfaces } from '@oclif/core';
-// Import chalk
 import chalk from 'chalk';
-// Import figlet
+import envPaths from 'env-paths';
 import figlet from 'figlet';
-// Import yn
-import yn from 'yn';
+import fs from 'node:fs';
+import path from 'node:path';
 
-// Import aws
-import {
-  AssumedRole,
-  getCfnStackExports,
-  initProfile,
-  isConfigured,
-} from './aws/index.js';
-// Import config
-import { conf, configDefaults, setConfigDefaults } from './conf.js';
-// Import prompts
 import { confirm } from './configPrompts/index.js';
-// Import constants
-import CACCL_DEPLOY_NON_INTERACTIVE from './constants/CACCL_DEPLOY_NON_INTERACTIVE.js';
-import CACCL_DEPLOY_VERSION from './constants/CACCL_DEPLOY_VERSION.js';
-// Import deploy config
 import DeployConfig from './deployConfig/index.js';
-// Import logger
 import logger from './logger.js';
-// Import errors
 import AppNotFound from './shared/errors/AppNotFound.js';
-import AwsProfileNotFound from './shared/errors/AwsProfileNotFound.js';
-// Import helpers
-import warnAboutVersionDiff from './shared/helpers/warnAboutVersionDiff.js';
-// Import shared types
+import CacclDeployConfig from './types/CacclDeployConfig.js';
+import CacclDeployContext from './types/CacclDeployContext.js';
 import { DeployConfigData } from './types/index.js';
 
 // Types
@@ -59,13 +39,17 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
       hidden: true,
     }),
     'cfn-stack-prefix': Flags.string({
-      default: conf.get('cfnStackPrefix'),
       description: 'cloudformation stack name prefix, e.g. "CacclDeploy-',
       helpGroup: 'GLOBAL',
       required: true,
     }),
+    'config': Flags.string({
+      char: 'c',
+      description: 'Path to a file containing CACCL Deploy CLI config.',
+      env: 'CACCL_DEPLOY_CONFIG',
+      summary: 'CACCL Deploy config file.',
+    }),
     'ecr-access-role-arn': Flags.string({
-      default: conf.get('ecrAccessRoleArn'),
       description: 'IAM role ARN for cross account ECR repo access',
       helpGroup: 'GLOBAL',
     }),
@@ -75,16 +59,15 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
       helpGroup: 'GLOBAL',
     }),
     'ssm-root-prefix': Flags.string({
-      default: conf.get('ssmRootPrefix'),
       description: 'The root prefix for ssm parameter store entries',
       helpGroup: 'GLOBAL',
-      required: true,
     }),
     'yes': Flags.boolean({
       char: 'y',
-      default: yn(CACCL_DEPLOY_NON_INTERACTIVE),
+      default: false,
       description:
         'non-interactive, yes to everything, overwrite existing, etc',
+      env: 'CACCL_DEPLOY_NON_INTERACTIVE',
       helpGroup: 'GLOBAL',
     }),
   };
@@ -92,131 +75,19 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
   static description = 'A cli tool for managing ECS/Fargate app deployments';
 
   protected args!: Args<T>;
-
-  public byeWithCredentialsError = () => {
-    this.exitWithError(
-      [
-        'Looks like there is a problem with your AWS credentials configuration.',
-        'Did you run `aws configure`? Did you set a region? Default profile?',
-      ].join('\n'),
-    );
-  };
-
-  public ecrAccessRoleArn?: string;
-  public exitWithError = (msg?: string) => {
-    this.bye(msg, 1);
-  };
-
-  public exitWithSuccess = (msg?: string) => {
-    this.bye(msg);
-  };
-
   protected flags!: Flags<T>;
 
-  public initAwsProfile = async (profile: string): Promise<string> => {
-    try {
-      initProfile(profile);
-      return profile;
-    } catch (error) {
-      if (error instanceof AwsProfileNotFound) {
-        this.exitWithError(error.message);
-      } else {
-        throw error;
-      }
-    }
-
-    return profile;
-  };
-
-  private assumedRole?: AssumedRole;
-
-  protected async catch(err: { exitCode?: number } & Error): Promise<any> {
-    // add any custom logic to handle errors from the command
-    // or simply return the parent class error handling
-    return super.catch(err);
-  }
-
-  protected async finally(_: Error | undefined): Promise<any> {
-    // called after run and catch regardless of whether or not the command errored
-    return super.finally(_);
-  }
+  // Contains the config merged with the flags
+  protected context!: CacclDeployContext;
 
   /**
-   * Convenience method for getting the combined root prefix plus app name
-   * used for the SSM Paramter Store parameter names
-   * @param {string} appName
+   * Shared init method for all commands,
+   *    - set the logger
+   *    - pull in common flags
+   *    - find config file and creates/reads it
+   *    - merges config and flags into context
+   * @author Benedikt Arnarsson
    */
-  getAppPrefix(appName?: string) {
-    // Destructure flags
-    const { app, 'ssm-root-prefix': ssmRootPrefix } = this.flags;
-
-    if (
-      ssmRootPrefix === undefined ||
-      (app === undefined && appName === undefined)
-    ) {
-      throw new Error('Attempted to make an ssm prefix with undefined values');
-    }
-
-    return `${ssmRootPrefix}/${appName || app}`;
-  }
-
-  public getAssumedRole(): AssumedRole {
-    if (!this.assumedRole) {
-      this.assumedRole = new AssumedRole();
-    }
-
-    return this.assumedRole;
-  }
-
-  /**
-   * Convenience method for getting the name of the app's CloudFormation stack
-   * @param {string} appName
-   */
-  getCfnStackName(appName?: string) {
-    // Destructure flags
-    const { app, 'cfn-stack-prefix': cfnStackPrefix } = this.flags;
-
-    if (
-      cfnStackPrefix === undefined ||
-      (app === undefined && appName === undefined)
-    ) {
-      throw new Error(
-        'Attempted to make a cloudformation stack name with undefined values',
-      );
-    }
-
-    return `${cfnStackPrefix}${appName || app}`;
-  }
-
-  /**
-   * Retruns the DeployConfig object representing the subcommand's
-   *
-   * @param {boolean} keepSecretArns - if true, for any parameter store values
-   * that reference secretsmanager entries, preserve the secretsmanager ARN
-   * value rather than dereferencing
-   */
-  async getDeployConfig(
-    assumedRole: AssumedRole,
-    keepSecretArns?: boolean,
-  ): Promise<DeployConfigData> {
-    const { app } = this.flags;
-    const appPrefix = this.getAppPrefix();
-    try {
-      const deployConfig = await DeployConfig.fromSsmParams(
-        appPrefix,
-        keepSecretArns,
-      );
-
-      return deployConfig;
-    } catch (error) {
-      if (error instanceof AppNotFound) {
-        this.exitWithError(`${app} app configuration not found!`);
-      }
-    }
-
-    return DeployConfig.generate(assumedRole);
-  }
-
   public async init(): Promise<void> {
     // Set the logger
     logger.setLogger(this.log, this.logToStderr);
@@ -233,27 +104,171 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     this.flags = flags as Flags<T>;
     this.args = args as Args<T>;
 
-    // No need for credentials while testing
-    if (process.env.NODE_ENV !== 'test') {
-      // Initialize the AWS profile
-      await this.initAwsProfile(this.flags.profile);
+    // Get config from the file
+    const config = await this.getConfigFromFile();
 
-      // confirm ASAP that the user's AWS creds/config is good to go
-      if (!isConfigured()) {
-        this.byeWithCredentialsError();
+    // Merging config and flags into context:
+    this.context = {
+      ...config,
+      cfnStackPrefix: this.flags['cfn-stack-prefix'] ?? config.cfnStackPrefix,
+      ecrAccessRoleArn:
+        this.flags['ecr-access-role-arn'] ?? config.ecrAccessRoleArn,
+      profile: this.flags.profile,
+      ssmRootPrefix: this.flags['ssm-root-prefix'] ?? config.ssmRootPrefix,
+      yes: this.flags.yes,
+    };
+  }
+
+  /**
+   * Exit the CLI app with an error message and an exit code of 1.
+   * @author Benedikt Arnarsson
+   * @param {string} msg error message to log before exiting.
+   */
+  public exitWithError = (msg?: string) => {
+    this.bye(msg, 1);
+  };
+
+  /**
+   * Exit the CLI app with a message and an exit code of 0.
+   * @author Benedikt Arnarsson
+   * @param {string} msg message to log before exiting.
+   */
+  public exitWithSuccess = (msg?: string) => {
+    this.bye(msg);
+  };
+
+  /**
+   * Catches any errors that bubble all the way up. Not implemented so far.
+   * @author Benedikt Arnarsson
+   * @param {{ exitCode?: number } & Error} err the caught error information.
+   * @returns {Promise<any>}
+   */
+  protected async catch(err: { exitCode?: number } & Error): Promise<any> {
+    // add any custom logic to handle errors from the command
+    // or simply return the parent class error handling
+    return super.catch(err);
+  }
+
+  /**
+   * Function that will run at the end of the command, whether or not there was an error.
+   * Nothing implemented so far.
+   * @author Benedikt Arnarsson
+   * @param {Error | undefined} _ error information, if there was an error during command execution.
+   * @returns {Promise<any>}
+   */
+  protected async finally(_: Error | undefined): Promise<any> {
+    // called after run and catch regardless of whether or not the command errored
+    return super.finally(_);
+  }
+
+  /**
+   * Convenience method for getting the combined root prefix plus app name
+   * used for the SSM Parameter Store parameter names.
+   * @author Jay Luker
+   * @param {string} appName app name, defaults to flag value.
+   * @returns {string} the full SSM prefix for the specified app.
+   */
+  public getAppPrefix(appName?: string) {
+    // Destructure flags
+    const { app, 'ssm-root-prefix': ssmRootPrefix } = this.flags;
+
+    if (
+      ssmRootPrefix === undefined ||
+      (app === undefined && appName === undefined)
+    ) {
+      throw new Error('Attempted to make an ssm prefix with undefined values');
+    }
+
+    return `${ssmRootPrefix}/${appName || app}`;
+  }
+
+  /**
+   * Convenience method for getting the name of the app's CloudFormation stack
+   * @author Jay Luker
+   * @param {string} appName specific app name, defaults to flag value
+   * @returns {string} app CloudFormation stack name
+   */
+  public getCfnStackName(appName?: string) {
+    // Destructure flags
+    const { app, 'cfn-stack-prefix': cfnStackPrefix } = this.flags;
+
+    if (
+      cfnStackPrefix === undefined ||
+      (app === undefined && appName === undefined)
+    ) {
+      throw new Error(
+        'Attempted to make a cloudformation stack name with undefined values',
+      );
+    }
+
+    return `${cfnStackPrefix}${appName || app}`;
+  }
+
+  /**
+   * Returns the DeployConfig object representing the subcommand's
+   * @author Jay Luker
+   * @param {string} [profile=default]
+   * @param {boolean} [keepSecretArns=false] - if true, for any parameter store values
+   * that reference secretsmanager entries, preserve the secretsmanager ARN
+   * value rather than dereferencing
+   * @returns {DeployConfigData} deploy configuration associated with the current app (set by flag)
+   */
+  public async getDeployConfig(
+    profile = 'default',
+    keepSecretArns = false,
+  ): Promise<DeployConfigData> {
+    const { app } = this.flags;
+    const appPrefix = this.getAppPrefix();
+    try {
+      const deployConfig = await DeployConfig.fromSsmParams(
+        appPrefix,
+        keepSecretArns,
+        profile,
+      );
+
+      return deployConfig;
+    } catch (error) {
+      if (error instanceof AppNotFound) {
+        this.exitWithError(`${app} app configuration not found!`);
       }
     }
 
-    /*
-     * check if this is the first time running and if so create the
-     * config file with defaults
-     */
-    if (!conf.get('ssmRootPrefix')) {
+    return DeployConfig.generate(this.context);
+  }
+
+  /**
+   * Pull the CACCL deploy configuration from the config file location or create one if it doesn't exist.
+   * Pulls from oclif config directory (this.config.configDir), but checks env-paths for backwards compatibility as well.
+   *    - [oclif](https://oclif.io/docs/config)
+   *    - [env-paths](https://www.npmjs.com/package/env-paths)
+   * @author Benedikt Arnarsson
+   * @returns {Promise<CacclDeployConfig>} parsed CACCL deploy CLI config
+   */
+  public async getConfigFromFile(): Promise<CacclDeployConfig> {
+    // Backwards compatibility:
+    const confPath = path.resolve(
+      envPaths('caccl-deploy').config,
+      'config.json',
+    );
+    if (fs.existsSync(confPath)) {
+      const cliConfigJSON = fs.readFileSync(confPath, 'utf8');
+      const cliConfig = JSON.parse(cliConfigJSON);
+
+      return CacclDeployConfig.parse(cliConfig);
+    }
+
+    // New config file location:
+    const configFile =
+      this.flags.config ?? path.resolve(this.config.configDir, 'config.json');
+
+    // check if this is the first time running and if so create the config file with defaults
+    if (!fs.existsSync(configFile)) {
+      const configDefaults = CacclDeployConfig.parse({});
       this.log(chalk.greenBright(figlet.textSync('Caccl-Deploy!')));
       this.log(
         [
           'It looks like this is your first time running caccl-deploy. ',
-          `A preferences file has been created at ${chalk.yellow(conf.path)}`,
+          `A preferences file has been created at ${chalk.yellow(configFile)}`,
           'with the following default values:',
           '',
           ...Object.entries(configDefaults).map(([k, v]) => {
@@ -264,38 +279,27 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
         ].join('\n'),
       );
 
-      CACCL_DEPLOY_NON_INTERACTIVE ||
+      this.flags.yes ||
         (await confirm('Continue?', true)) ||
         this.exitWithSuccess();
-      setConfigDefaults();
+
+      fs.mkdirSync(path.dirname(configFile), { recursive: true });
+      fs.writeFileSync(configFile, JSON.stringify(configDefaults, null, '  '));
+      return configDefaults;
     }
+
+    const cliConfigJSON = fs.readFileSync(configFile, 'utf8');
+    const cliConfig = JSON.parse(cliConfigJSON);
+
+    return CacclDeployConfig.parse(cliConfig);
   }
 
   /**
-   * Will add another confirm prompt that warns if the deployed stack's
-   * version is more than a patch version different from the cli tool.
-   *
-   * @return {CacclDeployCommander}
-   * @memberof CacclDeployCommander
+   * Private method to exit the application with a message and an exit code.
+   * @author Benedikt Arnarsson
+   * @param {string} [msg='bye!'] message to display before exiting.
+   * @param {number} [exitCode=0] exit code.
    */
-  async stackVersionDiffCheck() {
-    const cfnStackName = this.getCfnStackName();
-    const cfnExports = await getCfnStackExports(cfnStackName);
-    const stackVersion = cfnExports.cacclDeployVersion;
-    const cliVersion = CACCL_DEPLOY_VERSION;
-    if (
-      cliVersion === stackVersion ||
-      !warnAboutVersionDiff(stackVersion, cliVersion)
-    ) {
-      return true;
-    }
-
-    const confirmMsg = `Stack deployed with ${chalk.redBright(
-      stackVersion,
-    )}; you are using ${chalk.redBright(cliVersion)}. Proceed?`;
-    return confirm(confirmMsg, false);
-  }
-
   private bye(msg = 'bye!', exitCode = 0) {
     this.log(msg);
     this.exit(exitCode);

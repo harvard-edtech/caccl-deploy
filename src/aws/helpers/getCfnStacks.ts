@@ -1,26 +1,34 @@
-// Import aws-sdk
-import AWS, { CloudFormation } from 'aws-sdk';
+import {
+  CloudFormationClient,
+  DescribeStacksCommand,
+  Stack,
+} from '@aws-sdk/client-cloudformation';
 
-// Import helpers
-import getPaginatedResponse from './getPaginatedResponse.js';
+import getPaginatedResponseV2 from './getPaginatedResponseV2.js';
 
 /**
- * Return a list of Cloudformation stacks with names matching a prefix
- * @param {string} stackPrefix
- * @returns {CloudFormation.Stack[]}
+ * Return a list of Cloudformation stacks with names matching a prefix.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {string} stackPrefix prefix to search for
+ * @param {string} [profile='default'] AWS profile
+ * @returns {Stack[]} all stack which match the prefix
  */
 const getCfnStacks = async (
   stackPrefix: string,
-): Promise<CloudFormation.Stack[]> => {
-  const cfn = new AWS.CloudFormation();
-  const resp = await getPaginatedResponse(
-    cfn.describeStacks.bind(cfn),
-    {},
-    'Stacks',
-  );
+  profile = 'default',
+): Promise<Stack[]> => {
+  const client = new CloudFormationClient({ profile });
+  const resp = await getPaginatedResponseV2(async (_input) => {
+    const command = new DescribeStacksCommand(_input);
+    const res = await client.send(command);
+    return {
+      NextToken: res.NextToken,
+      items: res.Stacks,
+    };
+  }, {});
 
-  return resp.filter((s) => {
-    return s.StackName.startsWith(stackPrefix);
+  return resp.filter((s: Stack) => {
+    return s.StackName && s.StackName.startsWith(stackPrefix);
   });
 };
 

@@ -1,11 +1,10 @@
-// Import types
 import EcrImage from '../../shared/types/EcrImage.js';
 
 /**
  * Reassembles the result of `parseEcrArn` into a string.
- * @author Jay Luker
- * @param {EcrImage} ecrImage
- * @returns {string} an ECR image ARN
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {EcrImage} ecrImage image whose ARN we are creating.
+ * @returns {string} an ECR image ARN.
  */
 const createEcrArn = (ecrImage: Omit<EcrImage, 'service'>): string => {
   return [

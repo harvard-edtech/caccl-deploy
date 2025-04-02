@@ -1,28 +1,31 @@
-// Import aws-sdk
-import AWS, { CloudFormation } from 'aws-sdk';
-// Import camel-case
+import {
+  CloudFormationClient,
+  DescribeStacksCommand,
+  Output,
+} from '@aws-sdk/client-cloudformation';
 import { camelCase } from 'camel-case';
 
-// Import shared errors
 import CfnStackNotFound from '../../shared/errors/CfnStackNotFound.js';
 
 /**
  * Returns an array of objects representing a Cloudformation stack's exports
- * @param {string} stackName
- * @returns {Record<string, string>}
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {string} stackName name of the stack whose exports we want to view.
+ * @param {string} [profile='default'] AWS profile.
+ * @returns {Record<string, string>} stack exports.
  */
 const getCfnStackExports = async (
   stackName: string,
+  profile = 'default',
 ): Promise<Record<string, string>> => {
-  const cnf = new AWS.CloudFormation();
+  const client = new CloudFormationClient({ profile });
   // TODO: better typing
   let exports: Record<string, string> = {};
   try {
-    const resp = await cnf
-      .describeStacks({
-        StackName: stackName,
-      })
-      .promise();
+    const command = new DescribeStacksCommand({
+      StackName: stackName,
+    });
+    const resp = await client.send(command);
     if (
       resp.Stacks === undefined ||
       resp.Stacks.length === 0 ||
@@ -32,7 +35,7 @@ const getCfnStackExports = async (
     }
 
     exports = resp.Stacks[0].Outputs.reduce(
-      (obj: Record<string, string>, output: CloudFormation.Output) => {
+      (obj: Record<string, string>, output: Output) => {
         if (!output.ExportName || !output.OutputValue) {
           return { ...obj };
         }

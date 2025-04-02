@@ -9,9 +9,12 @@ import {
   restartEcsService,
   updateTaskDefAppImage,
 } from '../aws/index.js';
-// Import base command
 import { BaseCommand } from '../base.js';
-import { confirm, confirmProductionOp } from '../configPrompts/index.js';
+import {
+  confirm,
+  confirmProductionOp,
+  stackVersionDiffCheck,
+} from '../configPrompts/index.js';
 import DeployConfig from '../deployConfig/index.js';
 import CfnStackNotFound from '../shared/errors/CfnStackNotFound.js';
 
@@ -43,25 +46,15 @@ export default class Release extends BaseCommand<typeof Release> {
 
   public async run(): Promise<void> {
     // Destructure flags
-    const {
-      app,
-      'image-tag': imageTag,
-      'no-deploy': noDeploy,
-      yes,
-    } = this.flags;
+    const { app, 'image-tag': imageTag, 'no-deploy': noDeploy } = this.flags;
+    const { profile, yes } = this.context;
 
-    const assumedRole = this.getAssumedRole();
-    // see the README section on cross-account ECR access
-    if (this.ecrAccessRoleArn !== undefined) {
-      assumedRole.setAssumedRoleArn(this.ecrAccessRoleArn);
-    }
-
-    const deployConfig = await this.getDeployConfig(assumedRole);
+    const deployConfig = await this.getDeployConfig(profile);
 
     const cfnStackName = this.getCfnStackName();
     let cfnExports: Record<string, string>;
     try {
-      cfnExports = await getCfnStackExports(cfnStackName);
+      cfnExports = await getCfnStackExports(cfnStackName, profile);
       for (const exportValue of ['taskDefName', 'clusterName', 'serviceName']) {
         if (cfnExports[exportValue] === undefined) {
           throw new Error(`Incomplete app stack: missing ${exportValue}`);
@@ -94,7 +87,7 @@ export default class Release extends BaseCommand<typeof Release> {
     // check that the specified image tag is legit
     this.log(`Checking that an image exists with the tag ${imageTag}`);
     const imageTagExists = await getImageTagExists(
-      assumedRole,
+      this.context,
       repoArn.repoName,
       imageTag,
     );
@@ -107,7 +100,7 @@ export default class Release extends BaseCommand<typeof Release> {
     // check if it's the latest release and prompt if not
     this.log(`Checking ${imageTag} is the latest tag`);
     const isLatestTag = await getIsLatestTag(
-      assumedRole,
+      this.context,
       repoArn.repoName,
       imageTag,
     );
@@ -132,28 +125,33 @@ export default class Release extends BaseCommand<typeof Release> {
       cfnExports;
 
     // check that we're not using a wildly different version of the cli
-    if (!yes && !(await this.stackVersionDiffCheck())) {
+    if (
+      !yes &&
+      !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
+    ) {
       this.exitWithSuccess();
     }
 
-    if (!(await confirmProductionOp(yes))) {
+    if (!(await confirmProductionOp(this.context))) {
       this.exitWithSuccess();
     }
 
     // create a new version of the taskdef with the updated image
     this.log(`Updating ${app} task definitions to use ${newAppImage}`);
     // the app's service task def
-    const newTaskDefArn = await updateTaskDefAppImage(
+    const newTaskDefArn = await updateTaskDefAppImage({
+      containerDefName: 'AppContainer',
+      imageArn: newAppImage,
+      profile,
       taskDefName,
-      newAppImage,
-      'AppContainer',
-    );
+    });
     // the app-only one-off task definition
-    await updateTaskDefAppImage(
-      appOnlyTaskDefName,
-      newAppImage,
-      'AppOnlyContainer',
-    );
+    await updateTaskDefAppImage({
+      containerDefName: 'AppOnlyContainer',
+      imageArn: newAppImage,
+      profile,
+      taskDefName: appOnlyTaskDefName,
+    });
 
     // update the ssm parameter
     this.log('Updating stored deployment configuration');
@@ -161,6 +159,7 @@ export default class Release extends BaseCommand<typeof Release> {
       appPrefix: this.getAppPrefix(),
       deployConfig,
       param: 'appImage',
+      profile,
       value: newAppImage,
     });
 
@@ -170,6 +169,7 @@ export default class Release extends BaseCommand<typeof Release> {
       await restartEcsService({
         cluster: clusterName,
         newTaskDefArn,
+        profile,
         service: serviceName,
         wait: true,
       });

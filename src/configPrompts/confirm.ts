@@ -1,4 +1,3 @@
-// Import helpers
 import prompt from './prompt.js';
 
 /**

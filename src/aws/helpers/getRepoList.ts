@@ -1,32 +1,38 @@
-// Import aws-sdk
-import AWS from 'aws-sdk';
+import {
+  DescribeRepositoriesCommand,
+  ECRClient,
+  ListTagsForResourceCommand,
+} from '@aws-sdk/client-ecr';
 
-import AssumedRole from '../classes/AssumedRole.js';
-import getPaginatedResponse from './getPaginatedResponse.js';
-// Import class
+import CacclDeployContext from '../../types/CacclDeployContext.js';
+import getAssumedRoleCredentials from './getAssumedRoleCredentials.js';
+import getPaginatedResponseV3 from './getPaginatedResponseV3.js';
 
 /**
- * @author Jay Luker
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {CacclDeployContext} context CACCL deploy CLI context
  * @returns {string[]} - array of ECR repository names
  */
-const getRepoList = async (assumedRole: AssumedRole): Promise<string[]> => {
-  const ecr = await assumedRole.getAssumedRoleClient(AWS.ECR);
+const getRepoList = async (context: CacclDeployContext): Promise<string[]> => {
+  const client = new ECRClient(getAssumedRoleCredentials(context));
 
-  const repos = await getPaginatedResponse(
-    ecr.describeRepositories.bind(ecr),
-    {},
-    'repositories',
-  );
+  const repos = await getPaginatedResponseV3(async (_input) => {
+    const command = new DescribeRepositoriesCommand(_input);
+    const res = await client.send(command);
+    return {
+      items: res.repositories,
+      nextToken: res.nextToken,
+    };
+  }, {});
 
   const unflattenedRes = await Promise.all(
     repos.map(async (repo) => {
       const emptyArr: string[] = [];
       if (!repo.repositoryArn) return emptyArr;
-      const tagResp = await ecr
-        .listTagsForResource({
-          resourceArn: repo.repositoryArn,
-        })
-        .promise();
+      const command = new ListTagsForResourceCommand({
+        resourceArn: repo.repositoryArn,
+      });
+      const tagResp = await client.send(command);
 
       if (!tagResp.tags) return emptyArr;
       const isAnEdtechAppRepo = tagResp.tags.some((t) => {

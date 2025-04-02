@@ -1,4 +1,3 @@
-// Import types
 import EcrImage from '../../shared/types/EcrImage.js';
 
 /**

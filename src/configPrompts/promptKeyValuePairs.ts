@@ -3,6 +3,14 @@
 import logger from '../logger.js';
 import prompt from './prompt.js';
 
+/**
+ * Prompt the user for a set of key/value pairs.
+ * @author Jay Luker
+ * @param {string} label object name for the key/value pairs.
+ * @param {string} example what the object or key/value paris should look like.
+ * @param {Record<string, string>} current  current values of the object or key/value pairs.
+ * @returns new values for the object or key/value pairs.
+ */
 const promptKeyValuePairs = async (
   label: string,
   example: string,

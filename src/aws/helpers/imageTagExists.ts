@@ -1,21 +1,20 @@
-// Import helpers
-import AssumedRole from '../classes/AssumedRole.js';
+import CacclDeployContext from '../../types/CacclDeployContext.js';
 import getRepoImageList from './getRepoImageList.js';
-// Import classes
 
 /**
  * Confirms that a repo/tag combo exists
- * @author Jay Luker
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {CacclDeployContext} context - CACCL deploy context
  * @param {string} repoName - ECR repository name
  * @param {string} tag - ECR image tag
- * @returns {boolean}
+ * @returns {Promise<boolean>} whether the repo/tag combo exists
  */
 const imageTagExists = async (
-  assumedRole: AssumedRole,
+  context: CacclDeployContext,
   repoName: string,
   tag: string,
 ) => {
-  const imageList = await getRepoImageList(assumedRole, repoName, true);
+  const imageList = await getRepoImageList(context, repoName, true);
   return imageList.some((i) => {
     if (!i.imageTags) return false;
     return i.imageTags.includes(tag);

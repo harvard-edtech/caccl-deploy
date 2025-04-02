@@ -5,9 +5,9 @@ import semver from 'semver';
  * Indicate whether we should warn about mis-matched versions.
  * Assumes strings in semver format.
  * @author Jay Luker
- * @param versionString1 first semver that we are comparing.
- * @param versionString2 second semver that we are comparing.
- * @returns whether we should warn about differing versions.
+ * @param {string} versionString1 first semver that we are comparing.
+ * @param {string} versionString2 second semver that we are comparing.
+ * @returns {boolean} whether we should warn about differing versions.
  */
 const warnAboutVersionDiff = (
   versionString1: string,

@@ -1,9 +1,11 @@
-// Import Zod
 import { z } from 'zod';
 
-// Import types
 import CacclDbEngine from './CacclDbEngine.js';
 
+/**
+ * CACCL deploy RDS options.
+ * @author Benedikt Arnarsson
+ */
 const CacclDbOptions = z.object({
   // only used by mysql, provisioning will create the named database
   databaseName: z.string().optional(),

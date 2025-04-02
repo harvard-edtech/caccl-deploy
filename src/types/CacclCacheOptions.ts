@@ -1,9 +1,12 @@
-// Import Zod
 import { z } from 'zod';
 
+/**
+ * CACCL deploy ElastiCache options.
+ * @author Benedikt Arnarsson
+ */
 const CacclCacheOptions = z.object({
   cacheNodeType: z.string().optional(),
-  engine: z.string(),
+  engine: z.enum(['memcached', 'redis', 'valkey']),
   numCacheNodes: z.number().optional(),
 });
 

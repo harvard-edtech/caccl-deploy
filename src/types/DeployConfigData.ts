@@ -1,13 +1,15 @@
-// Import Zod
 import { z } from 'zod';
 
-// Import shared types
 import CacclCacheOptions from './CacclCacheOptions.js';
 import CacclDbOptions from './CacclDbOptions.js';
 import CacclLoadBalancerExtraOptions from './CacclLoadBalancerExtraOptions.js';
 import CacclNotificationsProps from './CacclNotificationsProps.js';
 import CacclScheduledTask from './CacclScheduledTask.js';
 
+/**
+ * Data needed to construct a deploy configuration (for reading from files or other sources).
+ * @author Benedikt Arnarsson
+ */
 const DeployConfigData = z.object({
   appEnvironment: z.object({}).catchall(z.string()).optional(),
   //
@@ -38,7 +40,7 @@ const DeployConfigData = z.object({
 });
 
 /**
- * Type describing the deploy configuration data (saved in SSM).
+ * Type describing the deploy configuration data (saved in SSM or other sources).
  * @author Benedikt Arnarsson
  */
 type DeployConfigData = z.infer<typeof DeployConfigData>;

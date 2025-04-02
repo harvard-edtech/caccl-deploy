@@ -1,38 +1,52 @@
-// Import aws-sdk
-import AWS, { ECS } from 'aws-sdk';
+import {
+  ECSClient,
+  UpdateServiceCommand,
+  UpdateServiceCommandInput,
+  waitUntilServicesStable,
+} from '@aws-sdk/client-ecs';
 
 import logger from '../../logger.js';
-// Import shared helpers
 import getCurrentRegion from './getCurrentRegion.js';
-// Import logger
 
 export type RestartOpts = {
   cluster: string;
   newTaskDefArn?: string;
+  profile?: string;
   service: string;
   wait: boolean;
 };
 
 /**
  * Restart an app's ECS service
- * @author Jay Luker
- * @param {string} cluster
- * @param {string} service
- * @param {boolean} wait
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {RestartOpts} restartOpts restart options
+ * @param {string} restartOpts.cluster cluster to restart
+ * @param {string} restartOpts.newTaskDefArn new task definition to restart to
+ * @param {string} [restartOpts.profile='default'] AWS profile
+ * @param {string} restartOpts.service service to restart
+ * @param {boolean} restartOpts.wait time to wait for the restart to finish
+ * @return {Promise<void>} promise to await
  */
 const restartEcsService = async (restartOpts: RestartOpts) => {
-  const { cluster, newTaskDefArn, service, wait } = restartOpts;
-  const ecs = new AWS.ECS();
+  const {
+    cluster,
+    newTaskDefArn,
+    profile = 'default',
+    service,
+    wait,
+  } = restartOpts;
+  const client = new ECSClient({ profile });
+  const region = await getCurrentRegion();
   logger.log(
     [
       'Console link for monitoring: ',
-      `https://console.aws.amazon.com/ecs/home?region=${getCurrentRegion()}`,
+      `https://console.aws.amazon.com/ecs/home?region=${region}`,
       `#/clusters/${cluster}/`,
       `services/${service}/tasks`,
     ].join(''),
   );
 
-  const updateServiceParams: ECS.UpdateServiceRequest = {
+  const updateServiceParams: UpdateServiceCommandInput = {
     cluster,
     forceNewDeployment: true,
     service,
@@ -43,7 +57,8 @@ const restartEcsService = async (restartOpts: RestartOpts) => {
   }
 
   // execute the service deployment
-  await ecs.updateService(updateServiceParams).promise();
+  const updateServiceCommand = new UpdateServiceCommand(updateServiceParams);
+  await client.send(updateServiceCommand);
 
   // return immediately if
   if (!wait) {
@@ -51,12 +66,19 @@ const restartEcsService = async (restartOpts: RestartOpts) => {
   }
 
   logger.log('Waiting for deployment to stabilize...');
-  await ecs
-    .waitFor('servicesStable', {
+  await waitUntilServicesStable(
+    {
+      client,
+      // TODO: adjust these numbers?
+      // maxDelay: 1,
+      maxWaitTime: 600,
+      // minDelay: 1,
+    },
+    {
       cluster,
       services: [service],
-    })
-    .promise();
+    },
+  );
 
   logger.log('all done!');
 };

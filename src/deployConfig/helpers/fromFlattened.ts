@@ -1,11 +1,7 @@
-// Import flat
 import flat from 'flat';
 
 import { DeployConfigData } from '../../types/index.js';
 import create from './create.js';
-// Import shared types
-
-// Import helpers
 
 /**
  * Construct a DeployConfigData from a flattened set of parameters.

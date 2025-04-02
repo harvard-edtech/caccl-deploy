@@ -1,15 +1,9 @@
-// Import oclif
 import { Flags } from '@oclif/core';
 
-// Import aws helpers
 import { cfnStackExists } from '../aws/index.js';
-// Import base command
 import { BaseCommand } from '../base.js';
-// Import config prompts
 import { confirm, confirmProductionOp } from '../configPrompts/index.js';
-// Import deploy config
 import DeployConfig from '../deployConfig/index.js';
-// Import errors
 import AppNotFound from '../shared/errors/AppNotFound.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -28,10 +22,11 @@ export default class Delete extends BaseCommand<typeof Delete> {
 
   public async run(): Promise<void> {
     // Destructure flags
-    const { app, yes } = this.flags;
+    const { app } = this.flags;
+    const { profile, yes } = this.context;
 
     const cfnStackName = this.getCfnStackName();
-    if (await cfnStackExists(cfnStackName)) {
+    if (await cfnStackExists(cfnStackName, profile)) {
       this.exitWithError(
         [
           `You must first run "caccl-deploy stack -a ${app} destroy" to delete`,
@@ -48,11 +43,11 @@ export default class Delete extends BaseCommand<typeof Delete> {
       }
 
       // extra confirm if this is a production deployment
-      if (!(await confirmProductionOp(yes))) {
+      if (!(await confirmProductionOp(this.context))) {
         this.exitWithSuccess();
       }
 
-      await DeployConfig.wipeExisting(this.getAppPrefix(), false);
+      await DeployConfig.wipeExisting(this.getAppPrefix(), false, profile);
 
       this.exitWithSuccess(`${app} configuration deleted`);
     } catch (error) {

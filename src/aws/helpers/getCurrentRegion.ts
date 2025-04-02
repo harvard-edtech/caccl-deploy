@@ -1,7 +1,9 @@
-// Import NodeJS libraries
-import AWS from 'aws-sdk';
+import {
+  NODE_REGION_CONFIG_FILE_OPTIONS,
+  NODE_REGION_CONFIG_OPTIONS,
+} from '@smithy/config-resolver';
+import { loadConfig } from '@smithy/node-config-provider';
 import process from 'node:process';
-// Import aws-sdk
 
 /**
  * Returns the configured region.
@@ -9,11 +11,14 @@ import process from 'node:process';
  *   - the usual env vars, AWS_REGION, etc
  *   - a region configured in the user's AWS profile/credentials
  * @author Jay Luker
- * @returns {string}
+ * @returns {string} AWS region
  */
-const getCurrentRegion = (): string => {
-  const { region } = AWS.config;
-  if (!region) {
+const getCurrentRegion = async (): Promise<string> => {
+  const currentRegion = await loadConfig(
+    NODE_REGION_CONFIG_OPTIONS,
+    NODE_REGION_CONFIG_FILE_OPTIONS,
+  )();
+  if (!currentRegion) {
     if (process.env.NODE_ENV === 'test') {
       return 'us-east-1';
     }
@@ -22,7 +27,7 @@ const getCurrentRegion = (): string => {
     throw new Error("Please configure you're AWS region.");
   }
 
-  return region;
+  return currentRegion;
 };
 
 export default getCurrentRegion;

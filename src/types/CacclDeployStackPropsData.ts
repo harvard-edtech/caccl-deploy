@@ -1,9 +1,11 @@
-// Import zod
 import { z } from 'zod';
 
-// Import types
 import DeployConfigData from './DeployConfigData.js';
 
+/**
+ * CACCL deploy application stack properties raw data (for files or other sources).
+ * @author Benedikt Arnarsson
+ */
 const CacclDeployStackPropsData = z.object({
   albLogBucketName: z.string().optional(),
   awsAccountId: z.string().optional(),

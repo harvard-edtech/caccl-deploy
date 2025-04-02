@@ -1,13 +1,15 @@
-// Import aws
 import { getAcmCertList } from '../aws/index.js';
-// Import shared errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
 import prompt from './prompt.js';
 
-// Import helpers
-
-const promptCertificateArn = async () => {
-  const certList = await getAcmCertList();
+/**
+ * Prompt the user for the AWS ACM certificate ARNS from a list of valid certificate ARNs in a profile.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {string} [profile='default'] the AWS profile.
+ * @returns {Promise<string>} the certificate ARN.
+ */
+const promptCertificateArn = async (profile = 'default') => {
+  const certList = await getAcmCertList(profile);
 
   const certChoices = certList.flatMap((cert) => {
     if (!cert.DomainName || !cert.CertificateArn) return [];

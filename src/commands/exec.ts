@@ -1,18 +1,19 @@
-// Import oclif
 import { Flags } from '@oclif/core';
 
-// Import aws
 import { execTask, getCfnStackExports } from '../aws/index.js';
 import { BaseCommand } from '../base.js';
-import { confirmProductionOp } from '../configPrompts/index.js';
+import {
+  confirmProductionOp,
+  stackVersionDiffCheck,
+} from '../configPrompts/index.js';
 
-// TODO: pull out into type (also in execTask)
+// Types
 type EnvVariable = {
   name: string;
   value: string;
 };
 
-// TODO: pull out into helper
+// Helpers
 const envVarParser = (inputs: string[] | undefined): EnvVariable[] => {
   if (!inputs) {
     return [];
@@ -53,18 +54,22 @@ export default class Exec extends BaseCommand<typeof Exec> {
   };
 
   public async run(): Promise<void> {
-    const { command, env, yes } = this.flags;
+    const { command, env } = this.flags;
+    const { profile, yes } = this.context;
 
     const cfnStackName = this.getCfnStackName();
     const { appOnlyTaskDefName, clusterName, serviceName } =
-      await getCfnStackExports(cfnStackName);
+      await getCfnStackExports(cfnStackName, profile);
 
     // check that we're not using a wildly different version of the cli
-    if (!yes && !(await this.stackVersionDiffCheck())) {
+    if (
+      !yes &&
+      !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
+    ) {
       this.exitWithSuccess();
     }
 
-    if (!(await confirmProductionOp(yes))) {
+    if (!(await confirmProductionOp(this.context))) {
       this.exitWithSuccess();
     }
 
@@ -75,6 +80,7 @@ export default class Exec extends BaseCommand<typeof Exec> {
       clusterName,
       command,
       environment: envVarParser(env),
+      profile,
       serviceName,
       taskDefName: appOnlyTaskDefName,
     });

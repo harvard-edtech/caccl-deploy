@@ -1,7 +1,5 @@
-// Import prompts
 import prompts, { PromptObject } from 'prompts';
 
-// Import shared errors
 import UserCancel from '../shared/errors/UserCancel.js';
 
 /**
@@ -9,7 +7,7 @@ import UserCancel from '../shared/errors/UserCancel.js';
  * @author Jay Luker
  * @param {PromptObject<string>} question PromptObject to be used
  * @param {boolean} continueOnCancel Whether to continue or throw an error on user-cancel
- * @returns {void}
+ * @returns {Promise<void>} promise to await.
  */
 const prompt = async (
   question: PromptObject<string>,

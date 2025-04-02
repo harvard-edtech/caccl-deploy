@@ -1,37 +1,47 @@
-// Import aws-sdk
-import AWS from 'aws-sdk';
+import {
+  ECSClient,
+  ListTagsForResourceCommand,
+  RegisterTaskDefinitionCommand,
+} from '@aws-sdk/client-ecs';
 
-// Import logger
 import logger from '../../logger.js';
-// Import helpers
 import ecrArnToImageId from './ecrArnToImageId.js';
 import getTaskDefinition from './getTaskDefinition.js';
+
+type UpdateTaskDefAppImageOpts = {
+  containerDefName: string;
+  imageArn: string;
+  profile?: string;
+  taskDefName: string;
+};
 
 /**
  * Updates a Fargate task definition, replacing the app container's
  *   ECR image URI value
- * @author Jay Luker
- * @param {string} taskDefName
- * @param {string} imageArn
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {UpdateTaskDefAppImageOpts} opts update task definition application image options.
+ * @param {string} opts.containerDefName container whose image ID we are changing.
+ * @param {string} opts.imageArn new image ARN.
+ * @param {string} [opts.profile='default'] AWS profile.
+ * @param {string} opts.taskDefName name of the tas definition whose ECR image URI value we are changing.
  * @returns {string} - the full ARN (incl family:revision) of the newly
  *   registered task definition
  */
 const updateTaskDefAppImage = async (
-  taskDefName: string,
-  imageArn: string,
-  containerDefName: string,
+  opts: UpdateTaskDefAppImageOpts,
 ): Promise<string | undefined> => {
-  const ecs = new AWS.ECS();
-  const taskDefinition = await getTaskDefinition(taskDefName);
+  const { containerDefName, imageArn, profile = 'default', taskDefName } = opts;
+
+  const client = new ECSClient({ profile });
+  const taskDefinition = await getTaskDefinition(taskDefName, profile);
   if (!taskDefinition.taskDefinitionArn)
     throw new Error('Could not get task definition ARN');
 
   // get existing tag set to include with the new task def
-  const tagResp = await ecs
-    .listTagsForResource({
-      resourceArn: taskDefinition.taskDefinitionArn,
-    })
-    .promise();
+  const listTagsCommand = new ListTagsForResourceCommand({
+    resourceArn: taskDefinition.taskDefinitionArn,
+  });
+  const tagResp = await client.send(listTagsCommand);
 
   /**
    * tasks have multiple container definitions (app, proxy, etc), so we need
@@ -75,7 +85,8 @@ const updateTaskDefAppImage = async (
     }
   }
 
-  const registerResp = await ecs.registerTaskDefinition(newTaskDef).promise();
+  const registerTaskDefCommand = new RegisterTaskDefinitionCommand(newTaskDef);
+  const registerResp = await client.send(registerTaskDefCommand);
   logger.log('done');
 
   return registerResp.taskDefinition?.taskDefinitionArn;

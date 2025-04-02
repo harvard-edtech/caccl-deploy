@@ -3,7 +3,8 @@
   "parserOptions": {
     "ecmaVersion": 2020,
     "sourceType": "module",
-    "project": "./tsconfig.json"
+    "project": "./tsconfig.json",
+    "warnOnUnsupportedTypeScriptVersion": false
   },
   "env": {
     "node": true,
@@ -62,9 +63,7 @@
     "unicorn/no-array-reduce": "off",
     "unicorn/filename-case": "off",
     "@typescript-eslint/no-var-requires": "off",
-    "@typescript-eslint/no-floating-promises": [
-      "error"
-    ],
+    "@typescript-eslint/no-floating-promises": "error",
     "@typescript-eslint/no-non-null-assertion": [
       "warn"
     ],
@@ -152,7 +151,7 @@
     ],
     "import/order": "off",
     "import/extensions": [
-      "warn",
+      "off",
       "never",
       {
         "json": "always"
@@ -208,6 +207,7 @@
       {
         "max": 3
       }
-    ]
+    ],
+    "perfectionist/sort-classes": "off"
   }
 }
