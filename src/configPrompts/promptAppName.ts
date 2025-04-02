@@ -1,9 +1,11 @@
-// Import shared helpers
 import validSSMParamName from '../shared/helpers/validSSMParamName.js';
 import prompt from './prompt.js';
 
-// Import helpers
-
+/**
+ * Prompt the user for the app name.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @returns {Promise<string>} app name
+ */
 const promptAppName = async () => {
   const appName = await prompt({
     message: 'Enter a name for your app',

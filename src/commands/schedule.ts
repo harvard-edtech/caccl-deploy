@@ -1,15 +1,9 @@
-// Import oclif
 import { Flags } from '@oclif/core';
-// Import table
 import { table } from 'table';
 
-// Import base command
 import { BaseCommand } from '../base.js';
-// Import config prompts
 import { confirm } from '../configPrompts/index.js';
-// Import deploy config
 import DeployConfig from '../deployConfig/index.js';
-// Import helpers
 import validSSMParamName from '../shared/helpers/validSSMParamName.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -62,11 +56,10 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
       'task-description': taskDescriptionFlag,
       'task-id': taskIdFlag,
       'task-schedule': taskSchedule,
-      yes,
     } = this.flags;
-    const assumedRole = this.getAssumedRole();
+    const { profile, yes } = this.context;
 
-    const deployConfig = await this.getDeployConfig(assumedRole);
+    const deployConfig = await this.getDeployConfig(profile);
     const existingTasks = deployConfig.scheduledTasks || {};
     const existingTaskIds = Object.keys(existingTasks);
 
@@ -99,11 +92,12 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
 
       const existingTaskParams = Object.keys(existingTask);
       for (const existingTaskParam of existingTaskParams) {
-        await DeployConfig.deleteParam(
+        await DeployConfig.deleteParam({
+          appPrefix: this.getAppPrefix(),
           deployConfig,
-          this.getAppPrefix(),
-          `scheduledTasks/${deleteFlag}/${existingTaskParam}`,
-        );
+          param: `scheduledTasks/${deleteFlag}/${existingTaskParam}`,
+          profile,
+        });
       }
 
       this.exitWithSuccess(`Scheduled task ${deleteFlag} deleted`);
@@ -133,7 +127,12 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
       [`scheduledTasks/${taskId}/schedule`]: taskSchedule ?? '', // FIXME:
     };
 
-    await DeployConfig.syncToSsm(deployConfig, this.getAppPrefix(), params);
+    await DeployConfig.syncToSsm({
+      appPrefix: this.getAppPrefix(),
+      deployConfig,
+      params,
+      profile,
+    });
     this.exitWithSuccess('task scheduled');
   }
 }

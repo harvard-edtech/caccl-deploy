@@ -8,6 +8,10 @@ import {
   aws_secretsmanager as secretsmanager,
 } from 'aws-cdk-lib';
 
+/**
+ * Interface for a generic DB, allowing SG config, monitoring, and more.
+ * @author Benedikt Arnarsson
+ */
 interface ICacclDb {
   addSecurityGroupIngress(vpcCidrBlock: string): void;
 

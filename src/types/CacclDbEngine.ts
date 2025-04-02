@@ -1,6 +1,9 @@
-// Import Zod
 import { z } from 'zod';
 
+/**
+ * Database engine options.
+ * @author Benedikt Arnarsson
+ */
 const CacclDbEngine = z.enum(['docdb', 'mysql']);
 
 /**

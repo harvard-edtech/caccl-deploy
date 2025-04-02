@@ -8,7 +8,6 @@ import {
   resolveSecret,
   sendSSHPublicKey,
 } from '../aws/index.js';
-// Import base command
 import { BaseCommand } from '../base.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -65,14 +64,13 @@ export default class Connect extends BaseCommand<typeof Connect> {
       service,
       sleep,
     } = this.flags;
-
-    const assumedRole = this.getAssumedRole();
+    const { profile } = this.context;
 
     if (!list && !service) {
       this.exitWithError('One of `--list` or `--service` is required');
     }
 
-    const deployConfig = await this.getDeployConfig(assumedRole);
+    const deployConfig = await this.getDeployConfig(profile);
 
     const services = new Set();
     for (const optsKey of ['dbOptions' as const, 'cacheOptions' as const]) {
@@ -102,7 +100,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
     }
 
     const cfnStackName = this.getCfnStackName();
-    const cfnStackExports = await getCfnStackExports(cfnStackName);
+    const cfnStackExports = await getCfnStackExports(cfnStackName, profile);
 
     const {
       bastionHostAz,
@@ -117,6 +115,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
       await sendSSHPublicKey({
         instanceAz: bastionHostAz,
         instanceId: bastionHostId,
+        profile,
         sshKeyPath: publicKey,
       });
     } catch (error) {
@@ -133,7 +132,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
 
     if (['docdb', 'mysql'].includes(service)) {
       endpoint = dbClusterEndpoint;
-      const password = await resolveSecret(dbPasswordSecretArn);
+      const password = await resolveSecret(dbPasswordSecretArn, profile);
       if (service === 'mysql') {
         localPort = localPortFlag || '3306';
         clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;

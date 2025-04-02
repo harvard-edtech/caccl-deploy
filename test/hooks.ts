@@ -9,19 +9,17 @@ import AWSMock from 'aws-sdk-mock';
 // Import tempy
 import { temporaryDirectory } from 'tempy';
 
-// Import conf
-import { setConfigDefaults } from '../src/conf.js';
-
 const mochaHooks = {
   beforeAll() {
     const tempDir = temporaryDirectory();
 
-    // Set conf file path to temporary directory
+    // FIXME: Set conf file path to temporary directory
     const confPath = path.join(tempDir, 'conf/');
     process.env.CACCL_DEPLOY_CONF_DIR = confPath;
 
     // Set NODE_ENV to test to avoid certain checks
     process.env.NODE_ENV = 'test';
+    process.env.CACCL_DEPLOY_NON_INTERACTIVE = 'true';
 
     // We need to write empty config and credential files
     // to satisfy the aws-skd-mock
@@ -37,7 +35,7 @@ const mochaHooks = {
     );
 
     // Setup config
-    setConfigDefaults();
+    // setConfigDefaults();
   },
 
   afterEach() {

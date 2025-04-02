@@ -1,6 +1,4 @@
-// Import path
 import { Flags } from '@oclif/core';
-// Import oclif
 import { execSync } from 'node:child_process';
 import path, { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,9 +9,11 @@ import {
   getAccountId,
   getCfnStackExports,
 } from '../aws/index.js';
-// Import base command
 import { BaseCommand } from '../base.js';
-import { confirmProductionOp } from '../configPrompts/index.js';
+import {
+  confirmProductionOp,
+  stackVersionDiffCheck,
+} from '../configPrompts/index.js';
 import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION.js';
 import DeployConfig from '../deployConfig/index.js';
 import isProdAccount from '../helpers/isProdAccount.js';
@@ -47,14 +47,13 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
   public async run(): Promise<void> {
     // Destructure flags
-    const { profile, yes } = this.flags;
+    const { profile, yes } = this.context;
     // get this without resolved secrets for passing to cdk
-    const assumedRole = this.getAssumedRole();
-    const deployConfig = await this.getDeployConfig(assumedRole, true);
+    const deployConfig = await this.getDeployConfig(profile, true);
 
     // get it again with resolved secrets so we can make our hash
     const deployConfigHash = DeployConfig.toHash(
-      await this.getDeployConfig(assumedRole),
+      await this.getDeployConfig(profile),
     );
 
     /**
@@ -64,17 +63,18 @@ export default class Stack extends BaseCommand<typeof Stack> {
      *   - name of the S3 bucket where the load balancer will send logs
      */
     const cfnStackName = this.getCfnStackName();
-    const stackExists = await cfnStackExists(cfnStackName);
+    const stackExists = await cfnStackExists(cfnStackName, profile);
     const { albLogBucketName, ecsClusterName, vpcId } =
-      await getCfnStackExports(deployConfig.infraStackName);
+      await getCfnStackExports(deployConfig.infraStackName, profile);
 
     /**
      * Create an object structure with all the info
      * the CDK stack operation will need
      */
+    const awsAccountId = await getAccountId(profile);
     const cdkStackProps = {
       albLogBucketName,
-      awsAccountId: await getAccountId(),
+      awsAccountId,
       awsRegion: process.env.AWS_REGION || 'us-east-1',
       cacclDeployVersion: CACCL_DEPLOY_VERSION,
       deployConfig,
@@ -110,7 +110,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
             );
           }
 
-          const stackExports = await getCfnStackExports(cfnStackName);
+          const stackExports = await getCfnStackExports(cfnStackName, profile);
           this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
 
           break;
@@ -142,12 +142,16 @@ export default class Stack extends BaseCommand<typeof Stack> {
       })
     ) {
       // check that we're not using a wildly different version of the cli
-      if (stackExists && !yes && !(await this.stackVersionDiffCheck())) {
+      if (
+        stackExists &&
+        !yes &&
+        !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
+      ) {
         this.exitWithSuccess();
       }
 
       // production failsafe if we're actually changing anything
-      if (!(await confirmProductionOp(yes))) {
+      if (!(await confirmProductionOp(this.context))) {
         this.exitWithSuccess();
       }
     }
@@ -157,8 +161,11 @@ export default class Stack extends BaseCommand<typeof Stack> {
       cdkStackProps.deployConfig.dbOptions &&
       !cdkStackProps.deployConfig.dbOptions.removalPolicy
     ) {
-      cdkStackProps.deployConfig.dbOptions.removalPolicy =
-        (await isProdAccount()) ? 'RETAIN' : 'DESTROY';
+      cdkStackProps.deployConfig.dbOptions.removalPolicy = (await isProdAccount(
+        this.context,
+      ))
+        ? 'RETAIN'
+        : 'DESTROY';
     }
 
     /**

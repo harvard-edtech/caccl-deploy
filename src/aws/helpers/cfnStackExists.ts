@@ -1,17 +1,19 @@
-// Import shared errors
 import CfnStackNotFound from '../../shared/errors/CfnStackNotFound.js';
 import getCfnStackExports from './getCfnStackExports.js';
 
-// Import helpers
-
 /**
  * Confirm that a CloudFormation stack exists
- * @param {string} stackName
- * @return {boolean}
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {string} stackName name of the stack to search for.
+ * @param {string} [profile='default'] AWS profile to use.
+ * @return {Promise<boolean>} whether the CloudFormation stack exists or not.
  */
-const cfnStackExists = async (stackName: string): Promise<boolean> => {
+const cfnStackExists = async (
+  stackName: string,
+  profile = 'default',
+): Promise<boolean> => {
   try {
-    await getCfnStackExports(stackName);
+    await getCfnStackExports(stackName, profile);
     return true;
   } catch (error) {
     if (!(error instanceof CfnStackNotFound)) {

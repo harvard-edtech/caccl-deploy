@@ -1,13 +1,14 @@
-// Import aws
 import { getInfraStackList } from '../aws/index.js';
-// Import shared errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
 import prompt from './prompt.js';
 
-// Import helpers
-
-const promptInfraStackName = async () => {
-  const infraStacks = await getInfraStackList();
+/**
+ * Prompt the user for a specific infrastructure stack name from a set of valid CF stacks in the account.
+ * @param {string} [profile='default'] the AWS profile.
+ * @returns {Promise<string>} the infrastructure stack name.
+ */
+const promptInfraStackName = async (profile = 'default'): Promise<string> => {
+  const infraStacks = await getInfraStackList(profile);
 
   if (infraStacks.length === 1) {
     return infraStacks[0];

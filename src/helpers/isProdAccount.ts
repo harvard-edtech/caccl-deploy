@@ -1,16 +1,15 @@
-// Import aws
 import { getAccountId } from '../aws/index.js';
-// Import config
-import { conf } from '../conf.js';
+import CacclDeployContext from '../types/CacclDeployContext.js';
 
 /**
  * Check whether the current AWS account is a production account.
  * @author Jay Luker
- * @returns boolean indicating whether it is a prod account.
+ * @param {CacclDeployContext} context the CACCL deploy context.
+ * @returns {boolean} whether the current AWS account is a prod account.
  */
-const isProdAccount = async () => {
-  const prodAccounts = conf.get('productionAccounts');
-  const accountId = await getAccountId();
+const isProdAccount = async (context: CacclDeployContext) => {
+  const prodAccounts = context.productionAccounts;
+  const accountId = await getAccountId(context.profile);
   return prodAccounts && prodAccounts.includes(accountId);
 };
 

@@ -1,13 +1,8 @@
-// Import oclif
 import { Args, Flags } from '@oclif/core';
 
-// Import base command
 import { BaseCommand } from '../base.js';
-// Import config prompts
 import { confirmProductionOp } from '../configPrompts/index.js';
-// Import deploy config
 import DeployConfig from '../deployConfig/index.js';
-// Import helpers
 import validSSMParamName from '../shared/helpers/validSSMParamName.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -36,12 +31,11 @@ export default class Update extends BaseCommand<typeof Update> {
 
   public async run(): Promise<void> {
     // Destructure flags
-    const { yes } = this.flags;
+    const { profile } = this.context;
 
-    const assumedRole = this.getAssumedRole();
-    const deployConfig = await this.getDeployConfig(assumedRole, true);
+    const deployConfig = await this.getDeployConfig(profile, true);
 
-    if (!(await confirmProductionOp(yes))) {
+    if (!(await confirmProductionOp(this.context))) {
       this.exitWithSuccess();
     }
 
@@ -49,11 +43,12 @@ export default class Update extends BaseCommand<typeof Update> {
       const { param, value } = this.args;
 
       if (this.flags.delete && param) {
-        await DeployConfig.deleteParam(
+        await DeployConfig.deleteParam({
+          appPrefix: this.getAppPrefix(),
           deployConfig,
-          this.getAppPrefix(),
           param,
-        );
+          profile,
+        });
       } else if (param && value) {
         if (!validSSMParamName(param)) {
           throw new Error(`Invalid param name: '${param}'`);
@@ -63,6 +58,7 @@ export default class Update extends BaseCommand<typeof Update> {
           appPrefix: this.getAppPrefix(),
           deployConfig,
           param,
+          profile,
           value,
         });
       } else {

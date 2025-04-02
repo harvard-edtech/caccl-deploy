@@ -1,22 +1,28 @@
-// Import aws-sdk
-import AWS from 'aws-sdk';
+import {
+  DeleteSecretCommand,
+  SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
 
-// Import logger
 import logger from '../../logger.js';
 
 /**
- * delete one or more secretsmanager entries
- * @param {string[]} secretArns
+ * Delete one or more SecretsManager entries.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {string[]} secretArns ARNs fo the secrets we are deleting.
+ * @param {string} [profile='default] AWS profile to use.
+ * @return {Promise<void>} promise to await.
  */
-const deleteSecrets = async (secretArns: string[]): Promise<void> => {
-  const sm = new AWS.SecretsManager();
+const deleteSecrets = async (
+  secretArns: string[],
+  profile = 'default',
+): Promise<void> => {
+  const client = new SecretsManagerClient({ profile });
   for (const secretArn of secretArns) {
-    await sm
-      .deleteSecret({
-        ForceDeleteWithoutRecovery: true,
-        SecretId: secretArn,
-      })
-      .promise();
+    const command = new DeleteSecretCommand({
+      ForceDeleteWithoutRecovery: true,
+      SecretId: secretArn,
+    });
+    await client.send(command);
     logger.log(`secret ${secretArn} deleted`);
   }
 };

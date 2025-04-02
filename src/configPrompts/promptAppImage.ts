@@ -1,23 +1,23 @@
-// Import prompts
 import { Choice } from 'prompts';
 
 import {
-  AssumedRole,
   createEcrArn,
   getCurrentRegion,
   getRepoImageList,
   getRepoList,
 } from '../aws/index.js';
-// Import shared errors
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
-// Import shared helpers
 import looksLikeSemver from '../shared/helpers/looksLikeSemver.js';
+import CacclDeployContext from '../types/CacclDeployContext.js';
 import prompt from './prompt.js';
-// Import aws
 
-// Import helpers
-
-const promptAppImage = async (assumedRole: AssumedRole) => {
+/**
+ * Prompt the user for the app image name.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {CacclDeployContext} context CACCL deploy context.
+ * @returns {Promise<string>} app image name
+ */
+const promptAppImage = async (context: CacclDeployContext): Promise<string> => {
   const inputType = await prompt({
     choices: [
       {
@@ -46,8 +46,7 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
     }
 
     case 'select': {
-      // TODO: deal with AssumedRole
-      const repoList = await getRepoList(assumedRole);
+      const repoList = await getRepoList(context);
       const repoChoices = repoList.flatMap((value) => {
         if (!value) return [];
         return {
@@ -67,7 +66,8 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
         type: 'select',
       });
 
-      const images = await getRepoImageList(assumedRole, repoChoice.value);
+      const region = await getCurrentRegion();
+      const images = await getRepoImageList(context, repoChoice.value);
       const imageTagsChoices = images.reduce((choices: Choice[], image) => {
         const releaseTag =
           image.imageTags &&
@@ -84,7 +84,7 @@ const promptAppImage = async (assumedRole: AssumedRole) => {
         const appImageValue = createEcrArn({
           account: image.registryId,
           imageTag: releaseTag,
-          region: getCurrentRegion(),
+          region,
           repoName: repoChoice.value,
         });
 

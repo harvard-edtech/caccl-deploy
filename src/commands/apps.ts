@@ -1,13 +1,8 @@
-// Import oclif
 import { Flags } from '@oclif/core';
-// Import table
 import { table } from 'table';
 
-// Import aws
 import { getAppList, getCfnStacks } from '../aws/index.js';
-// Import base command
 import { BaseCommand } from '../base.js';
-// Import deploy config
 import DeployConfig from '../deployConfig/index.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -31,13 +26,10 @@ export default class Apps extends BaseCommand<typeof Apps> {
 
   public async run(): Promise<void> {
     // Destructure flags
-    const {
-      'cfn-stack-prefix': cfnStackPrefix,
-      'full-status': fullStatus,
-      'ssm-root-prefix': ssmRootPrefix,
-    } = this.flags;
+    const { 'full-status': fullStatus } = this.flags;
+    const { cfnStackPrefix, profile, ssmRootPrefix } = this.context;
 
-    const apps = await getAppList(ssmRootPrefix);
+    const apps = await getAppList(ssmRootPrefix, profile);
 
     if (apps.length === 0) {
       this.exitWithError(
@@ -59,13 +51,17 @@ export default class Apps extends BaseCommand<typeof Apps> {
         'Config Drift',
         'caccl-deploy Version',
       );
-      const cfnStacks = await getCfnStacks(cfnStackPrefix);
+      const cfnStacks = await getCfnStacks(cfnStackPrefix, profile);
 
       for (const app of apps) {
         const cfnStackName = this.getCfnStackName(app);
 
         const appPrefix = this.getAppPrefix(app);
-        const deployConfig = await DeployConfig.fromSsmParams(appPrefix);
+        const deployConfig = await DeployConfig.fromSsmParams(
+          appPrefix,
+          false,
+          profile,
+        );
         appData[app].push(deployConfig.infraStackName);
 
         const cfnStack = cfnStacks.find((s) => {
@@ -94,7 +90,7 @@ export default class Apps extends BaseCommand<typeof Apps> {
           configDrift = cfnOutputValue === deployConfigHash ? 'no' : 'yes';
         }
 
-        appData[app].push(cfnStack.StackStatus, configDrift);
+        appData[app].push(cfnStack.StackStatus ?? 'unknown', configDrift);
 
         const cfnStackCacclDeployVersion = cfnStack.Outputs.find((o) => {
           return o.OutputKey && o.OutputKey.startsWith('CacclDeployVersion');

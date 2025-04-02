@@ -1,30 +1,38 @@
-import AWS, { SSM } from 'aws-sdk';
+import {
+  AddTagsToResourceCommand,
+  PutParameterCommand,
+  PutParameterCommandInput,
+  PutParameterCommandOutput,
+  SSMClient,
+} from '@aws-sdk/client-ssm';
 
 import AwsTag from '../../shared/types/AwsTag.js';
 
 /**
- * Add parameters to SSM
- * @author Jay Luker
- * @param {SSM.PutParameterRequest} opts - the parameter details, name, value, etc
- * @param {object[]} tags - aws resource tags
- * @returns {object}
+ * Add parameters to SSM.
+ * @author Jay Luker, Benedikt Arnarsson
+ * @param {PutParameterCommandInput} opts - the parameter details, name, value, etc
+ * @param {AwsTags[]} tags - aws resource tags
+ * @param {string} [profile='default'] AWS profile
+ * @returns {Promise<PutParameterCommandOutput>} return value of the put parameter command.
  */
 const putSsmParameter = async (
-  opts: SSM.PutParameterRequest,
+  opts: PutParameterCommandInput,
   tags: AwsTag[] = [],
-) => {
-  const ssm = new AWS.SSM();
+  profile = 'default',
+): Promise<PutParameterCommandOutput> => {
+  const client = new SSMClient({ profile });
   const paramOptions = { ...opts };
 
-  const paramResp = await ssm.putParameter(paramOptions).promise();
+  const putParameterCommand = new PutParameterCommand(paramOptions);
+  const paramResp = await client.send(putParameterCommand);
   if (tags.length > 0) {
-    await ssm
-      .addTagsToResource({
-        ResourceId: paramOptions.Name,
-        ResourceType: 'Parameter',
-        Tags: tags,
-      })
-      .promise();
+    const addTagsCommand = new AddTagsToResourceCommand({
+      ResourceId: paramOptions.Name,
+      ResourceType: 'Parameter',
+      Tags: tags,
+    });
+    await client.send(addTagsCommand);
   }
 
   return paramResp;

@@ -1,4 +1,3 @@
-// Import helpers
 import parseEcrArn from './parseEcrArn.js';
 
 /**

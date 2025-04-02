@@ -20,8 +20,8 @@ namespace logger {
   /**
    * Set the log functions.
    * @author Benedikt Arnarsson
-   * @param log function for standard logs.
-   * @param error function for error logs.
+   * @param {LogFunction} log function for standard logs.
+   * @param {LogFunction} error function for error logs.
    * @returns {void}
    */
   export const setLogger = (log: LogFunction, error: LogFunction) => {
@@ -33,7 +33,7 @@ namespace logger {
    * Log a standard message to the set logger output.
    * Defaults to console.log.
    * @author Benedikt Arnarsson
-   * @param msg string that will be pushed to the output.
+   * @param {string} msg string that will be pushed to the output.
    * @returns {void}
    */
   export const log = (msg: string): void => {
@@ -44,7 +44,7 @@ namespace logger {
    * Log an error message to the set logger output.
    * Defaults to console.error.
    * @author Benedikt Arnarsson
-   * @param msg string that will be pushed to the output.
+   * @param {string} msg string that will be pushed to the output.
    * @returns {void}
    */
   export const error = (msg: string): void => {

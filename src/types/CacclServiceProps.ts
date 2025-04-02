@@ -1,9 +1,11 @@
-// Import AWS CDK lib
 import { aws_ec2 as ec2, aws_ecs as ecs } from 'aws-cdk-lib';
 
-// Import types
 import ICacclTaskDef from './ICacclTaskDef.js';
 
+/**
+ * Properties for constructing a CDK service with CACCL deploy.
+ * @author Benedikt Arnarsson
+ */
 type CacclServiceProps = {
   cluster: ecs.Cluster;
   enableExecuteCommand?: boolean;

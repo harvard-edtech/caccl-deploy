@@ -1,4 +1,3 @@
-// Import shared types
 import { DeployConfigData } from '../../types/index.js';
 
 /**

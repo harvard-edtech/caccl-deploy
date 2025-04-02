@@ -1,9 +1,6 @@
-// Import oclif
 import { Flags } from '@oclif/core';
 
-// Import base command
 import { BaseCommand } from '../base.js';
-// Import deploy config
 import DeployConfig from '../deployConfig/index.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -38,20 +35,15 @@ export default class Show extends BaseCommand<typeof Show> {
   public async run(): Promise<void> {
     // Destructure flags
     const { flat, 'keep-secret-arns': keepSecretArns, sha } = this.flags;
-
-    // get assumed role
-    const assumedRole = this.getAssumedRole();
+    const { profile } = this.context;
 
     // we only want to see that sha1 hash (likely for debugging)
     if (sha) {
-      const deployConfig = await this.getDeployConfig(assumedRole);
+      const deployConfig = await this.getDeployConfig(profile);
       this.exitWithSuccess(DeployConfig.toHash(deployConfig));
     }
 
-    const deployConfig = await this.getDeployConfig(
-      assumedRole,
-      keepSecretArns,
-    );
+    const deployConfig = await this.getDeployConfig(profile, keepSecretArns);
     this.exitWithSuccess(DeployConfig.toString(deployConfig, true, flat));
   }
 }

@@ -1,10 +1,12 @@
-// Import AWS CDK lib
 import { aws_ec2 as ec2, aws_ecs as ecs } from 'aws-cdk-lib';
 
-// Import types
 import CacclLoadBalancerExtraOptions from './CacclLoadBalancerExtraOptions.js';
 import LoadBalancerSecurityGroups from './LoadBalancerSecurityGroups.js';
 
+/**
+ * Properties for load balancers deployed with caccl-deploy.
+ * @author Benedikt Arnarsson
+ */
 type CacclLoadBalancerProps = {
   albLogBucketName?: string;
   certificateArn?: string;
