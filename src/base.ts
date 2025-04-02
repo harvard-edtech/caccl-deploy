@@ -41,7 +41,6 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     'cfn-stack-prefix': Flags.string({
       description: 'cloudformation stack name prefix, e.g. "CacclDeploy-',
       helpGroup: 'GLOBAL',
-      required: true,
     }),
     'config': Flags.string({
       char: 'c',
@@ -170,7 +169,8 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    */
   public getAppPrefix(appName?: string) {
     // Destructure flags
-    const { app, 'ssm-root-prefix': ssmRootPrefix } = this.flags;
+    const { app } = this.flags;
+    const { ssmRootPrefix } = this.context;
 
     if (
       ssmRootPrefix === undefined ||
@@ -250,7 +250,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
       envPaths('caccl-deploy').config,
       'config.json',
     );
-    if (fs.existsSync(confPath)) {
+    if (process.env.NODE_ENV !== 'test' && fs.existsSync(confPath)) {
       const cliConfigJSON = fs.readFileSync(confPath, 'utf8');
       const cliConfig = JSON.parse(cliConfigJSON);
 

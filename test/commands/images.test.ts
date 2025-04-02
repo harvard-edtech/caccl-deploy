@@ -1,23 +1,15 @@
-// Import oclif test
+import { ECRClient } from '@aws-sdk/client-ecr';
 import { runCommand } from '@oclif/test';
-
-// Import AWS SDK mock
-import AWSMock from 'aws-sdk-mock';
-
-// Import chai
 import { expect } from 'chai';
-
-// Import moment
+import { stub } from 'sinon';
 import moment from 'moment';
-
-// Import table
 import { table } from 'table';
 
 describe('images', () => {
   it('lists images', async () => {
     // Arrange
-    // @ts-ignore
-    AWSMock.mock('ECR', 'describeImages', {
+    const stubbedECRClientSend = stub(ECRClient.prototype, 'send');
+    stubbedECRClientSend.resolves({
       imageDetails: [
         {
           imagePushedAt: 1725416968,
@@ -58,12 +50,14 @@ describe('images', () => {
       // Process exited with 0
       expect(error.message).to.equal('EEXIT: 0');
     }
+
+    stubbedECRClientSend.restore();
   });
 
   it('lists all images', async () => {
     // Arrange
-    // @ts-ignore
-    AWSMock.mock('ECR', 'describeImages', {
+    const stubbedECRClientSend = stub(ECRClient.prototype, 'send');
+    stubbedECRClientSend.resolves({
       imageDetails: [
         {
           imagePushedAt: 1725416968,
@@ -114,5 +108,7 @@ describe('images', () => {
       // Process exited with 0
       expect(error.message).to.equal('EEXIT: 0');
     }
+
+    stubbedECRClientSend.restore();
   });
 });

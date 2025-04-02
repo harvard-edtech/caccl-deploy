@@ -1,20 +1,14 @@
-// Import oclif test
+import { ECRClient } from '@aws-sdk/client-ecr';
 import { runCommand } from '@oclif/test';
-
-// Import AWS SDK mock
-import AWSMock from 'aws-sdk-mock';
-
-// Import chai
 import { expect } from 'chai';
-
-// Import table
+import { stub } from 'sinon';
 import { table } from 'table';
 
 describe('repos', () => {
   it('lists all repos', async () => {
     // Arrange
-    // @ts-ignore
-    AWSMock.mock('ECR', 'describeRepositories', {
+    const stubbedECRClientSend = stub(ECRClient.prototype, 'send');
+    stubbedECRClientSend.onFirstCall().resolves({
       repositories: [
         {
           repositoryName: 'test-1',
@@ -30,8 +24,7 @@ describe('repos', () => {
         },
       ],
     });
-    // @ts-ignore
-    AWSMock.mock('ECR', 'listTagsForResource', {
+    stubbedECRClientSend.resolves({
       tags: [
         {
           Key: 'product',
@@ -53,5 +46,7 @@ describe('repos', () => {
     expect(stdout).to.contain(
       table([['Repository Name'], ['test-1'], ['test-2'], ['test-3']]),
     );
+
+    stubbedECRClientSend.restore();
   });
 });
