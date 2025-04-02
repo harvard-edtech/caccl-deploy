@@ -1,47 +1,33 @@
-// Import NodeJS builtins
-import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-// Import AWS SDK mock
-import AWSMock from 'aws-sdk-mock';
-
-// Import tempy
+import { SSMClient } from '@aws-sdk/client-ssm';
+import { stub } from 'sinon';
 import { temporaryDirectory } from 'tempy';
 
 const mochaHooks = {
   beforeAll() {
     const tempDir = temporaryDirectory();
 
-    // FIXME: Set conf file path to temporary directory
-    const confPath = path.join(tempDir, 'conf/');
-    process.env.CACCL_DEPLOY_CONF_DIR = confPath;
+    const confPath = path.join(tempDir, '.config/');
+    // process.env.CACCL_DEPLOY_CONF_DIR = confPath;
+    process.env.XDG_CONFIG_HOME = confPath;
 
     // Set NODE_ENV to test to avoid certain checks
     process.env.NODE_ENV = 'test';
     process.env.CACCL_DEPLOY_NON_INTERACTIVE = 'true';
 
-    // We need to write empty config and credential files
-    // to satisfy the aws-skd-mock
-    const awsConfPath = path.join(tempDir, 'config');
-    process.env.AWS_CONFIG_FILE = awsConfPath;
-    fs.writeFileSync(awsConfPath, '[default]\nregion=us-east-1');
+    // global.awsMocks = {
+    //   SSM: stub(SSMClient.prototype, 'send'),
+    // }
 
-    const awsCredPath = path.join(tempDir, 'credentials');
-    process.env.AWS_SHARED_CREDENTIALS_FILE = awsCredPath;
-    fs.writeFileSync(
-      awsCredPath,
-      '[default]\naws_access_key_id=fakeaccesskeyid\naws_secret_access_key=fakeaccesskey',
-    );
-
-    // Setup config
+    // TODO: Setup config?
     // setConfigDefaults();
   },
 
-  afterEach() {
-    // @ts-ignore
-    AWSMock.restore();
-  },
+  // afterEach() {
+  //   Object.values(global.awsMocks).map((mock: any) => mock.reset())
+  // }
 };
 
 export { mochaHooks };

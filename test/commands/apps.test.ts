@@ -1,20 +1,14 @@
-// Import oclif test
+import { SSMClient } from '@aws-sdk/client-ssm';
 import { runCommand } from '@oclif/test';
-
-// Import AWS SDK mock
-import AWSMock from 'aws-sdk-mock';
-
-// Import chai
 import { expect } from 'chai';
-
-// Import table
+import { stub } from 'sinon';
 import { table } from 'table';
 
 describe('apps', () => {
   it('lists all apps', async () => {
     // Arrange
-    // @ts-ignore
-    AWSMock.mock('SSM', 'describeParameters', {
+    const stubbedSSMClientSend = stub(SSMClient.prototype, 'send');
+    stubbedSSMClientSend.resolves({
       Parameters: [
         {
           Name: '/caccl-deploy/test-app-1',
@@ -42,5 +36,7 @@ describe('apps', () => {
       // Process exited with 0
       expect(error.message).to.equal('EEXIT: 0');
     }
+
+    stubbedSSMClientSend.restore();
   });
 });
