@@ -1,15 +1,12 @@
-import { ECRClient } from '@aws-sdk/client-ecr';
 import { runCommand } from '@oclif/test';
 import { expect } from 'chai';
-import { stub } from 'sinon';
 import moment from 'moment';
 import { table } from 'table';
 
 describe('images', () => {
   it('lists images', async () => {
     // Arrange
-    const stubbedECRClientSend = stub(ECRClient.prototype, 'send');
-    stubbedECRClientSend.resolves({
+    global.awsMocks.ECR.resolves({
       imageDetails: [
         {
           imagePushedAt: 1725416968,
@@ -51,13 +48,12 @@ describe('images', () => {
       expect(error.message).to.equal('EEXIT: 0');
     }
 
-    stubbedECRClientSend.restore();
+    global.awsMocks.ECR.reset();
   });
 
   it('lists all images', async () => {
     // Arrange
-    const stubbedECRClientSend = stub(ECRClient.prototype, 'send');
-    stubbedECRClientSend.resolves({
+    global.awsMocks.ECR.resolves({
       imageDetails: [
         {
           imagePushedAt: 1725416968,
@@ -109,6 +105,6 @@ describe('images', () => {
       expect(error.message).to.equal('EEXIT: 0');
     }
 
-    stubbedECRClientSend.restore();
+    global.awsMocks.ECR.reset();
   });
 });

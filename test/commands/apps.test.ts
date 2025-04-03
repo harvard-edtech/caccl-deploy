@@ -1,14 +1,11 @@
-import { SSMClient } from '@aws-sdk/client-ssm';
 import { runCommand } from '@oclif/test';
 import { expect } from 'chai';
-import { stub } from 'sinon';
 import { table } from 'table';
 
 describe('apps', () => {
   it('lists all apps', async () => {
     // Arrange
-    const stubbedSSMClientSend = stub(SSMClient.prototype, 'send');
-    stubbedSSMClientSend.resolves({
+    global.awsMocks.SSM.resolves({
       Parameters: [
         {
           Name: '/caccl-deploy/test-app-1',
@@ -37,6 +34,6 @@ describe('apps', () => {
       expect(error.message).to.equal('EEXIT: 0');
     }
 
-    stubbedSSMClientSend.restore();
+    global.awsMocks.SSM.reset();
   });
 });
