@@ -1,14 +1,11 @@
-import { ECRClient } from '@aws-sdk/client-ecr';
 import { runCommand } from '@oclif/test';
 import { expect } from 'chai';
-import { stub } from 'sinon';
 import { table } from 'table';
 
 describe('repos', () => {
   it('lists all repos', async () => {
     // Arrange
-    const stubbedECRClientSend = stub(ECRClient.prototype, 'send');
-    stubbedECRClientSend.onFirstCall().resolves({
+    global.awsMocks.ECR.onFirstCall().resolves({
       repositories: [
         {
           repositoryName: 'test-1',
@@ -24,7 +21,7 @@ describe('repos', () => {
         },
       ],
     });
-    stubbedECRClientSend.resolves({
+    global.awsMocks.ECR.resolves({
       tags: [
         {
           Key: 'product',
@@ -47,6 +44,6 @@ describe('repos', () => {
       table([['Repository Name'], ['test-1'], ['test-2'], ['test-3']]),
     );
 
-    stubbedECRClientSend.restore();
+    global.awsMocks.ECR.reset();
   });
 });

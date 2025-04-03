@@ -1,29 +1,26 @@
-// import { SSMClient } from '@aws-sdk/client-ssm';
 // import { runCommand } from '@oclif/test';
 // import { expect } from 'chai';
-// import { stub } from 'sinon';
 
 // describe('update', () => {
 //   it('updates an SSM parameter', async () => {
 //     // Arrange
-//     const stubbedSSMClientSend = stub(SSMClient.prototype, 'send');
-//     stubbedSSMClientSend.onFirstCall().resolves({
+//     global.awsMocks.SSM.onFirstCall().resolves({
 //       Parameters: [
 //         {
-//           Name: '/caccl-deploy/test/test-1',
+//           Name: '/caccl-deploy/test/infraStackName',
 //           Value: 'test-1',
 //         },
 //         {
-//           Name: '/caccl-deploy/test/test-2',
+//           Name: '/caccl-deploy/test/certificateArn',
 //           Value: 'test-2',
 //         },
 //         {
-//           Name: '/caccl-deploy/test/test-3',
+//           Name: '/caccl-deploy/test/appImage',
 //           Value: 'test-3',
 //         },
 //       ],
 //     });
-//     stubbedSSMClientSend.resolves({});
+//     global.awsMocks.SSM.resolves({});
 
 //     // Act
 //     const { error, stdout, stderr } = await runCommand(
@@ -34,7 +31,7 @@
 //     // No errors
 //     expect(stderr).to.equal('');
 //     // expect(error).to.be.null;
-//     expect(error?.message).to.be.null;
+//     // expect(error?.message).to.be.null;
 //     expect(stdout).to.contain('ssm parameter /caccl-deploy/test/key created');
 
 //     // const expectedPutParamsOpts = {
@@ -45,7 +42,8 @@
 //     //   Description: 'Created and managed by caccl-deploy. ',
 //     // };
 
-//     expect(stubbedSSMClientSend.calledTwice).to.be.true;
+//     expect(global.awsMocks.SSM.calledTwice).to.be.true;
 //     // expect(putParameterSpy.calledWithMatch(expectedPutParamsOpts)).to.be.true;
+//     global.awsMocks.SSM.reset();
 //   });
 // });
