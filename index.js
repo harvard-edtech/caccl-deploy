@@ -177,7 +177,9 @@ class CacclDeployCommander extends Command {
     const cfnExports = await aws.getCfnStackExports(cfnStackName);
     const stackVersion = cfnExports.cacclDeployVersion;
     const cliVersion = cacclDeployVersion;
+
     if (
+      stackVersion === undefined ||
       cliVersion === stackVersion ||
       !warnAboutVersionDiff(stackVersion, cliVersion)
     ) {
