@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Modified
 
 - skip version compare if CfN output value undefined
+- update action versions for the npm publish workflow
 
 ## [0.16.0] - 2025-01-08
 
