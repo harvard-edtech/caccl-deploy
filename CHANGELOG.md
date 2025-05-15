@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Modified
+
+- skip version compare if CfN output value undefined
+
 ## [0.16.0] - 2025-01-08
 
 ### Added
