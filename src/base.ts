@@ -112,7 +112,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
       cfnStackPrefix: this.flags['cfn-stack-prefix'] ?? config.cfnStackPrefix,
       ecrAccessRoleArn:
         this.flags['ecr-access-role-arn'] ?? config.ecrAccessRoleArn,
-      profile: this.flags.profile,
+      profile: this.flags.profile ?? config.profile,
       ssmRootPrefix: this.flags['ssm-root-prefix'] ?? config.ssmRootPrefix,
       yes: this.flags.yes,
     };
@@ -123,7 +123,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    * @author Benedikt Arnarsson
    * @param {string} msg error message to log before exiting.
    */
-  public exitWithError = (msg?: string) => {
+  public exitWithError = (msg?: string): never => {
     this.bye(msg, 1);
   };
 
@@ -132,7 +132,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    * @author Benedikt Arnarsson
    * @param {string} msg message to log before exiting.
    */
-  public exitWithSuccess = (msg?: string) => {
+  public exitWithSuccess = (msg?: string): never => {
     this.bye(msg);
   };
 
@@ -217,9 +217,8 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     profile = 'default',
     keepSecretArns = false,
   ): Promise<DeployConfigData> {
-    const { app } = this.flags;
-    const appPrefix = this.getAppPrefix();
     try {
+      const appPrefix = this.getAppPrefix();
       const deployConfig = await DeployConfig.fromSsmParams(
         appPrefix,
         keepSecretArns,
@@ -228,12 +227,20 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
 
       return deployConfig;
     } catch (error) {
+      const { app } = this.flags;
       if (error instanceof AppNotFound) {
         this.exitWithError(`${app} app configuration not found!`);
+      } else {
+        // Usually, this will be a profile/credential related error
+        this.exitWithError(
+          `Unknown error when fetching configuration for ${app}:\n\n${error}`,
+        );
       }
     }
 
-    return DeployConfig.generate(this.context);
+    // Need this to satisfy TS
+    // Should never be reached, due to the try-catch and this.exitWithError
+    throw new Error('This code is unreachable');
   }
 
   /**
@@ -300,7 +307,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    * @param {string} [msg='bye!'] message to display before exiting.
    * @param {number} [exitCode=0] exit code.
    */
-  private bye(msg = 'bye!', exitCode = 0) {
+  private bye(msg = 'bye!', exitCode = 0): never {
     this.log(msg);
     this.exit(exitCode);
   }

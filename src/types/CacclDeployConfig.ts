@@ -8,6 +8,7 @@ const CacclDeployConfig = z.object({
   cfnStackPrefix: z.string().default('CacclDeploy-'),
   ecrAccessRoleArn: z.string().optional(),
   productionAccounts: z.array(z.string()).default([]),
+  profile: z.string().default('default'),
   ssmRootPrefix: z.string().default('/caccl-deploy'),
 });
 

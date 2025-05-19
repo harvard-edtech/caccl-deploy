@@ -5,7 +5,6 @@ import CacclDeployConfig from './CacclDeployConfig.js';
  * @author Benedikt Arnarsson
  */
 type CacclDeployContext = {
-  profile: string;
   yes: boolean;
 } & CacclDeployConfig;
 
