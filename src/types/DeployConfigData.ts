@@ -34,7 +34,7 @@ const DeployConfigData = z.object({
   proxyImage: z.string().optional(),
   scheduledTasks: z.object({}).catchall(CacclScheduledTask).optional(),
   tags: z.object({}).catchall(z.string()).optional(),
-  taskCount: z.string(),
+  taskCount: z.string().default('1'),
   taskCpu: z.number().optional(),
   taskMemory: z.number().optional(),
 });
