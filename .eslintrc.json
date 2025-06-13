@@ -3,7 +3,8 @@
   "parserOptions": {
     "ecmaVersion": 2020,
     "sourceType": "module",
-    "project": "./tsconfig.json"
+    "project": "./tsconfig.json",
+    "warnOnUnsupportedTypeScriptVersion": false
   },
   "env": {
     "node": true,
@@ -11,22 +12,33 @@
   },
   "settings": {
     "import/parsers": {
-      "@typescript-eslint/parser": [".ts"]
+      "@typescript-eslint/parser": [
+        ".ts"
+      ]
     },
     "import/resolver": {
       "node": {
-        "extensions": [".js", ".ts"]
+        "extensions": [
+          ".js",
+          ".ts"
+        ]
       },
       "typescript": {
         "directory": "./tsconfig.json"
       }
     }
   },
-  "plugins": ["@typescript-eslint", "import", "cdk"],
+  "plugins": [
+    "@typescript-eslint",
+    "import",
+    "cdk"
+  ],
   "extends": [
     "airbnb-base",
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
+    "oclif",
+    "oclif-typescript",
     "prettier"
   ],
   "ignorePatterns": [
@@ -34,67 +46,112 @@
     "node_modules/",
     "*.generated.ts",
     "build/",
-    "cdk/cdk.out/"
+    "cdk/cdk.out/",
+    "dist/",
+    "test/",
+    "src/cdk/assets/",
+    "bin",
+    "lib",
+    "cdk",
+    "index.js"
   ],
   "rules": {
+    "n/no-process-exit": "off",
+    "unicorn/no-process-exit": "off",
+    "no-restricted-syntax": "off",
+    "no-warning-comments": "off",
+    "unicorn/no-array-reduce": "off",
+    "unicorn/filename-case": "off",
     "@typescript-eslint/no-var-requires": "off",
-    "@typescript-eslint/no-floating-promises": ["error"],
-    "@typescript-eslint/no-non-null-assertion": ["warn"],
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-non-null-assertion": [
+      "warn"
+    ],
     "@typescript-eslint/no-explicit-any": "off",
     "max-classes-per-file": "off",
-    "arrow-body-style": ["warn", "always"],
-    "arrow-parens": ["warn", "always"],
-    "comma-dangle": ["error", "only-multiline"],
+    "arrow-body-style": [
+      "warn",
+      "always"
+    ],
+    "arrow-parens": [
+      "warn",
+      "always"
+    ],
+    "comma-dangle": [
+      "error",
+      "only-multiline"
+    ],
     "consistent-return": "off",
-    "no-duplicate-imports": ["error"],
+    "no-duplicate-imports": [
+      "error"
+    ],
     "no-continue": "off",
-    "no-shadow": ["error"],
-    "key-spacing": ["error"],
-    "semi": ["error", "always"],
-    "quote-props": ["error", "consistent-as-needed"],
-    "function-call-argument-newline": ["error", "consistent"],
-    "no-multiple-empty-lines": ["error"],
+    "no-shadow": [
+      "error"
+    ],
+    "key-spacing": [
+      "error"
+    ],
+    "semi": [
+      "error",
+      "always"
+    ],
+    "quote-props": [
+      "error",
+      "consistent-as-needed"
+    ],
+    "function-call-argument-newline": [
+      "error",
+      "consistent"
+    ],
+    "no-multiple-empty-lines": [
+      "error"
+    ],
     "no-new": 0,
     "explicit-function-return-type": 0,
     "no-console": "off",
     "no-underscore-dangle": "off",
     "no-await-in-loop": "off",
     "no-unused-expressions": "off",
-    "import/no-unresolved": ["error"],
-		"indent": ["error", 2, { "SwitchCase": 1 }],
+    "import/no-unresolved": [
+      "error"
+    ],
+    "indent": [
+      "error",
+      2,
+      {
+        "SwitchCase": 1
+      }
+    ],
     "class-methods-use-this": [
       "error",
       {
-        "exceptMethods": ["createCommand"]
+        "exceptMethods": [
+          "createCommand"
+        ]
       }
     ],
-		"quotes": [
-			"error",
-			"single",
-			{
-				"avoidEscape": true
-			}
-		],
+    "quotes": [
+      "error",
+      "single",
+      {
+        "avoidEscape": true
+      }
+    ],
     "import/no-extraneous-dependencies": [
       "error",
       {
-        "devDependencies": ["**/build-tools/**", "**/test/**"],
+        "devDependencies": [
+          "**/build-tools/**",
+          "**/test/**"
+        ],
         "optionalDependencies": false,
         "peerDependencies": false
       }
     ],
-    "import/order": [
-      "warn",
-      {
-        "groups": ["builtin", "external"],
-        "alphabetize": {
-          "order": "asc",
-          "caseInsensitive": true
-        }
-      }
-    ],
+    "import/order": "off",
     "import/extensions": [
-      "warn",
+      "off",
       "never",
       {
         "json": "always"
@@ -150,6 +207,7 @@
       {
         "max": 3
       }
-    ]
+    ],
+    "perfectionist/sort-classes": "off"
   }
 }
