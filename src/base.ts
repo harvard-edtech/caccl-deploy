@@ -53,7 +53,6 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
       helpGroup: 'GLOBAL',
     }),
     'profile': Flags.string({
-      default: 'default',
       description: 'activate a specific aws config/credential profile',
       helpGroup: 'GLOBAL',
     }),
