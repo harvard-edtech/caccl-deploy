@@ -1,14 +1,6 @@
 import { aws_ec2 as ec2, Stack, CfnOutput } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
-// TODO: this will need to be expanded if this project is to be used outside of DCE
-const DEFAULT_AMI_MAP = {
-  // this value should be updated on a regular basis.
-  // the latest amazon linux ami is recorded in the public parameter store entry
-  // /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
-  'us-east-1': 'ami-02b972fec07f1e659',
-};
-
 export interface CacclSshBastionProps {
   vpc: ec2.Vpc;
   sg: ec2.SecurityGroup;
@@ -22,12 +14,17 @@ export class CacclSshBastion extends Construct {
 
     const { vpc, sg } = props;
 
+    const machineImage = ec2.MachineImage.latestAmazonLinux({
+      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+      edition: ec2.AmazonLinuxEdition.STANDARD,
+    });
+
     this.instance = new ec2.BastionHostLinux(this, 'SshBastionHost', {
       vpc,
       subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
       securityGroup: sg,
-      machineImage: ec2.MachineImage.genericLinux(DEFAULT_AMI_MAP),
+      machineImage,
     });
 
     new CfnOutput(this, 'DbBastionHostIp', {
