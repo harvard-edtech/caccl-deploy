@@ -656,6 +656,7 @@ async function main() {
         deployConfigHash,
         stackName: cfnStackName,
         awsAccountId: await aws.getAccountId(),
+        bastionAmiId: await aws.getBastionAmiId(),
         awsRegion: process.env.AWS_REGION || 'us-east-1',
         deployConfig,
       };

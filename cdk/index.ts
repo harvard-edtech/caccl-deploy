@@ -21,6 +21,7 @@ const {
   ecsClusterName,
   awsRegion,
   awsAccountId,
+  bastionAmiId,
   cacclDeployVersion,
   albLogBucketName,
   deployConfigHash,
@@ -36,6 +37,8 @@ const stackProps: CacclDeployStackProps = {
   ecsClusterName,
   // shared s3 bucket where the application load balancer logs will end up
   albLogBucketName,
+  // id of the AMI to use for the bastion host
+  bastionAmiId,
   // ARN of the ssl certificate
   certificateArn: deployConfig.certificateArn,
   // object that defines the environment variables that will be injected into the app container
