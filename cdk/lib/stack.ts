@@ -19,6 +19,7 @@ import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
   certificateArn: string;
+  bastionAmiId: string;
   ecsClusterName?: string;
   appEnvironment: { [key: string]: string };
   taskDefProps: CacclTaskDefProps;
@@ -186,7 +187,11 @@ export class CacclDeployStack extends Stack {
         });
         bastionSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22));
       }
-      new CacclSshBastion(this, 'SshBastion', { vpc, sg: bastionSg });
+      new CacclSshBastion(this, 'SshBastion', {
+        vpc,
+        bastionAmiId: props.bastionAmiId,
+        sg: bastionSg,
+      });
     }
 
     if (props.scheduledTasks) {

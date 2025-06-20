@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 export interface CacclSshBastionProps {
   vpc: ec2.Vpc;
   sg: ec2.SecurityGroup;
+  bastionAmiId: string;
 }
 
 export class CacclSshBastion extends Construct {
@@ -12,7 +13,11 @@ export class CacclSshBastion extends Construct {
   constructor(scope: Construct, id: string, props: CacclSshBastionProps) {
     super(scope, id);
 
-    const { vpc, sg } = props;
+    const { vpc, sg, bastionAmiId } = props;
+
+    const machineImage = ec2.MachineImage.genericLinux({
+      [Stack.of(this).region]: bastionAmiId,
+    });
 
     const machineImage = ec2.MachineImage.latestAmazonLinux({
       generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
