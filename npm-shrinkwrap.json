@@ -1,12 +1,12 @@
 {
   "name": "caccl-deploy",
-  "version": "0.17.0-npm-pub-v20",
+  "version": "0.17.0-npm-pub-v17",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "caccl-deploy",
-      "version": "0.17.0-npm-pub-v20",
+      "version": "0.17.0-npm-pub-v17",
       "license": "ISC",
       "dependencies": {
         "aws-cdk": "~2.41.0",

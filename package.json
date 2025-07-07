@@ -1,6 +1,6 @@
 {
   "name": "caccl-deploy",
-  "version": "0.17.0-npm-pub-v20",
+  "version": "0.17.0-npm-pub-v17",
   "description": "A cli tool for managing ECS/Fargate app deployments",
   "main": "index.js",
   "bin": {
