@@ -741,7 +741,15 @@ async function main() {
           };
 
           try {
-            execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
+            execSync(
+              [
+                'node_modules/.bin/cdk',
+                '--debug',
+                '--verbose',
+                ...cdkArgs,
+              ].join(' '),
+              execOpts,
+            );
             exitWithSuccess('done!');
           } catch (err) {
             exitWithError(err.msg);
