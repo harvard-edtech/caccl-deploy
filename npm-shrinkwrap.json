@@ -1,12 +1,12 @@
 {
   "name": "caccl-deploy",
-  "version": "0.17.0",
+  "version": "0.18.3-fetch-bastion-ami-id",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "caccl-deploy",
-      "version": "0.17.0",
+      "version": "0.18.3-fetch-bastion-ami-id",
       "license": "ISC",
       "dependencies": {
         "aws-cdk": "~2.41.0",
