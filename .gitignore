@@ -12,3 +12,4 @@ tsconfig.tsbuildinfo
 yarn.lock
 pnpm-lock.yaml
 
+/cdk.out
