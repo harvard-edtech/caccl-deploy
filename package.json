@@ -1,6 +1,6 @@
 {
   "name": "caccl-deploy",
-  "version": "0.18.3-fetch-bastion-ami-id",
+  "version": "0.18.4-fetch-bastion-ami-id",
   "description": "A cli tool for managing ECS/Fargate app deployments",
   "main": "index.js",
   "bin": {
