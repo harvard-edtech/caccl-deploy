@@ -19,11 +19,6 @@ export class CacclSshBastion extends Construct {
       [Stack.of(this).region]: bastionAmiId,
     });
 
-    const machineImage = ec2.MachineImage.latestAmazonLinux({
-      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-      edition: ec2.AmazonLinuxEdition.STANDARD,
-    });
-
     this.instance = new ec2.BastionHostLinux(this, 'SshBastionHost', {
       vpc,
       subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
