@@ -19,24 +19,24 @@ const DeployConfigData = z.object({
   dbOptions: CacclDbOptions.optional(),
   // DEPRECATED:
   docDb: z.any(),
-  docDbInstanceCount: z.number().optional(),
+  docDbInstanceCount: z.coerce.number().optional(),
   docDbInstanceType: z.string().optional(),
-  docDbProfiler: z.boolean().optional(),
+  docDbProfiler: z.coerce.boolean().optional(),
   enableExecuteCommand: z.union([z.string(), z.boolean()]).optional(),
   firewallSgId: z.string().optional(),
   gitRepoVolume: z.object({}).catchall(z.string()).optional(),
   // CloudFormation infrastructure stack name
   infraStackName: z.string(),
   lbOptions: CacclLoadBalancerExtraOptions.optional(),
-  logRetentionDays: z.number().optional(),
+  logRetentionDays: z.coerce.number().optional(),
   // Container image ARN
   notifications: CacclNotificationsProps.optional(),
   proxyImage: z.string().optional(),
   scheduledTasks: z.object({}).catchall(CacclScheduledTask).optional(),
   tags: z.object({}).catchall(z.string()).optional(),
   taskCount: z.string().default('1'),
-  taskCpu: z.number().optional(),
-  taskMemory: z.number().optional(),
+  taskCpu: z.coerce.number().optional(),
+  taskMemory: z.coerce.number().optional(),
 });
 
 /**
