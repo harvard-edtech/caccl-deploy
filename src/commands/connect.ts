@@ -111,6 +111,12 @@ export default class Connect extends BaseCommand<typeof Connect> {
       dbPasswordSecretArn,
     } = cfnStackExports;
 
+    if (bastionHostId === undefined || dbPasswordSecretArn === undefined) {
+      this.exitWithError(
+        `Bastion host ID or database password secret ARN not found in CloudFormation stack exports for ${cfnStackName}`,
+      );
+    }
+
     try {
       await sendSSHPublicKey({
         instanceAz: bastionHostAz,
@@ -132,7 +138,7 @@ export default class Connect extends BaseCommand<typeof Connect> {
 
     if (['docdb', 'mysql'].includes(service)) {
       endpoint = dbClusterEndpoint;
-      const password = await resolveSecret(dbPasswordSecretArn, profile);
+      const password = await resolveSecret(dbPasswordSecretArn!, profile);
       if (service === 'mysql') {
         localPort = localPortFlag || '3306';
         clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;

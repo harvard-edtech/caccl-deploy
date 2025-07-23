@@ -21,6 +21,18 @@ const envVarParser = (inputs: string[] | undefined): EnvVariable[] => {
 
   return inputs.map((envVar: string): EnvVariable => {
     const [key, value] = envVar.split('=');
+    if (key === undefined || value === undefined) {
+      throw new Error(
+        `Invalid environment variable format: ${envVar}. Expected format is KEY=VALUE.`,
+      );
+    }
+
+    if (key.length === 0 || value.length === 0) {
+      throw new Error(
+        `Environment variable key or value cannot be empty: ${envVar}.`,
+      );
+    }
+
     return {
       name: key,
       value,
@@ -61,11 +73,18 @@ export default class Exec extends BaseCommand<typeof Exec> {
     const { appOnlyTaskDefName, clusterName, serviceName } =
       await getCfnStackExports(cfnStackName, profile);
 
-    // check that we're not using a wildly different version of the cli
     if (
-      !yes &&
-      !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
+      appOnlyTaskDefName === undefined ||
+      clusterName === undefined ||
+      serviceName === undefined
     ) {
+      this.exitWithError(
+        `Could not find app task definition, cluster name, or service name in CloudFormation stack exports for ${cfnStackName}`,
+      );
+    }
+
+    // check that we're not using a wildly different version of the cli
+    if (!yes && !(await stackVersionDiffCheck(cfnStackName, profile))) {
       this.exitWithSuccess();
     }
 
@@ -76,13 +95,14 @@ export default class Exec extends BaseCommand<typeof Exec> {
     this.log(
       `Running command '${command}' on service ${serviceName} using task def ${appOnlyTaskDefName}`,
     );
+
     const taskArn = await execTask({
-      clusterName,
+      clusterName: clusterName!,
       command,
       environment: envVarParser(env),
       profile,
-      serviceName,
-      taskDefName: appOnlyTaskDefName,
+      serviceName: serviceName!,
+      taskDefName: appOnlyTaskDefName!,
     });
     this.exitWithSuccess(`Task ${taskArn} started`);
   }

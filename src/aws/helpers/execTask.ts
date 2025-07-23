@@ -69,7 +69,7 @@ const execTask = async (
   });
   const execResp = await client.send(runTaskCommand);
 
-  if (!execResp.tasks) return undefined;
+  if (!execResp.tasks || execResp.tasks[0] === undefined) return undefined;
   return execResp.tasks[0].taskArn;
 };
 

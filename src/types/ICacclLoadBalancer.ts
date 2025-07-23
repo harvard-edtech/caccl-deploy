@@ -7,14 +7,10 @@ import {
  * Interface for a generic CDK load balancer, allowing alarms and metrics.
  * @author Benedikt Arnarsson
  */
-interface ICacclLoadBalancer {
+export interface ICacclLoadBalancer {
   alarms: cloudwatch.Alarm[];
-
-  httpsListener: elb.ApplicationListener;
 
   loadBalancer: elb.ApplicationLoadBalancer;
 
   metrics: Record<string, cloudwatch.Metric>;
 }
-
-export default ICacclLoadBalancer;

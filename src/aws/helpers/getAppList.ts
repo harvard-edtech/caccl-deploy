@@ -1,6 +1,6 @@
 import {
   DescribeParametersCommand,
-  DescribeParametersCommandInput,
+  type DescribeParametersCommandInput,
   SSMClient,
 } from '@aws-sdk/client-ssm';
 
@@ -21,7 +21,7 @@ import getPaginatedResponseV2 from './getPaginatedResponseV2.js';
 const getAppList = async (
   prefix: string,
   profile = 'default',
-): Promise<string[]> => {
+): Promise<(string | undefined)[]> => {
   const client = new SSMClient({ profile });
   const searchParams: DescribeParametersCommandInput = {
     MaxResults: 50, // lord i hope we never have this many apps

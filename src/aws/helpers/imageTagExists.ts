@@ -1,4 +1,5 @@
-import CacclDeployContext from '../../types/CacclDeployContext.js';
+import type { CacclDeployContext } from '../../types/CacclDeployContext.js';
+
 import getRepoImageList from './getRepoImageList.js';
 
 /**

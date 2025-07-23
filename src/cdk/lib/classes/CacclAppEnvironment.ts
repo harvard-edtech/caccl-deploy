@@ -8,8 +8,8 @@ import { Construct } from 'constructs';
 
 // Import shared types
 import {
-  CacclAppEnvironmentProps,
-  ICacclAppEnvironment,
+  type CacclAppEnvironmentProps,
+  type ICacclAppEnvironment,
 } from '../../../types/index.js';
 
 class CacclAppEnvironment extends Construct implements ICacclAppEnvironment {

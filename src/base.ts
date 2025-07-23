@@ -11,12 +11,13 @@ import figlet from 'figlet';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import type { CacclDeployContext } from './types/CacclDeployContext.js';
+
 import { confirm } from './configPrompts/index.js';
 import DeployConfig from './deployConfig/index.js';
 import logger from './logger.js';
 import AppNotFound from './shared/errors/AppNotFound.js';
 import CacclDeployConfig from './types/CacclDeployConfig.js';
-import CacclDeployContext from './types/CacclDeployContext.js';
 import { DeployConfigData } from './types/index.js';
 
 // Types
@@ -32,7 +33,7 @@ type Args<T extends typeof Command> = Interfaces.InferredArgs<T['args']>;
  */
 export abstract class BaseCommand<T extends typeof Command> extends Command {
   // define flags that can be inherited by any command that extends BaseCommand
-  static baseFlags = {
+  static override baseFlags = {
     'app': Flags.string({
       char: 'a',
       description: 'name of the app to work with',
@@ -70,7 +71,8 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     }),
   };
 
-  static description = 'A cli tool for managing ECS/Fargate app deployments';
+  static override description =
+    'A cli tool for managing ECS/Fargate app deployments';
 
   protected args!: Args<T>;
   protected flags!: Flags<T>;
@@ -86,7 +88,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    *    - merges config and flags into context
    * @author Benedikt Arnarsson
    */
-  public async init(): Promise<void> {
+  public override async init(): Promise<void> {
     // Set the logger
     logger.setLogger(this.log, this.logToStderr);
 
@@ -141,7 +143,9 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    * @param {{ exitCode?: number } & Error} err the caught error information.
    * @returns {Promise<any>}
    */
-  protected async catch(err: { exitCode?: number } & Error): Promise<any> {
+  protected override async catch(
+    err: { exitCode?: number } & Error,
+  ): Promise<any> {
     // add any custom logic to handle errors from the command
     // or simply return the parent class error handling
     return super.catch(err);
@@ -154,7 +158,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    * @param {Error | undefined} _ error information, if there was an error during command execution.
    * @returns {Promise<any>}
    */
-  protected async finally(_: Error | undefined): Promise<any> {
+  protected override async finally(_: Error | undefined): Promise<any> {
     // called after run and catch regardless of whether or not the command errored
     return super.finally(_);
   }

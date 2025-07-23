@@ -1,10 +1,11 @@
 import chalk from 'chalk';
 import figlet from 'figlet';
 
+import type { CacclDeployContext } from '../types/CacclDeployContext.js';
+
 import { getAccountId } from '../aws/index.js';
 import logger from '../logger.js';
 import UserCancel from '../shared/errors/UserCancel.js';
-import CacclDeployContext from '../types/CacclDeployContext.js';
 import confirm from './confirm.js';
 
 /**

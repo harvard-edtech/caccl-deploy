@@ -17,7 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 class CacclNotifications extends Construct {
-  subscriptions: sns.Subscription[];
+  subscriptions: sns.Subscription[] = [];
 
   topic: sns.Topic;
 

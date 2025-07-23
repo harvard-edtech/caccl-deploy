@@ -1,5 +1,5 @@
 // Import types
-import AwsTag from '../types/AwsTag.js';
+import { type AwsTag } from '../types/AwsTag.js';
 
 /**
  * Construct a list of AWS tags from a JS object. For passing into the aws-sdk library.

@@ -32,7 +32,7 @@ const DeployConfigData = z.object({
   // Container image ARN
   notifications: CacclNotificationsProps.optional(),
   proxyImage: z.string().optional(),
-  scheduledTasks: z.object({}).catchall(CacclScheduledTask).optional(),
+  scheduledTasks: z.record(z.string(), CacclScheduledTask).optional(),
   tags: z.object({}).catchall(z.string()).optional(),
   taskCount: z.string().default('1'),
   taskCpu: z.coerce.number().optional(),

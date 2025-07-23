@@ -6,12 +6,10 @@ import CacclScheduledTask from './CacclScheduledTask.js';
  * Properties for constructing a CDK scheduled task with CACCL deploy.
  * @author Benedikt Arnarsson
  */
-type CacclScheduledTasksProps = {
+export type CacclScheduledTasksProps = {
   clusterName: string;
   scheduledTasks: { [key: string]: CacclScheduledTask };
   serviceName: string;
   taskDefinition: ecs.FargateTaskDefinition;
   vpc: ec2.Vpc;
 };
-
-export default CacclScheduledTasksProps;

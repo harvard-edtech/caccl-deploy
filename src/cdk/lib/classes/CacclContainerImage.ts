@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // Import shared types
-import { CacclContainerImageOptions } from '../../../types/index.js';
+import { type CacclContainerImageOptions } from '../../../types/index.js';
 
 class CacclContainerImage extends Construct {
   image: ecs.ContainerImage;

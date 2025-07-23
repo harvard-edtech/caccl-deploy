@@ -1,4 +1,4 @@
-import EcrImage from '../../shared/types/EcrImage.js';
+import type { EcrImage } from '../../shared/types/EcrImage.js';
 
 /**
  * Reassembles the result of `parseEcrArn` into a string.

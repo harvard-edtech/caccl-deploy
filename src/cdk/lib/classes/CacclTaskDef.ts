@@ -9,7 +9,7 @@ import {
 // Import AWS constructs
 import { Construct } from 'constructs';
 
-import { CacclTaskDefProps } from '../../../types/index.js';
+import { type CacclTaskDefProps } from '../../../types/index.js';
 // Import constants
 import DEFAULT_PROXY_REPO_NAME from '../constants/DEFAULT_PROXY_REPO_NAME.js';
 import CacclContainerImage from './CacclContainerImage.js';
@@ -23,7 +23,7 @@ class CacclTaskDef extends Construct {
 
   appOnlyTaskDef: ecs.FargateTaskDefinition;
 
-  logGroup: logs.LogGroup;
+  logGroup!: logs.LogGroup;
 
   proxyContainer: ecs.ContainerDefinition;
 

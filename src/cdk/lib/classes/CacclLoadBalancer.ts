@@ -9,12 +9,10 @@ import {
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclLoadBalancerProps } from '../../../types/index.js';
+import { type CacclLoadBalancerProps } from '../../../types/index.js';
 
 class CacclLoadBalancer extends Construct {
   alarms: cloudwatch.Alarm[];
-
-  httpsListener: elb.ApplicationListener;
 
   loadBalancer: elb.ApplicationLoadBalancer;
 
@@ -153,7 +151,7 @@ class CacclLoadBalancer extends Construct {
           Stack.of(this).stackName
         } load balancer target response time (TargetResponseTime)`,
         evaluationPeriods: 3,
-        metric: this.metrics.TargetResponseTime,
+        metric: this.metrics.TargetResponseTime!,
         threshold: 1,
         treatMissingData: cloudwatch.TreatMissingData.IGNORE,
       }),
@@ -162,7 +160,7 @@ class CacclLoadBalancer extends Construct {
           Stack.of(this).stackName
         } load balancer rejected connections (RejectedConnectionCount)`,
         evaluationPeriods: 1,
-        metric: this.metrics.RejectedConnectionCount,
+        metric: this.metrics.RejectedConnectionCount!,
         threshold: 1,
         treatMissingData: cloudwatch.TreatMissingData.IGNORE,
       }),
@@ -171,7 +169,7 @@ class CacclLoadBalancer extends Construct {
           Stack.of(this).stackName
         } target group unhealthy host count (UnHealthyHostCount)`,
         evaluationPeriods: 3,
-        metric: this.metrics.UnHealthyHostCount,
+        metric: this.metrics.UnHealthyHostCount!,
         threshold: 1,
         treatMissingData: cloudwatch.TreatMissingData.IGNORE,
       }),

@@ -1,7 +1,7 @@
 import {
   GetParametersByPathCommand,
-  GetParametersByPathCommandInput,
-  Parameter,
+  type GetParametersByPathCommandInput,
+  type Parameter,
   SSMClient,
 } from '@aws-sdk/client-ssm';
 

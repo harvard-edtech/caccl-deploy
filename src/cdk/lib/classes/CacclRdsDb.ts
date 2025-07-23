@@ -12,7 +12,7 @@ import {
 // Import AWS constructs
 import { Construct } from 'constructs';
 
-import { CacclDbProps } from '../../../types/index.js';
+import { type CacclDbProps } from '../../../types/index.js';
 // Import constants
 import DEFAULT_AURORA_MYSQL_ENGINE_VERSION from '../constants/DEFAULT_AURORA_MYSQL_ENGINE_VERSION.js';
 import DEFAULT_DB_INSTANCE_TYPE from '../constants/DEFAULT_DB_INSTANCE_TYPE.js';
@@ -22,7 +22,7 @@ import CacclDbBase from './CacclDbBase.js';
 // Import classes
 
 class CacclRdsDb extends CacclDbBase {
-  metricNamespace = 'AWS/RDS';
+  override metricNamespace = 'AWS/RDS';
 
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id, props);
@@ -160,17 +160,19 @@ class CacclRdsDb extends CacclDbBase {
     };
 
     this.alarms = [
-      ...this.metrics.ReadIOPS.map((metric: cloudwatch.Metric, idx: number) => {
-        return new cloudwatch.Alarm(this, `CPUUtilizationAlarm-${idx}`, {
-          alarmDescription: `${Stack.of(this).stackName} ${
-            metric.label
-          } cpu utilization alarm`,
-          evaluationPeriods: 3,
-          metric,
-          threshold: 50,
-        });
-      }),
-      ...this.metrics.BufferCacheHitRatio.map((metric, idx) => {
+      ...this.metrics.ReadIOPS!.map(
+        (metric: cloudwatch.Metric, idx: number) => {
+          return new cloudwatch.Alarm(this, `CPUUtilizationAlarm-${idx}`, {
+            alarmDescription: `${Stack.of(this).stackName} ${
+              metric.label
+            } cpu utilization alarm`,
+            evaluationPeriods: 3,
+            metric,
+            threshold: 50,
+          });
+        },
+      ),
+      ...this.metrics.BufferCacheHitRatio!.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `BufferCacheHitRatioAlarm-${idx}`, {
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
@@ -182,7 +184,7 @@ class CacclRdsDb extends CacclDbBase {
           threshold: 90,
         });
       }),
-      ...this.metrics.DiskQueueDepth.map((metric, idx) => {
+      ...this.metrics.DiskQueueDepth!.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `DiskQueueDepth-${idx}`, {
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
@@ -192,7 +194,7 @@ class CacclRdsDb extends CacclDbBase {
           threshold: 1,
         });
       }),
-      ...this.metrics.ReadLatency.map((metric, idx) => {
+      ...this.metrics.ReadLatency!.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `ReadLatency-${idx}`, {
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
@@ -203,7 +205,7 @@ class CacclRdsDb extends CacclDbBase {
           treatMissingData: cloudwatch.TreatMissingData.IGNORE,
         });
       }),
-      ...this.metrics.WriteLatency.map((metric, idx) => {
+      ...this.metrics.WriteLatency!.map((metric, idx) => {
         return new cloudwatch.Alarm(this, `WriteLatency-${idx}`, {
           alarmDescription: `${Stack.of(this).stackName} ${
             metric.label
@@ -214,7 +216,7 @@ class CacclRdsDb extends CacclDbBase {
           treatMissingData: cloudwatch.TreatMissingData.IGNORE,
         });
       }),
-      ...this.metrics.DatabaseCursorsTimedOut.map((metric, idx) => {
+      ...this.metrics.DatabaseCursorsTimedOut!.map((metric, idx) => {
         return new cloudwatch.Alarm(
           this,
           `DatabaseCursorsTimedOutAlarm-${idx}`,

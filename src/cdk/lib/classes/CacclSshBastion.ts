@@ -2,7 +2,7 @@ import { CfnOutput, Stack, aws_ec2 as ec2 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclSshBastionProps } from '../../../types/index.js';
+import { type CacclSshBastionProps } from '../../../types/index.js';
 // Import constants
 import DEFAULT_AMI_MAP from '../constants/DEFAULT_AMI_MAP.js';
 

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import ICacclDb from './ICacclDb.js';
-import ICacclLoadBalancer from './ICacclLoadBalancer.js';
-import ICacclService from './ICacclService.js';
+import type { ICacclDb } from './ICacclDb.js';
+import type { ICacclLoadBalancer } from './ICacclLoadBalancer.js';
+import type { ICacclService } from './ICacclService.js';
 
 /**
  * Properties for configuring CACCL deploy notification.

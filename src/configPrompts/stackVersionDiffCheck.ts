@@ -18,7 +18,7 @@ const stackVersionDiffCheck = async (
   profile = 'default',
 ): Promise<boolean> => {
   const cfnExports = await getCfnStackExports(cfnStackName, profile);
-  const stackVersion = cfnExports.cacclDeployVersion;
+  const stackVersion = cfnExports.cacclDeployVersion ?? '';
   const cliVersion = CACCL_DEPLOY_VERSION;
   if (
     cliVersion === stackVersion ||

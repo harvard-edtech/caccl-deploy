@@ -1,6 +1,6 @@
 import {
   ACMClient,
-  CertificateSummary,
+  type CertificateSummary,
   ListCertificatesCommand,
 } from '@aws-sdk/client-acm';
 

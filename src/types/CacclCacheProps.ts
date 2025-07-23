@@ -1,16 +1,15 @@
 import { aws_ec2 as ec2 } from 'aws-cdk-lib';
 
+import type { ICacclAppEnvironment } from './ICacclAppEnvironment.js';
+
 import CacclCacheOptions from './CacclCacheOptions.js';
-import ICacclAppEnvironment from './ICacclAppEnvironment.js';
 
 /**
  * Properties to construct a AWS Elasticache instance with CACCL deploy.
  * @author Benedikt Arnarsson
  */
-type CacclCacheProps = {
+export type CacclCacheProps = {
   appEnv: ICacclAppEnvironment;
   options: CacclCacheOptions;
   vpc: ec2.Vpc;
 };
-
-export default CacclCacheProps;
