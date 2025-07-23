@@ -81,7 +81,7 @@ These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy ne
 
 `stack` - do stuff with the app's CDK-based CloudFormation stack
 
-`release` - update an app's Docker image and restart the Fargate service
+
 
 `restart` - restart an app's Fargate service
 
@@ -230,7 +230,8 @@ First the required values.
 
 `infraStackName` (string) - this tells `caccl-deploy` what set of shared infrastructure resources your app will be deployed into. For this setting you just want the string value of the CloudFormation stack name. The companion project, [dce-ecs-infra](https://github.com/harvard-edtech/dce-ecs-infra) is what we use to build out that infrastructure.
 
-`appImage` (string) - this tells `caccl-deploy` where to find your app's Docker image. This value should be the ARN of an ECR repo plus an image tag. It's also possible to use a DockerHub name:tag combo, but some of the `caccl-deploy` subcommands (`release` for example) are not compatible with that use.
+`appImage` (string) - this tells `caccl-deploy` where to find your app's Docker image. This value should be the ARN of an ECR repo plus an image tag.
+
 
 `certificateArn` (string) - one of the components of the app provisioning that `caccl-deploy` creates is a Application Load Balancer. You will need to create (or import) an ACM certificate so that it can be attached to the load balancer. This value should be the full ARN of that certfiicate.
 
@@ -543,7 +544,6 @@ Commands:
   images [options]   list the most recent available ECR images for an app
   stack [options]    diff, deploy, or delete the app's AWS resources
   restart [options]  no changes; just force a restart
-  release [options]  release a new version of an app
   exec [options]     execute a one-off task using the app image
   connect [options]  connect to an app's peripheral services (db, redis, etc)
   schedule [options] create a scheduled task using the app image
@@ -691,22 +691,6 @@ _**IMPORTANT**_, any changes you have made to app environment variables or the a
 
 ---
 
-#### release
-
-This subcommand combines an change to the app's Docker image (i.e. switching to a new version tag) with a service restart.
-
-For example, say your app's `appImage` was set to `arn:aws:ecr:us-east-1:123456789012:repository/hdce/tool-playground:1.0.0` and you wanted to release the image tagged `1.1.0`, you would do:
-
-`caccl-deploy release -a my-app -i 1.1.0`
-
-The `-i` input value is validated against the list of tags available in the repo indicated by your full image id. You will also be prompted to confirm if the tag is not for the most recent image available in the repository.
-
-##### options
-
-- `-a`/`--app` (required) - the name of the app
-- `-i`/`--image-tag` (required) - the new image release tag. This can be any value shown in the output of the `images` subcommand.
-
----
 
 #### exec
 
