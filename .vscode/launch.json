@@ -4,6 +4,91 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug OCLIF Command",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+      },
+      "program": "${workspaceFolder}/bin/run.js",
+      "args": ["apps", "--help"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: apps",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+      },
+      "program": "${workspaceFolder}/bin/run.js",
+      "args": ["apps"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: new",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+      },
+      "program": "${workspaceFolder}/bin/run.js",
+      "args": ["new", "--help"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: show",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+      },
+      "program": "${workspaceFolder}/bin/run.js",
+      "args": ["show", "--help"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: Custom Command",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+      },
+      "program": "${workspaceFolder}/bin/run.js",
+      "args": [],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Mocha: current file",
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
