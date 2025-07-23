@@ -6,7 +6,7 @@ import { z } from 'zod';
  */
 const CacclLoadBalancerExtraOptions = z.object({
   healthCheckPath: z.string().optional(),
-  targetDeregistrationDelay: z.number().optional(),
+  targetDeregistrationDelay: z.coerce.number().optional(),
 });
 
 /**

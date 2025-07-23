@@ -14,7 +14,7 @@ const CacclDbOptions = z.object({
   // use a non-default engine version (shouldn't be necessary)
   engineVersion: z.string().optional(),
   // > 1 will get you multi-az
-  instanceCount: z.number().optional(),
+  instanceCount: z.coerce.number().optional(),
   // see the aws docs for supported types
   instanceType: z.string().optional(),
   // use a non-default parameter group family (also unnecessary)

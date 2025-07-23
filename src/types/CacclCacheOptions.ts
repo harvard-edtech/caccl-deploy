@@ -7,7 +7,7 @@ import { z } from 'zod';
 const CacclCacheOptions = z.object({
   cacheNodeType: z.string().optional(),
   engine: z.enum(['memcached', 'redis', 'valkey']),
-  numCacheNodes: z.number().optional(),
+  numCacheNodes: z.coerce.number().optional(),
 });
 
 type CacclCacheOptions = z.infer<typeof CacclCacheOptions>;
