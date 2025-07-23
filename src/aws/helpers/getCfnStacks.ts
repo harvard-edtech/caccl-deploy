@@ -1,7 +1,7 @@
 import {
   CloudFormationClient,
   DescribeStacksCommand,
-  Stack,
+  type Stack,
 } from '@aws-sdk/client-cloudformation';
 
 import getPaginatedResponseV2 from './getPaginatedResponseV2.js';

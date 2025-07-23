@@ -1,7 +1,7 @@
 import {
   EC2InstanceConnectClient,
   SendSSHPublicKeyCommand,
-  SendSSHPublicKeyCommandOutput,
+  type SendSSHPublicKeyCommandOutput,
 } from '@aws-sdk/client-ec2-instance-connect';
 
 import readFile from '../../shared/helpers/readFile.js';
@@ -9,7 +9,7 @@ import EC2_INSTANCE_CONNECT_USER from '../constants/EC2_INSTANCE_CONNECT_USER.js
 
 export type SendSSHPublicKeyOpts = {
   instanceAz?: string;
-  instanceId: string;
+  instanceId?: string;
   profile?: string;
   sshKeyPath: string;
 };

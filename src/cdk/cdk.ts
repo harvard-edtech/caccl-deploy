@@ -5,7 +5,7 @@ import 'source-map-support/register';
 import yn from 'yn';
 
 import {
-  CacclDeployStackProps,
+  type CacclDeployStackProps,
   CacclDeployStackPropsData,
 } from '../types/index.js';
 import CacclDeployStack from './lib/classes/CacclDeployStack.js';

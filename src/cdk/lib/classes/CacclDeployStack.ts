@@ -1,4 +1,9 @@
-import { Stack, StackProps, aws_ec2 as ec2, aws_ecs as ecs } from 'aws-cdk-lib';
+import {
+  Stack,
+  type StackProps,
+  aws_ec2 as ec2,
+  aws_ecs as ecs,
+} from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 // Import shared types
@@ -6,9 +11,9 @@ import { Construct } from 'constructs';
 // Import helpers
 
 import {
-  CacclDeployStackProps,
+  type CacclDeployStackProps,
   CacclNotificationsProps,
-  LoadBalancerSecurityGroups,
+  type LoadBalancerSecurityGroups,
 } from '../../../types/index.js';
 import createDbConstruct from '../helpers/createDbConstruct.js';
 // Import classes

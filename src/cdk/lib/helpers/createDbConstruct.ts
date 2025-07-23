@@ -2,7 +2,8 @@
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclDbProps } from '../../../types/index.js';
+import { type CacclDbProps } from '../../../types/index.js';
+
 // Import classes
 import CacclDocDb from '../classes/CacclDocDb.js';
 import CacclRdsDb from '../classes/CacclRdsDb.js';

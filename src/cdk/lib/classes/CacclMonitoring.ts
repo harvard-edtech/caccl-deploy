@@ -9,7 +9,7 @@ import { Construct } from 'constructs';
 
 // Import shared types
 
-import { CacclMonitoringProps } from '../../../types/index.js';
+import { type CacclMonitoringProps } from '../../../types/index.js';
 import CacclDbBase from './CacclDbBase.js';
 import CacclScheduledTasks from './CacclScheduledTasks.js';
 
@@ -56,13 +56,13 @@ class CacclMonitoring extends Construct {
     this.dashboard.addWidgets(
       new cloudwatch.GraphWidget({
         height: 6,
-        left: [cacclLoadBalancer.metrics.RequestCount],
+        left: [cacclLoadBalancer.metrics.RequestCount!],
         title: 'RequestCount',
         width: 12,
       }),
       new cloudwatch.GraphWidget({
         height: 6,
-        left: [cacclLoadBalancer.metrics.TargetResponseTime],
+        left: [cacclLoadBalancer.metrics.TargetResponseTime!],
         title: 'TargetResponseTime',
         width: 12,
       }),
@@ -77,13 +77,13 @@ class CacclMonitoring extends Construct {
       }),
       new cloudwatch.GraphWidget({
         height: 6,
-        left: [cacclLoadBalancer.metrics.NewConnectionCount],
+        left: [cacclLoadBalancer.metrics.NewConnectionCount!],
         title: 'NewConnectionCount',
         width: 8,
       }),
       new cloudwatch.GraphWidget({
         height: 6,
-        left: [cacclLoadBalancer.metrics.ActiveConnectionCount],
+        left: [cacclLoadBalancer.metrics.ActiveConnectionCount!],
         title: 'ActiveConnectionCount',
         width: 8,
       }),

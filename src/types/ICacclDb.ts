@@ -12,7 +12,7 @@ import {
  * Interface for a generic DB, allowing SG config, monitoring, and more.
  * @author Benedikt Arnarsson
  */
-interface ICacclDb {
+export interface ICacclDb {
   addSecurityGroupIngress(vpcCidrBlock: string): void;
 
   // collection of cloudwatch metric alarms
@@ -55,5 +55,3 @@ interface ICacclDb {
   // basic removal policy for the cluster/instances
   removalPolicy: RemovalPolicy;
 }
-
-export default ICacclDb;

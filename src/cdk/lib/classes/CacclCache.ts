@@ -10,16 +10,16 @@ import {
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclCacheProps } from '../../../types/index.js';
+import { type CacclCacheProps } from '../../../types/index.js';
 
 class CacclCache extends Construct {
-  alarms: cloudwatch.Alarm[];
+  alarms: cloudwatch.Alarm[] = [];
 
   cache: elasticache.CfnCacheCluster;
 
   cacheSg: ec2.SecurityGroup;
 
-  metrics: { [key: string]: cloudwatch.Metric };
+  metrics: { [key: string]: cloudwatch.Metric } = {};
 
   constructor(scope: Construct, id: string, props: CacclCacheProps) {
     super(scope, id);

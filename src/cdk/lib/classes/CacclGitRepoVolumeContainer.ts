@@ -5,7 +5,7 @@ import {
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclGitRepoVolumeContainerProps } from '../../../types/index.js';
+import { type CacclGitRepoVolumeContainerProps } from '../../../types/index.js';
 // Import constants
 import VOLUME_CONTAINER_MOUNT_PATH from '../constants/VOLUME_CONTAINER_MOUNT_PATH.js';
 import VOLUME_NAME from '../constants/VOLUME_NAME.js';

@@ -13,7 +13,7 @@ import {
 // Import AWS CDK constructs
 import { Construct } from 'constructs';
 
-import { CacclDbProps } from '../../../types/index.js';
+import { type CacclDbProps } from '../../../types/index.js';
 // Import constants
 import DEFAULT_DB_INSTANCE_TYPE from '../constants/DEFAULT_DB_INSTANCE_TYPE.js';
 import DEFAULT_DOCDB_ENGINE_VERSION from '../constants/DEFAULT_DOCDB_ENGINE_VERSION.js';
@@ -24,7 +24,7 @@ import CacclDbBase from './CacclDbBase.js';
 // Import classes
 
 class CacclDocDb extends CacclDbBase {
-  metricNamespace = 'AWS/DocDB';
+  override metricNamespace = 'AWS/DocDB';
 
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id, props);
@@ -136,7 +136,7 @@ class CacclDocDb extends CacclDbBase {
           Stack.of(this).stackName
         } docdb cpu utilization alarm`,
         evaluationPeriods: 3,
-        metric: this.metrics.CPUUtilization[0].with({
+        metric: this.metrics.CPUUtilization![0]!.with({
           period: Duration.minutes(5),
         }),
         threshold: 50,
@@ -148,13 +148,13 @@ class CacclDocDb extends CacclDbBase {
         comparisonOperator:
           cloudwatch.ComparisonOperator.LESS_THAN_OR_EQUAL_TO_THRESHOLD,
         evaluationPeriods: 3,
-        metric: this.metrics.BufferCacheHitRatio[0],
+        metric: this.metrics.BufferCacheHitRatio![0]!,
         threshold: 90,
       }),
       new cloudwatch.Alarm(this, 'DiskQueueDepth', {
         alarmDescription: `${Stack.of(this).stackName} docdb disk queue depth`,
         evaluationPeriods: 3,
-        metric: this.metrics.DiskQueueDepth[0],
+        metric: this.metrics.DiskQueueDepth![0]!,
         threshold: 1,
       }),
       new cloudwatch.Alarm(this, 'ReadLatency', {
@@ -162,7 +162,7 @@ class CacclDocDb extends CacclDbBase {
           Stack.of(this).stackName
         } docdb read latency alarm`,
         evaluationPeriods: 3,
-        metric: this.metrics.ReadLatency[0],
+        metric: this.metrics.ReadLatency![0]!,
         threshold: 20,
         treatMissingData: cloudwatch.TreatMissingData.IGNORE,
       }),
@@ -171,7 +171,7 @@ class CacclDocDb extends CacclDbBase {
           Stack.of(this).stackName
         } docdb write latency alarm`,
         evaluationPeriods: 3,
-        metric: this.metrics.WriteLatency[0],
+        metric: this.metrics.WriteLatency![0]!,
         threshold: 100,
         treatMissingData: cloudwatch.TreatMissingData.IGNORE,
       }),
@@ -180,7 +180,7 @@ class CacclDocDb extends CacclDbBase {
           Stack.of(this).stackName
         } docdb cursors timed out alarm`,
         evaluationPeriods: 3,
-        metric: this.metrics.DatabaseCursorsTimedOut[0].with({
+        metric: this.metrics.DatabaseCursorsTimedOut![0]!.with({
           period: Duration.minutes(5),
         }),
         threshold: 5,

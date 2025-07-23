@@ -1,7 +1,7 @@
 import {
   DescribeTaskDefinitionCommand,
   ECSClient,
-  TaskDefinition,
+  type TaskDefinition,
 } from '@aws-sdk/client-ecs';
 
 /**

@@ -1,10 +1,10 @@
-import ICacclAppEnvironment from './ICacclAppEnvironment.js';
+import type { ICacclAppEnvironment } from './ICacclAppEnvironment.js';
 
 /**
  * Task definition properties for CDK with CACCL deploy.
  * @author Benedikt Arnarsson
  */
-type CacclTaskDefProps = {
+export type CacclTaskDefProps = {
   appEnvironment?: ICacclAppEnvironment;
   appImage: string;
   gitRepoVolume?: Record<string, string>;
@@ -14,5 +14,3 @@ type CacclTaskDefProps = {
   taskMemory?: number;
   vpcCidrBlock?: string;
 };
-
-export default CacclTaskDefProps;

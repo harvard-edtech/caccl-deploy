@@ -10,7 +10,7 @@ import {
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclServiceProps } from '../../../types/index.js';
+import { type CacclServiceProps } from '../../../types/index.js';
 
 class CacclService extends Construct {
   alarms: cloudwatch.Alarm[];

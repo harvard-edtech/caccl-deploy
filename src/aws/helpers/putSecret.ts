@@ -5,12 +5,13 @@ import {
   UpdateSecretCommand,
 } from '@aws-sdk/client-secrets-manager';
 
+import type { AwsTag } from '../../shared/types/AwsTag.js';
+import type { SecretOpts } from '../../shared/types/SecretOpts.js';
+
 import logger from '../../logger.js';
 import ExistingSecretWontDelete from '../../shared/errors/ExistingSecretWontDelete.js';
 import SecretNotCreated from '../../shared/errors/SecretNotCreated.js';
 import sleep from '../../shared/helpers/sleep.js';
-import AwsTag from '../../shared/types/AwsTag.js';
-import SecretOpts from '../../shared/types/SecretOpts.js';
 import secretExists from './secretExists.js';
 
 type PutSecretOpts = {

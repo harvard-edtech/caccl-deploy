@@ -1,4 +1,5 @@
-import CacclDeployContext from '../../types/CacclDeployContext.js';
+import type { CacclDeployContext } from '../../types/CacclDeployContext.js';
+
 import getRepoImageList from './getRepoImageList.js';
 
 /**
@@ -17,6 +18,7 @@ const isLatestTag = async (
   const imageList = await getRepoImageList(context, repoName);
   return (
     imageList.length > 0 &&
+    imageList[0] !== undefined &&
     !!imageList[0].imageTags &&
     imageList[0].imageTags.includes(tag)
   );

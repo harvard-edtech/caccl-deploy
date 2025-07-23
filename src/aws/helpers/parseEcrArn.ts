@@ -1,4 +1,4 @@
-import EcrImage from '../../shared/types/EcrImage.js';
+import type { EcrImage } from '../../shared/types/EcrImage.js';
 
 /**
  * Split an ECR ARN value into parts. For example the ARN
@@ -17,14 +17,27 @@ import EcrImage from '../../shared/types/EcrImage.js';
  */
 const parseEcrArn = (arn: string): EcrImage => {
   const parts = arn.split(':');
+  const account = parts[4];
+  const region = parts[3];
+  const service = parts[2];
   const [relativeId, imageTag] = parts.slice(-2);
+
+  if (!relativeId) {
+    throw new Error(`Invalid ECR ARN: ${arn}`);
+  }
+
   const repoName = relativeId.replace('repository/', '');
+
+  if (!account || !region || !service || !repoName || !imageTag) {
+    throw new Error(`Invalid ECR ARN: ${arn}`);
+  }
+
   return {
-    account: parts[4],
+    account,
     imageTag,
-    region: parts[3],
+    region,
     repoName,
-    service: parts[2],
+    service,
   };
 };
 

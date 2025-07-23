@@ -10,7 +10,7 @@ import prompt from './prompt.js';
 const promptInfraStackName = async (profile = 'default'): Promise<string> => {
   const infraStacks = await getInfraStackList(profile);
 
-  if (infraStacks.length === 1) {
+  if (infraStacks.length === 1 && infraStacks[0] !== undefined) {
     return infraStacks[0];
   }
 

@@ -47,7 +47,7 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
   };
 
   public async run(): Promise<void> {
-    // Desctructure flags
+    // Destructure flags
     const {
       app,
       delete: deleteFlag,
@@ -68,7 +68,10 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
       if (existingTaskIds.length > 0) {
         const tableRows = existingTaskIds.map((id) => {
           const taskSettings = existingTasks[id];
-          const { command, description, schedule } = taskSettings;
+          // Defensive: taskSettings may be undefined
+          const command = taskSettings?.command ?? '';
+          const description = taskSettings?.description ?? '';
+          const schedule = taskSettings?.schedule ?? '';
           return [id, schedule, command, description];
         });
         const tableOutput = table([
@@ -90,7 +93,8 @@ export default class Schedule extends BaseCommand<typeof Schedule> {
         this.exitWithSuccess();
       }
 
-      const existingTaskParams = Object.keys(existingTask);
+      // Defensive: existingTask may be undefined, but we checked above that it exists in existingTaskIds
+      const existingTaskParams = existingTask ? Object.keys(existingTask) : [];
       for (const existingTaskParam of existingTaskParams) {
         await DeployConfig.deleteParam({
           appPrefix: this.getAppPrefix(),

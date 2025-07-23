@@ -11,19 +11,19 @@ import {
 import { Construct } from 'constructs';
 
 // Import shared types
-import { CacclDbProps, ICacclDb } from '../../../types/index.js';
+import { type CacclDbProps, type ICacclDb } from '../../../types/index.js';
 // Import constants
 import DEFAULT_REMOVAL_POLICY from '../constants/DEFAULT_REMOVAL_POLICY.js';
 
 abstract class CacclDbBase extends Construct implements ICacclDb {
   // collection of cloudwatch metric alarms
-  alarms: cloudwatch.Alarm[];
+  alarms: cloudwatch.Alarm[] = [];
 
   // e.g. enabling performance monitoring
   clusterParameterGroupParams: { [key: string]: string } = {};
 
   // the actual cluster construct
-  dbCluster: docdb.DatabaseCluster | rds.DatabaseCluster;
+  dbCluster!: docdb.DatabaseCluster | rds.DatabaseCluster;
 
   // overrides that get set in the cluster-level parameter group,
   // will get the generated master password for the db
@@ -37,19 +37,19 @@ abstract class CacclDbBase extends Construct implements ICacclDb {
   etcRemovalPolicy: RemovalPolicy;
 
   // the hostname of the cluster's endpoint
-  host: string;
+  host!: string;
 
   // e.g. turning on slow query logging
   instanceParameterGroupParams: { [key: string]: string } = {};
 
   // cloudwatch metrics namespace
-  metricNamespace: string;
+  metricNamespace!: string;
 
   // collection of metric constructs
-  metrics: { [key: string]: cloudwatch.Metric[] };
+  metrics: { [key: string]: cloudwatch.Metric[] } = {};
 
   // cluster endpoint port
-  port: string;
+  port!: string;
 
   // basic removal policy for the cluster/instances
   removalPolicy: RemovalPolicy;

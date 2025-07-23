@@ -1,13 +1,14 @@
 import {
   DescribeImagesCommand,
-  DescribeImagesCommandInput,
+  type DescribeImagesCommandInput,
   ECRClient,
-  ImageDetail,
+  type ImageDetail,
   TagStatus,
 } from '@aws-sdk/client-ecr';
 
+import type { CacclDeployContext } from '../../types/CacclDeployContext.js';
+
 import looksLikeSemver from '../../shared/helpers/looksLikeSemver.js';
-import CacclDeployContext from '../../types/CacclDeployContext.js';
 import getAssumedRoleCredentials from './getAssumedRoleCredentials.js';
 import getPaginatedResponseV3 from './getPaginatedResponseV3.js';
 

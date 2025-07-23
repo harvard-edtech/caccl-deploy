@@ -1,6 +1,7 @@
 import { AssumeRoleCommand, STSClient } from '@aws-sdk/client-sts';
 
-import CacclDeployContext from '../../types/CacclDeployContext.js';
+import type { CacclDeployContext } from '../../types/CacclDeployContext.js';
+
 import getAccountId from './getAccountId.js';
 
 // Constants

@@ -1,7 +1,7 @@
 import {
   CloudFormationClient,
   DescribeStacksCommand,
-  Output,
+  type Output,
 } from '@aws-sdk/client-cloudformation';
 import { camelCase } from 'camel-case';
 
@@ -29,6 +29,7 @@ const getCfnStackExports = async (
     if (
       resp.Stacks === undefined ||
       resp.Stacks.length === 0 ||
+      resp.Stacks[0] === undefined ||
       !resp.Stacks[0].Outputs
     ) {
       throw new CfnStackNotFound(`Unable to find stack ${stackName}`);

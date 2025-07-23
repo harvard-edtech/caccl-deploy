@@ -1,4 +1,4 @@
-import prompts, { PromptObject } from 'prompts';
+import prompts, { type PromptObject } from 'prompts';
 
 import UserCancel from '../shared/errors/UserCancel.js';
 

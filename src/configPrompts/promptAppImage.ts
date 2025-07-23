@@ -1,4 +1,4 @@
-import { Choice } from 'prompts';
+import { type Choice } from 'prompts';
 
 import {
   createEcrArn,
@@ -8,7 +8,7 @@ import {
 } from '../aws/index.js';
 import NoPromptChoices from '../shared/errors/NoPromptChoices.js';
 import looksLikeSemver from '../shared/helpers/looksLikeSemver.js';
-import CacclDeployContext from '../types/CacclDeployContext.js';
+import { type CacclDeployContext } from '../types/CacclDeployContext.js';
 import prompt from './prompt.js';
 
 /**

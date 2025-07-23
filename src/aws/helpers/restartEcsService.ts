@@ -1,7 +1,7 @@
 import {
   ECSClient,
   UpdateServiceCommand,
-  UpdateServiceCommandInput,
+  type UpdateServiceCommandInput,
   waitUntilServicesStable,
 } from '@aws-sdk/client-ecs';
 

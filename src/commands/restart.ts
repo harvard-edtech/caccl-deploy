@@ -34,6 +34,11 @@ export default class Restart extends BaseCommand<typeof Restart> {
     }
 
     const { clusterName, serviceName } = cfnExports;
+
+    if (clusterName === undefined || serviceName === undefined) {
+      this.exitWithError('Invalid CloudFormation stack exports');
+    }
+
     this.log(`Restarting service ${serviceName} on cluster ${clusterName}`);
 
     if (!(await confirmProductionOp(this.context))) {
@@ -42,9 +47,9 @@ export default class Restart extends BaseCommand<typeof Restart> {
 
     // restart the service
     await restartEcsService({
-      cluster: clusterName,
+      cluster: clusterName!,
       profile,
-      service: serviceName,
+      service: serviceName!,
       wait: true,
     });
     this.exitWithSuccess('done');

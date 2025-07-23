@@ -1,12 +1,12 @@
 import {
   AddTagsToResourceCommand,
   PutParameterCommand,
-  PutParameterCommandInput,
-  PutParameterCommandOutput,
+  type PutParameterCommandInput,
+  type PutParameterCommandOutput,
   SSMClient,
 } from '@aws-sdk/client-ssm';
 
-import AwsTag from '../../shared/types/AwsTag.js';
+import type { AwsTag } from '../../shared/types/AwsTag.js';
 
 /**
  * Add parameters to SSM.

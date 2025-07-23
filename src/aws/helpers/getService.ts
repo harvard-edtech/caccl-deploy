@@ -1,7 +1,7 @@
 import {
   DescribeServicesCommand,
   ECSClient,
-  Service,
+  type Service,
 } from '@aws-sdk/client-ecs';
 
 /**
@@ -24,7 +24,7 @@ const getService = async (
   });
   const resp = await client.send(command);
 
-  if (!resp.services) {
+  if (!resp.services || resp.services[0] === undefined) {
     throw new Error(`service ${service} not found`);
   }
 
