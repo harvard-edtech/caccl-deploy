@@ -193,7 +193,8 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    */
   public getCfnStackName(appName?: string) {
     // Destructure flags
-    const { app, 'cfn-stack-prefix': cfnStackPrefix } = this.flags;
+    const { app } = this.flags;
+    const { cfnStackPrefix } = this.context;
 
     if (
       cfnStackPrefix === undefined ||
