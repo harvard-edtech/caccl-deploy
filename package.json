@@ -122,7 +122,7 @@
     "prepare": "husky install || true",
     "postpack": "shx rm -f oclif.manifest.json",
     "prepack": "oclif manifest && oclif readme",
-    "test": "TS_NODE_TRANSPILE_ONLY=true TS_NODE_FILES=true mocha --require test/hooks.ts \"test/**/*.test.ts\"",
+    "test": "mocha --require test/hooks.ts \"test/**/*.test.ts\"",
     "version": "oclif readme && git add README.md"
   },
   "types": "dist/index.d.ts"
