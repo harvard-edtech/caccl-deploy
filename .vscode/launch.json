@@ -8,9 +8,10 @@
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
         "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
       },
-      "program": "${workspaceFolder}/bin/run.js",
+      "program": "${workspaceFolder}/bin/dev.js",
       "args": ["apps", "--help"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
@@ -25,10 +26,29 @@
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
         "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
       },
-      "program": "${workspaceFolder}/bin/run.js",
+      "program": "${workspaceFolder}/bin/dev.js",
       "args": ["apps"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: apps (fullstatus)",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["apps", "--full-status"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
@@ -42,9 +62,10 @@
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
         "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
       },
-      "program": "${workspaceFolder}/bin/run.js",
+      "program": "${workspaceFolder}/bin/dev.js",
       "args": ["new", "--help"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
@@ -59,10 +80,11 @@
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
         "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
       },
-      "program": "${workspaceFolder}/bin/run.js",
-      "args": ["show", "--help"],
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["show", "--app", "porta-dev"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
@@ -72,14 +94,74 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug OCLIF: Custom Command",
+      "name": "Debug OCLIF: apps (runtime args)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--loader=ts-node/esm",
+        "--experimental-specifier-resolution=node",
+        "--no-warnings=ExperimentalWarning"
+      ],
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
         "TS_NODE_FILES": "true",
         "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
       },
-      "program": "${workspaceFolder}/bin/run.js",
-      "args": [],
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["apps"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: update",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["update", "--app", "${input:appName}", "${input:paramName}", "${input:paramValue}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: update (delete)",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["update", "--app", "${input:appName}", "--delete", "${input:paramName}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: update (help)",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["update", "--help"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
@@ -92,15 +174,71 @@
       "name": "Mocha: current file",
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true"
+        "TS_NODE_FILES": "true",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
       },
       "program": "${workspaceFolder}/node_modules/.bin/mocha",
-      "args": ["${file}", "--config=.mocharc.json"],
+      "args": [
+        "${file}", 
+        "--config=.mocharc.json",
+        "--timeout=60000"
+      ],
       "console": "integratedTerminal",
-      // "disableOptimisticBPs": true,
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ],
+      "outputCapture": "std",
       "windows": {
-        "program": "${workspaceFolder}/node_modules/mocha/bin/mocha"
+        "program": "${workspaceFolder}/node_modules/mocha/bin/mocha.js"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Mocha: current file (fallback)",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true"
+      },
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--loader=ts-node/esm",
+        "--experimental-specifier-resolution=node",
+        "--max-old-space-size=4096"
+      ],
+      "program": "${workspaceFolder}/node_modules/.bin/mocha",
+      "args": [
+        "${file}",
+        "--require=test/hooks.ts"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/node_modules/**"
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "appName",
+      "description": "App name",
+      "default": "porta-dev",
+      "type": "promptString"
+    },
+    {
+      "id": "paramName",
+      "description": "Parameter name",
+      "default": "appImage",
+      "type": "promptString"
+    },
+    {
+      "id": "paramValue", 
+      "description": "Parameter value",
+      "default": "",
+      "type": "promptString"
     }
   ]
 }

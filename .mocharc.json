@@ -4,8 +4,10 @@
   "recursive": true,
   "reporter": "spec",
   "timeout": 60000,
+  "loader": "ts-node/esm",
   "node-option": [
-    "loader=ts-node/esm",
-    "experimental-specifier-resolution=node"
+    "experimental-specifier-resolution=node",
+    "max-old-space-size=4096",
+    "loader=ts-node/esm"
   ]
 }
