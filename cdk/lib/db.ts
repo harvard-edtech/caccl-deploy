@@ -373,8 +373,13 @@ export class CacclRdsDb extends CacclDbBase {
      * e.g. '8.0.mysql_aurora.3.02.0' -> '8.0'
      */
     const majorVersion = engineVersion.substring(0, 3);
+
     const auroraMysqlEngineVersion = rds.DatabaseClusterEngine.auroraMysql({
       version: rds.AuroraMysqlEngineVersion.of(engineVersion, majorVersion),
+    });
+
+    const auroraMysqlEngineVersionV3 = rds.DatabaseClusterEngine.auroraMysql({
+      version: rds.AuroraMysqlEngineVersion.of(engineVersion, '8.0'),
     });
 
     // performance insights for rds mysql not supported on t3 instances
@@ -398,6 +403,18 @@ export class CacclRdsDb extends CacclDbBase {
       },
     );
 
+    const clusterParameterGroupV3 = new rds.ParameterGroup(
+      this,
+      'ClusterParameterGroupV3',
+      {
+        engine: auroraMysqlEngineVersionV3,
+        description: `RDS parameter group for ${Stack.of(this).stackName}`,
+        parameters: {
+          lower_case_table_names: '1',
+        },
+      },
+    );
+
     this.instanceParameterGroupParams.slow_query_log = '1';
     this.instanceParameterGroupParams.log_output = 'TABLE';
     this.instanceParameterGroupParams.long_query_time = '3';
@@ -409,6 +426,18 @@ export class CacclRdsDb extends CacclDbBase {
       'InstanceParameterGroup',
       {
         engine: auroraMysqlEngineVersion,
+        description: `RDS instance parameter group for ${
+          Stack.of(this).stackName
+        }`,
+        parameters: this.instanceParameterGroupParams,
+      },
+    );
+
+    const instanceParameterGroupV3 = new rds.ParameterGroup(
+      this,
+      'InstanceParameterGroupV3',
+      {
+        engine: auroraMysqlEngineVersionV3,
         description: `RDS instance parameter group for ${
           Stack.of(this).stackName
         }`,
@@ -445,6 +474,10 @@ export class CacclRdsDb extends CacclDbBase {
     // this needs to happen after the parameter group has been associated with the cluster
     clusterParameterGroup.applyRemovalPolicy(this.etcRemovalPolicy);
     instanceParameterGroup.applyRemovalPolicy(this.etcRemovalPolicy);
+    clusterParameterGroupV3.bindToCluster({});
+    clusterParameterGroupV3.applyRemovalPolicy(this.etcRemovalPolicy);
+    instanceParameterGroupV3.bindToInstance({});
+    instanceParameterGroupV3.applyRemovalPolicy(this.etcRemovalPolicy);
 
     // for rds/mysql we do NOT include the port as part of the host value
     this.host = this.dbCluster.clusterEndpoint.hostname;
