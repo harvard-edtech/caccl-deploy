@@ -32,6 +32,8 @@ type Args<T extends typeof Command> = Interfaces.InferredArgs<T['args']>;
  * @author Benedikt Arnarsson
  */
 export abstract class BaseCommand<T extends typeof Command> extends Command {
+  static override enableJsonFlag = false;
+
   // define flags that can be inherited by any command that extends BaseCommand
   static override baseFlags = {
     'app': Flags.string({
