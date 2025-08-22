@@ -32,8 +32,6 @@ type Args<T extends typeof Command> = Interfaces.InferredArgs<T['args']>;
  * @author Benedikt Arnarsson
  */
 export abstract class BaseCommand<T extends typeof Command> extends Command {
-  static override enableJsonFlag = false;
-
   // define flags that can be inherited by any command that extends BaseCommand
   static override baseFlags = {
     'app': Flags.string({
@@ -92,7 +90,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    */
   public override async init(): Promise<void> {
     // Set the logger
-    logger.setLogger(this.log, this.logToStderr);
+    logger.setLogger(this.log.bind(this), this.logToStderr.bind(this));
 
     // Parse args and flags
     await super.init();
