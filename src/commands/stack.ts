@@ -1,7 +1,5 @@
 import { Flags } from '@oclif/core';
 import { execSync } from 'node:child_process';
-import path, { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { temporaryWriteTask } from 'tempy';
 
 import {
@@ -17,9 +15,6 @@ import {
 import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION.js';
 import DeployConfig from '../deployConfig/index.js';
 import isProdAccount from '../helpers/isProdAccount.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 type EnvAdditions = {
   AWS_PROFILE?: string;
@@ -179,10 +174,6 @@ export default class Stack extends BaseCommand<typeof Stack> {
         envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
 
         const execOpts = {
-          // but how do I access node_modules then...
-          cwd: path.join(__dirname, '../..'),
-          // exec the cdk process in the cdk directory
-          // FIXME: put `cdk` in oclif data dir and set cwd to that
           // inject our additional env vars
           env: { ...process.env, ...envAdditions },
           stdio: 'inherit' as const,
