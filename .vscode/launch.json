@@ -135,6 +135,24 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Debug OCLIF: stack",
+      "env": {
+        "TS_NODE_TRANSPILE_ONLY": "true",
+        "TS_NODE_FILES": "true",
+        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
+        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["stack", "--app", "${input:appName}", "${input:cdkCommand}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Debug OCLIF: update (delete)",
       "env": {
         "TS_NODE_TRANSPILE_ONLY": "true",
@@ -222,6 +240,12 @@
     }
   ],
   "inputs": [
+    {
+      "id": "cdkCommand",
+      "description": "CDK command",
+      "default": "deploy",
+      "type": "promptString"
+    },
     {
       "id": "appName",
       "description": "App name",
