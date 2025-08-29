@@ -30,6 +30,7 @@
     "flat": "^5.0.2",
     "moment": "^2.29.3",
     "object-hash": "^3.0.0",
+    "oclif": "^4",
     "prompts": "^2.4.2",
     "semver": "^7.3.7",
     "source-map-support": "^0.5.21",
@@ -70,11 +71,9 @@
     "lint-staged": "^13.0.2",
     "mocha": "^10",
     "mocha-suppress-logs": "^0.5.1",
-    "oclif": "^4",
     "prettier": "^2.7.1",
     "shx": "^0.3.3",
     "sinon": "^19.0.2",
-    "ts-node": "^10",
     "typescript": "^5"
   },
   "engines": {
@@ -113,7 +112,7 @@
   },
   "repository": "harvard-edtech/caccl-deploy",
   "scripts": {
-    "build": "shx rm -rf dist && tsc -b",
+    "build": "shx rm -rf dist && tsc -b && npm run copy-extras",
     "dev": "shx rm -rf dist && tsc -b --watch",
     "cli": "./bin/run.js",
     "lint": "eslint -c .eslintrc.json .",
@@ -123,7 +122,8 @@
     "postpack": "shx rm -f oclif.manifest.json",
     "prepack": "oclif manifest && oclif readme",
     "test": "mocha --require test/hooks.ts \"test/**/*.test.ts\"",
-    "version": "oclif readme && git add README.md"
+    "version": "oclif readme && git add README.md",
+    "copy-extras": "shx cp -R ./src/cdk/assets/slack_notify ./dist/cdk/assets/"
   },
   "types": "dist/index.d.ts"
 }

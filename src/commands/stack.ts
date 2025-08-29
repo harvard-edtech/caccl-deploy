@@ -1,4 +1,4 @@
-import { Flags } from '@oclif/core';
+import { Args, Flags } from '@oclif/core';
 import { execSync } from 'node:child_process';
 import { temporaryWriteTask } from 'tempy';
 
@@ -30,10 +30,20 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
   static override examples = ['<%= config.bin %> <%= command.id %>'];
 
+  static override args = {
+    stackSubcommand: Args.string({
+      default: 'list',
+      description:
+        'CDK subcommand to execute: diff | deploy | delete | list | synth | changset | dump | info',
+      required: false,
+    }),
+  };
+
   static override flags = {
     app: Flags.string({
       char: 'a',
       description: 'name of the app to work with',
+      env: 'CACCL_DEPLOY_APP',
       required: true,
     }),
   };
@@ -84,41 +94,37 @@ export default class Stack extends BaseCommand<typeof Stack> {
       CDK_DISABLE_VERSION_CHECK: 'true',
     };
 
-    // all args/options following the `stack` subcommand get passed to cdk
-    const cdkArgs = [...this.argv]; // FIXME:
+    const cdkArgs = ['-a', process.env.CDK_APP_CMD];
 
     // default cdk operation is `list`
-    if (cdkArgs.length === 0) {
-      cdkArgs.push('list');
-    } else
-      switch (cdkArgs[0]) {
-        case 'dump': {
-          this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
-
-          break;
-        }
-
-        case 'info': {
-          if (!stackExists) {
-            this.exitWithError(
-              `Stack ${cfnStackName} has not been deployed yet`,
-            );
-          }
-
-          const stackExports = await getCfnStackExports(cfnStackName, profile);
-          this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
-
-          break;
-        }
-
-        case 'changeset': {
-          cdkArgs.shift();
-          cdkArgs.unshift('deploy', '--no-execute');
-
-          break;
-        }
-        // No default
+    switch (this.args.stackSubcommand) {
+      case 'dump': {
+        this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
+        break;
       }
+
+      case 'info': {
+        if (!stackExists) {
+          this.exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
+        }
+
+        const stackExports = await getCfnStackExports(cfnStackName, profile);
+        this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
+        break;
+      }
+
+      // changeset is an alias for deploy without executing
+      // it creates a CloudFormation change set that can be reviewed before applying
+      case 'changeset': {
+        cdkArgs.push('deploy', '--no-execute');
+        break;
+      }
+
+      default: {
+        cdkArgs.push(this.args.stackSubcommand);
+        break;
+      }
+    }
 
     // tell cdk to use the same profile
     if (profile !== undefined) {
