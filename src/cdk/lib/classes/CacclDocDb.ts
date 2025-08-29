@@ -30,13 +30,19 @@ class CacclDocDb extends CacclDbBase {
     super(scope, id, props);
 
     const { appEnv, options, vpc } = props;
+
     const {
-      engineVersion = DEFAULT_DOCDB_ENGINE_VERSION,
       instanceCount = 1,
       instanceType = DEFAULT_DB_INSTANCE_TYPE,
       parameterGroupFamily = DEFAULT_DOCDB_PARAM_GROUP_FAMILY,
       profiler = false,
     } = options;
+
+    let engineVersion = options.engineVersion || DEFAULT_DOCDB_ENGINE_VERSION;
+
+    if (/^\d\.\d$/.test(engineVersion)) {
+      engineVersion = `${engineVersion}.0`;
+    }
 
     if (profiler) {
       this.clusterParameterGroupParams.profiler = 'enabled';
