@@ -1,5 +1,5 @@
 {
-  "app": "node_modules/.bin/ts-node src/cdk/index.ts",
+  "app": "node dist/cdk/cdk.js",
   "context": {
     "@aws-cdk/aws-rds:lowercaseDbIdentifier": false
   }

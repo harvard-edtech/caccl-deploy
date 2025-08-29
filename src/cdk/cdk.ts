@@ -1,7 +1,7 @@
 /* eslint-disable camelcase */
 import { App, CfnOutput } from 'aws-cdk-lib';
 import { readFileSync } from 'node:fs';
-import 'source-map-support/register';
+import 'source-map-support/register.js';
 import yn from 'yn';
 
 import {

@@ -4,5 +4,6 @@ import { execute } from '@oclif/core';
 import process from 'process';
 
 process.env.AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE = '1';
+process.env.CDK_APP_CMD = '"node node_modules/caccl-deploy/dist/cdk/cdk.js"';
 
 await execute({ dir: import.meta.url });
