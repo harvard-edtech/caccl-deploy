@@ -21,14 +21,15 @@
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
-    "composite": true,
     "sourceMap": true,
     "declarationMap": true,
 
     /* Decorators (if needed for your project) */
     "experimentalDecorators": true
   },
-  "include": ["./src/**/*", "src/types/**/*"],
+  "include": [
+    "./src/**/*",
+  ],
   "ts-node": {
     "esm": true,
     "transpileOnly": true
