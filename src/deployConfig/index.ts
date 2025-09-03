@@ -125,17 +125,21 @@ namespace DeployConfig {
       newConfig.appImage = await promptAppImage(context);
     }
 
-    newConfig.tags = await promptKeyValuePairs(
-      'tag',
-      'foo=bar',
-      newConfig.tags,
-    );
+    if (!context.yes) {
+      newConfig.tags = await promptKeyValuePairs(
+        'tag',
+        'foo=bar',
+        newConfig.tags,
+      );
+    }
 
-    newConfig.appEnvironment = await promptKeyValuePairs(
-      'env var',
-      'FOOBAR=baz',
-      newConfig.appEnvironment,
-    );
+    if (!context.yes) {
+      newConfig.appEnvironment = await promptKeyValuePairs(
+        'env var',
+        'FOOBAR=baz',
+        newConfig.appEnvironment,
+      );
+    }
 
     logger.log('\nYour new config:\n');
     logger.log(JSON.stringify(newConfig, null, 2));
@@ -375,7 +379,7 @@ namespace DeployConfig {
   ) => {
     let existingConfig;
     try {
-      existingConfig = await fromSsmParams(ssmPrefix, true);
+      existingConfig = await fromSsmParams(ssmPrefix, true, profile);
     } catch (error) {
       if (error instanceof AppNotFound) {
         if (ignoreMissing) {
