@@ -53,7 +53,7 @@ export default class Exec extends BaseCommand<typeof Exec> {
       required: true,
     }),
     command: Flags.string({
-      char: 'c',
+      char: 'C',
       description: 'the app task command to run',
       required: true,
     }),
