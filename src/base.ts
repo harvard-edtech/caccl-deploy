@@ -55,6 +55,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     }),
     'profile': Flags.string({
       description: 'activate a specific aws config/credential profile',
+      env: 'AWS_PROFILE',
       helpGroup: 'GLOBAL',
     }),
     'ssm-root-prefix': Flags.string({
@@ -105,7 +106,7 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
     this.args = args as Args<T>;
 
     // Get config from the file
-    const config = await this.getConfigFromFile();
+    const config = await this.getConfigFromFile(flags.config);
 
     // Merging config and flags into context:
     this.context = {
@@ -255,12 +256,16 @@ export abstract class BaseCommand<T extends typeof Command> extends Command {
    * @author Benedikt Arnarsson
    * @returns {Promise<CacclDeployConfig>} parsed CACCL deploy CLI config
    */
-  public async getConfigFromFile(): Promise<CacclDeployConfig> {
+  public async getConfigFromFile(
+    configPath: string | undefined,
+  ): Promise<CacclDeployConfig> {
     // Backwards compatibility:
-    const confPath = path.resolve(
-      envPaths('caccl-deploy').config,
-      'config.json',
-    );
+    let confPath = configPath;
+
+    if (confPath === undefined) {
+      confPath = path.resolve(envPaths('caccl-deploy').config, 'config.json');
+    }
+
     if (process.env.NODE_ENV !== 'test' && fs.existsSync(confPath)) {
       const cliConfigJSON = fs.readFileSync(confPath, 'utf8');
       const cliConfig = JSON.parse(cliConfigJSON);
