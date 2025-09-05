@@ -1,6 +1,14 @@
+/* eslint-disable class-methods-use-this */
+/* eslint-disable camelcase */
+import {
+  type ICloudAssemblySource,
+  StackSelectionStrategy,
+  type StackSelector,
+  Toolkit,
+} from '@aws-cdk/toolkit-lib';
 import { Args, Flags } from '@oclif/core';
-import { execSync } from 'node:child_process';
-import { temporaryWriteTask } from 'tempy';
+import { App, CfnOutput } from 'aws-cdk-lib';
+import yn from 'yn';
 
 import {
   cfnStackExists,
@@ -8,6 +16,7 @@ import {
   getCfnStackExports,
 } from '../aws/index.js';
 import { BaseCommand } from '../base.js';
+import CacclDeployStack from '../cdk/lib/classes/CacclDeployStack.js';
 import {
   confirmProductionOp,
   stackVersionDiffCheck,
@@ -15,13 +24,10 @@ import {
 import CACCL_DEPLOY_VERSION from '../constants/CACCL_DEPLOY_VERSION.js';
 import DeployConfig from '../deployConfig/index.js';
 import isProdAccount from '../helpers/isProdAccount.js';
-
-type EnvAdditions = {
-  AWS_PROFILE?: string;
-  AWS_REGION: string;
-  CDK_DISABLE_VERSION_CHECK: string;
-  CDK_STACK_PROPS_FILE_PATH?: string;
-};
+import {
+  type CacclDeployStackProps,
+  type CacclDeployStackPropsData,
+} from '../types/index.js';
 
 // eslint-disable-next-line no-use-before-define
 export default class Stack extends BaseCommand<typeof Stack> {
@@ -34,7 +40,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
     stackSubcommand: Args.string({
       default: 'list',
       description:
-        'CDK subcommand to execute: diff | deploy | delete | list | synth | changset | dump | info',
+        'CDK subcommand to execute: diff | deploy | delete | list | synth | changeset | dump | info',
       required: false,
     }),
   };
@@ -50,9 +56,190 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
   static override strict = false;
 
+  private async createCdkApp(
+    stackPropsData: CacclDeployStackPropsData,
+  ): Promise<App> {
+    const {
+      albLogBucketName,
+      awsAccountId,
+      awsRegion,
+      cacclDeployVersion,
+      deployConfig,
+      deployConfigHash,
+      ecsClusterName,
+      stackName,
+      vpcId,
+    } = stackPropsData;
+
+    const stackProps: CacclDeployStackProps = {
+      albLogBucketName,
+      appEnvironment: deployConfig.appEnvironment ?? {},
+      cacheOptions: deployConfig.cacheOptions,
+      certificateArn: deployConfig.certificateArn,
+      dbOptions: deployConfig.dbOptions,
+      ecsClusterName,
+      enableExecuteCommand: yn(deployConfig.enableExecuteCommand),
+      env: {
+        account: awsAccountId,
+        region: awsRegion,
+      },
+      firewallSgId: deployConfig.firewallSgId,
+      lbOptions: deployConfig.lbOptions,
+      notifications: deployConfig.notifications ?? {},
+      scheduledTasks: deployConfig.scheduledTasks,
+      stackName,
+      tags: {
+        caccl_deploy_stack_name: stackName,
+        ...deployConfig.tags,
+      },
+      taskCount: Number(deployConfig.taskCount ?? 1),
+      taskDefProps: {
+        appImage: deployConfig.appImage,
+        gitRepoVolume: deployConfig.gitRepoVolume,
+        logRetentionDays: deployConfig.logRetentionDays,
+        proxyImage: deployConfig.proxyImage,
+        taskCpu: deployConfig.taskCpu,
+        taskMemory: deployConfig.taskMemory,
+      },
+      vpcId,
+    };
+
+    // docDb config backwards compatibility
+    if (yn(deployConfig.docDb)) {
+      stackProps.dbOptions = {
+        engine: 'docdb',
+        instanceCount: deployConfig.docDbInstanceCount,
+        instanceType: deployConfig.docDbInstanceType,
+        profiler: deployConfig.docDbProfiler,
+      };
+    }
+
+    const app = new App({
+      context: {
+        '@aws-cdk/aws-rds:lowercaseDbIdentifier': false,
+      },
+    });
+
+    const stack = new CacclDeployStack(app, stackName, stackProps);
+
+    new CfnOutput(stack, 'DeployConfigHash', {
+      exportName: `${stackName}-deploy-config-hash`,
+      value: deployConfigHash,
+    });
+
+    new CfnOutput(stack, 'CacclDeployVersion', {
+      exportName: `${stackName}-caccl-deploy-version`,
+      value: cacclDeployVersion,
+    });
+
+    return app;
+  }
+
+  private async initializeToolkit(profile?: string): Promise<Toolkit> {
+    const toolkitConfig: any = {
+      ioHost: {
+        // Configure output handling
+        onData: (data: Buffer) => {
+          this.log(data.toString());
+        },
+      },
+    };
+
+    // Configure AWS SDK to use the specified profile
+    if (profile) {
+      process.env.AWS_PROFILE = profile;
+    }
+
+    // Set AWS region
+    if (!process.env.AWS_REGION) {
+      process.env.AWS_REGION = 'us-east-1';
+    }
+
+    return new Toolkit(toolkitConfig);
+  }
+
+  private async executeCdkCommand(
+    toolkit: Toolkit,
+    cloudAssembly: ICloudAssemblySource,
+    stackSelection: StackSelector,
+  ): Promise<void> {
+    // Destructure flags
+    const { profile, yes } = this.context;
+
+    // Execute the requested CDK operation
+    switch (this.args.stackSubcommand) {
+      case 'list': {
+        const stacks = await toolkit.list(cloudAssembly, {
+          stacks: { strategy: StackSelectionStrategy.ALL_STACKS },
+        });
+        for (const stack of stacks) {
+          this.log(stack.id);
+        }
+
+        break;
+      }
+
+      case 'synth': {
+        // The synth already happened when we created the cloud assembly
+        // Output the synthesized template
+        const stack = await toolkit.list(cloudAssembly, {
+          stacks: stackSelection,
+        });
+        if (stack[0]) {
+          this.log(JSON.stringify(stack[0], null, 2));
+        }
+
+        break;
+      }
+
+      case 'diff': {
+        await toolkit.diff(cloudAssembly, {
+          stacks: stackSelection,
+          strict: false,
+        });
+        break;
+      }
+
+      case 'deploy':
+      case 'changeset': {
+        const deployOptions: any = {
+          execute: this.args.stackSubcommand === 'deploy',
+          requireApproval: yes ? 'never' : 'broadening',
+          stacks: stackSelection,
+        };
+
+        if (profile) {
+          deployOptions.profile = profile;
+        }
+
+        await toolkit.deploy(cloudAssembly, deployOptions);
+        break;
+      }
+
+      case 'destroy': {
+        const destroyOptions: any = {
+          force: yes,
+          stacks: stackSelection,
+        };
+
+        if (profile) {
+          destroyOptions.profile = profile;
+        }
+
+        await toolkit.destroy(cloudAssembly, destroyOptions);
+        break;
+      }
+
+      default: {
+        this.exitWithError(`Unknown subcommand: ${this.args.stackSubcommand}`);
+      }
+    }
+  }
+
   public async run(): Promise<void> {
     // Destructure flags
     const { profile, yes } = this.context;
+
     // get this without resolved secrets for passing to cdk
     const deployConfig = await this.getDeployConfig(profile, true);
 
@@ -77,7 +264,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
      * the CDK stack operation will need
      */
     const awsAccountId = await getAccountId(profile);
-    const cdkStackProps = {
+    const cdkStackProps: CacclDeployStackPropsData = {
       albLogBucketName,
       awsAccountId,
       awsRegion: process.env.AWS_REGION || 'us-east-1',
@@ -89,18 +276,11 @@ export default class Stack extends BaseCommand<typeof Stack> {
       vpcId,
     };
 
-    const envAdditions: EnvAdditions = {
-      AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-      CDK_DISABLE_VERSION_CHECK: 'true',
-    };
-
-    const cdkArgs = ['-a', process.env.CDK_APP_CMD];
-
-    // default cdk operation is `list`
+    // Handle special commands that don't require CDK Toolkit
     switch (this.args.stackSubcommand) {
       case 'dump': {
         this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
-        break;
+        return;
       }
 
       case 'info': {
@@ -110,54 +290,11 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
         const stackExports = await getCfnStackExports(cfnStackName, profile);
         this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
-        break;
-      }
-
-      // changeset is an alias for deploy without executing
-      // it creates a CloudFormation change set that can be reviewed before applying
-      case 'changeset': {
-        cdkArgs.push('deploy', '--no-execute');
-        break;
-      }
-
-      default: {
-        cdkArgs.push(this.args.stackSubcommand);
-        break;
+        return;
       }
     }
 
-    // tell cdk to use the same profile
-    if (profile !== undefined) {
-      cdkArgs.push('--profile', profile);
-      envAdditions.AWS_PROFILE = profile;
-    }
-
-    // disable cdk prompting if user included `--yes` flag
-    if (yes && (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))) {
-      cdkArgs.push('--require-approval-never');
-    }
-
-    if (
-      ['deploy', 'destroy', 'changeset'].some((c) => {
-        return cdkArgs.includes(c);
-      })
-    ) {
-      // check that we're not using a wildly different version of the cli
-      if (
-        stackExists &&
-        !yes &&
-        !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
-      ) {
-        this.exitWithSuccess();
-      }
-
-      // production failsafe if we're actually changing anything
-      if (!(await confirmProductionOp(this.context))) {
-        this.exitWithSuccess();
-      }
-    }
-
-    // Set some default removal policy options depending on if this is a "prod" account
+    // Set removal policy based on production account
     if (
       cdkStackProps.deployConfig.dbOptions &&
       !cdkStackProps.deployConfig.dbOptions.removalPolicy
@@ -169,33 +306,54 @@ export default class Stack extends BaseCommand<typeof Stack> {
         : 'DESTROY';
     }
 
-    /**
-     * Write out the stack properties to a temp json file for
-     * the CDK subprocess to pick up
-     */
-    await temporaryWriteTask(
-      JSON.stringify(cdkStackProps, null, 2),
-      async (tempPath) => {
-        // tell the CDK subprocess where to find the stack properties file
-        envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
+    // Check version and confirm production operations
+    if (
+      ['changeset', 'deploy', 'destroy'].includes(this.args.stackSubcommand)
+    ) {
+      // check that we're not using a wildly different version of the cli
+      if (
+        stackExists &&
+        !yes &&
+        !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
+      ) {
+        this.exitWithSuccess();
+        return;
+      }
 
-        const execOpts = {
-          // inject our additional env vars
-          env: { ...process.env, ...envAdditions },
-          stdio: 'inherit' as const,
-        };
+      // production failsafe if we're actually changing anything
+      if (!(await confirmProductionOp(this.context))) {
+        this.exitWithSuccess();
+        return;
+      }
+    }
 
-        try {
-          execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
-          this.exitWithSuccess('done!');
-        } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : `Error while executing CDK: ${error}`;
-          this.exitWithError(message);
-        }
-      },
-    );
+    try {
+      // Initialize the CDK Toolkit
+      const toolkit = await this.initializeToolkit(profile);
+
+      // Create the CDK app with our stack
+      const app = await this.createCdkApp(cdkStackProps);
+
+      // Synthesize the cloud assembly
+      const cloudAssembly = await toolkit.fromAssemblyBuilder(async () => {
+        return app.synth();
+      });
+
+      // Define stack selection
+      const stackSelection = {
+        patterns: [cfnStackName],
+        strategy: StackSelectionStrategy.PATTERN_MUST_MATCH,
+      };
+
+      await this.executeCdkCommand(toolkit, cloudAssembly, stackSelection);
+
+      this.exitWithSuccess('done!');
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : `Error while executing CDK: ${error}`;
+      this.exitWithError(message);
+    }
   }
 }
