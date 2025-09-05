@@ -134,7 +134,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
     // disable cdk prompting if user included `--yes` flag
     if (yes && (cdkArgs.includes('deploy') || cdkArgs.includes('changeset'))) {
-      cdkArgs.push('--require-approval-never');
+      cdkArgs.push('--require-approval=never');
     }
 
     if (
