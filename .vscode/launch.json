@@ -4,30 +4,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug OCLIF Command",
-      "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
-      },
-      "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["apps", "--help"],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Debug OCLIF: apps",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/bin/dev.js",
       "args": ["apps"],
@@ -40,12 +19,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug OCLIF: apps (fullstatus)",
+      "name": "Debug OCLIF: apps (full status)",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/bin/dev.js",
       "args": ["apps", "--full-status"],
@@ -58,15 +34,118 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug OCLIF: new",
+      "name": "Debug OCLIF: connect",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["new", "--help"],
+      "args": ["connect", "--app", "${input:appName}", "--service", "${input:connectService}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: delete",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["delete", "--app", "${input:appName}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: exec",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["exec", "--app", "${input:appName}", "-C", "'${input:execCommand}'"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: images",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["images", "-r", "${input:repoName}", "-A"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: new",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm",
+        "CACCL_DEPLOY_CONFIG": "${input:cliConfigPath}"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["new", "--app", "${input:appName}", "--import", "${input:importPath}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: repos",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["repos"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: restart",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["restart", "--app", "${input:appName}"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug OCLIF: schedule",
+      "env": {
+        "NODE_OPTIONS": "--loader=ts-node/esm"
+      },
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": ["schedule", "--app", "${input:appName}", "--list"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
@@ -78,13 +157,10 @@
       "request": "launch",
       "name": "Debug OCLIF: show",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["show", "--app", "porta-dev"],
+      "args": ["show", "--app", "${input:appName}"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
@@ -94,20 +170,12 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug OCLIF: apps (runtime args)",
-      "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "--loader=ts-node/esm",
-        "--experimental-specifier-resolution=node",
-        "--no-warnings=ExperimentalWarning"
-      ],
+      "name": "Debug OCLIF: stack",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["apps"],
+      "args": ["stack", "--app", "${input:appName}", "${input:cdkCommand}", "${input:yesFlag}"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
       "skipFiles": [
@@ -119,10 +187,7 @@
       "request": "launch",
       "name": "Debug OCLIF: update",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/bin/dev.js",
       "args": ["update", "--app", "${input:appName}", "${input:paramName}", "${input:paramValue}"],
@@ -135,65 +200,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug OCLIF: stack",
-      "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
-      },
-      "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["stack", "--app", "${input:appName}", "${input:cdkCommand}"],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug OCLIF: update (delete)",
-      "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
-      },
-      "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["update", "--app", "${input:appName}", "--delete", "${input:paramName}"],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug OCLIF: update (help)",
-      "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE": "1",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
-      },
-      "program": "${workspaceFolder}/bin/dev.js",
-      "args": ["update", "--help"],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Mocha: current file",
       "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true",
-        "NODE_OPTIONS": "--loader=ts-node/esm --experimental-specifier-resolution=node"
+        "NODE_OPTIONS": "--loader=ts-node/esm"
       },
       "program": "${workspaceFolder}/node_modules/.bin/mocha",
       "args": [
@@ -211,35 +220,15 @@
       "windows": {
         "program": "${workspaceFolder}/node_modules/mocha/bin/mocha.js"
       }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Mocha: current file (fallback)",
-      "env": {
-        "TS_NODE_TRANSPILE_ONLY": "true",
-        "TS_NODE_FILES": "true"
-      },
-      "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "--loader=ts-node/esm",
-        "--experimental-specifier-resolution=node",
-        "--max-old-space-size=4096"
-      ],
-      "program": "${workspaceFolder}/node_modules/.bin/mocha",
-      "args": [
-        "${file}",
-        "--require=test/hooks.ts"
-      ],
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
-      "skipFiles": [
-        "<node_internals>/**",
-        "${workspaceFolder}/node_modules/**"
-      ]
     }
   ],
   "inputs": [
+    {
+      "id": "appName",
+      "description": "App name",
+      "default": "porta-dev",
+      "type": "promptString"
+    },
     {
       "id": "cdkCommand",
       "description": "CDK command",
@@ -247,9 +236,27 @@
       "type": "promptString"
     },
     {
-      "id": "appName",
-      "description": "App name",
-      "default": "porta-dev",
+      "id": "connectService",
+      "description": "Service to connect to",
+      "default": "docdb",
+      "type": "promptString"
+    },
+    {
+      "id": "execCommand",
+      "description": "Command to execute",
+      "default": "bash",
+      "type": "promptString"
+    },
+    {
+      "id": "importPath",
+      "description": "Path to import",
+      "default": "",
+      "type": "promptString"
+    },
+    {
+      "id": "cliConfigPath",
+      "description": "Path to CLI config",
+      "default": "",
       "type": "promptString"
     },
     {
@@ -262,6 +269,22 @@
       "id": "paramValue", 
       "description": "Parameter value",
       "default": "",
+      "type": "promptString"
+    },
+    {
+      "id": "yesFlag",
+      "description": "Skip confirmation prompts",
+      "type": "pickString",
+      "options": [
+        "",
+        "--yes"
+      ],
+      "default": ""
+    },
+    {
+      "id": "repoName",
+      "description": "Repository name",
+      "default": "porta-dev-repo",
       "type": "promptString"
     }
   ]
