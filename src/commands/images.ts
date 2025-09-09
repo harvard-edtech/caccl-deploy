@@ -18,7 +18,7 @@ export default class Images extends BaseCommand<typeof Images> {
 
   static override flags = {
     all: Flags.boolean({
-      char: 'a',
+      char: 'A',
       default: false,
       description:
         'show all images; default is to show only semver-tagged releases',
