@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- switch to an amazonlinux2023 ami for the bastion hosts
+
 ## [0.18.0] - 2025-07-14
 
 ### Modified
