@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.18.0] - 2025-07-14
+
+### Modified
+
+- reverted the packaging and github community action version updates due to 
+  compatability issues with the dce-dev-wizard
+- updated the method for fetching bastion instance id
+
+### Added
+
+- supressing some cdk warnings and notices
+
 ## [0.17.0] - 2025-06-17
 
 ### Modified
