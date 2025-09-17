@@ -1,13 +1,15 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable camelcase */
 import {
-  type ICloudAssemblySource,
+  type IIoHost,
   StackSelectionStrategy,
-  type StackSelector,
   Toolkit,
 } from '@aws-cdk/toolkit-lib';
 import { Args, Flags } from '@oclif/core';
 import { App, CfnOutput } from 'aws-cdk-lib';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { temporaryDirectory } from 'tempy';
 import yn from 'yn';
 
 import {
@@ -56,9 +58,13 @@ export default class Stack extends BaseCommand<typeof Stack> {
 
   static override strict = false;
 
-  private async createCdkApp(
-    stackPropsData: CacclDeployStackPropsData,
-  ): Promise<App> {
+  /**
+   * Creates the CDK App with the CacclDeployStack
+   * @author Benedikt Arnarsson
+   * @param stackPropsData CacclDeployStackPropsData the stack props for constructing the CDK app
+   * @returns App the CDK app which we will perform the subcommands on
+   */
+  private createCdkApp(stackPropsData: CacclDeployStackPropsData): App {
     const {
       albLogBucketName,
       awsAccountId,
@@ -135,16 +141,41 @@ export default class Stack extends BaseCommand<typeof Stack> {
     return app;
   }
 
-  private async initializeToolkit(profile?: string): Promise<Toolkit> {
-    const toolkitConfig: any = {
-      ioHost: {
-        // Configure output handling
-        onData: (data: Buffer) => {
-          this.log(data.toString());
-        },
+  /**
+   * Creates a custom IoHost for handling CDK Toolkit output
+   * @author Benedikt Arnarsson
+   * @returns IIoHost defines how the CDK toolkit will perform I/O for notifications/messages
+   */
+  private createIoHost(): IIoHost {
+    return {
+      notify: async (msg: any) => {
+        // Handle different message types
+        if (typeof msg === 'string') {
+          this.log(msg);
+        } else if (msg?.message) {
+          this.log(msg.message);
+        } else {
+          this.log(JSON.stringify(msg));
+        }
+      },
+      requestResponse: async (msg: any) => {
+        // Log the request and return the default response
+        if (msg?.message) {
+          this.log(msg.message);
+        }
+
+        return msg?.defaultResponse ?? {};
       },
     };
+  }
 
+  /**
+   * Initialize the CDK Toolkit with proper configuration
+   * @author Benedikt Arnarsson
+   * @param [profile] string the AWS profile used to execute the CDK operations, default to "default"
+   * @returns Promise<Toolkit> the AWS CDK Toolkit for executing CDK operations
+   */
+  private async initializeToolkit(profile?: string): Promise<Toolkit> {
     // Configure AWS SDK to use the specified profile
     if (profile) {
       process.env.AWS_PROFILE = profile;
@@ -155,22 +186,187 @@ export default class Stack extends BaseCommand<typeof Stack> {
       process.env.AWS_REGION = 'us-east-1';
     }
 
-    return new Toolkit(toolkitConfig);
+    return new Toolkit({
+      ioHost: this.createIoHost(),
+    });
   }
 
-  private async executeCdkCommand(
+  /**
+   * Build the CDK stack properties data
+   * @author Benedikt Arnarsson
+   * @param opts options for building the stack props
+   * @returns CacclDeployStackPropsData the stack props to be passed into the CDK toolkit for subcommands/operations
+   */
+  private async buildStackPropsData(opts: {
+    cfnStackName: string;
+    deployConfig: any;
+    deployConfigHash: string;
+    profile?: string;
+  }): Promise<CacclDeployStackPropsData> {
+    const { cfnStackName, deployConfig, deployConfigHash, profile } = opts;
+    const { albLogBucketName, ecsClusterName, vpcId } =
+      await getCfnStackExports(deployConfig.infraStackName, profile);
+
+    const awsAccountId = await getAccountId(profile);
+
+    return {
+      albLogBucketName,
+      awsAccountId,
+      awsRegion: process.env.AWS_REGION || 'us-east-1',
+      cacclDeployVersion: CACCL_DEPLOY_VERSION,
+      deployConfig,
+      deployConfigHash,
+      ecsClusterName,
+      stackName: cfnStackName,
+      vpcId,
+    };
+  }
+
+  /**
+   * Handle special commands that don't require CDK operations
+   * @author Benedikt Arnarsson
+   * @param opts options for handleSpecialCommands
+   * @param opts.cdkStackProps CacclDeployStackPropsData information for the CACCL deploy stack
+   * @param opts.cfnStackName string name of the CloudFormation stack which the command is operating on
+   * @param [opts.profile] string AWS profile to execute the command with, defaults to "default"
+   * @param opts.stackExists boolean whether the AWS stack exists or not
+   * @returns Promise<boolean> the success status of the command
+   */
+  private async handleSpecialCommands(opts: {
+    cdkStackProps: CacclDeployStackPropsData;
+    cfnStackName: string;
+    profile?: string;
+    stackExists: boolean;
+  }): Promise<boolean> {
+    const { cdkStackProps, cfnStackName, profile, stackExists } = opts;
+    switch (this.args.stackSubcommand) {
+      case 'dump': {
+        this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
+        return true;
+      }
+
+      case 'info': {
+        if (!stackExists) {
+          this.exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
+        }
+
+        const stackExports = await getCfnStackExports(cfnStackName, profile);
+        this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
+        return true;
+      }
+
+      default: {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * Perform pre-deployment checks
+   * @author Benedikt Arnarsson
+   * @param stackExists boolean indicating whether the stack exists
+   * @param cfnStackName string the stack's CloudFormation name
+   * @param [profile] string for the AWS profile, defaults to "default"
+   * @returns Promise<boolean> whether deployment checks passed or not
+   */
+  private async performPreDeploymentChecks(
+    stackExists: boolean,
+    cfnStackName: string,
+    profile?: string,
+  ): Promise<boolean> {
+    const { yes } = this.context;
+
+    if (
+      ['changeset', 'deploy', 'destroy'].includes(this.args.stackSubcommand)
+    ) {
+      // check that we're not using a wildly different version of the cli
+      if (
+        stackExists &&
+        !yes &&
+        !(await stackVersionDiffCheck(cfnStackName, profile))
+      ) {
+        return false;
+      }
+
+      // production failsafe if we're actually changing anything
+      if (!(await confirmProductionOp(this.context))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Execute CDK operations using the toolkit
+   * @author Benedikt Arnarsson
+   * @param toolkit Toolkit AWS CDK toolkit for executing subcommands
+   * @param app App AWS CDK App for executing subcommands on
+   * @param cfnStackName string CloudFormation name of the stack
+   * @returns Promise<void>
+   */
+  private async executeCdkOperation(
     toolkit: Toolkit,
-    cloudAssembly: ICloudAssemblySource,
-    stackSelection: StackSelector,
+    app: App,
+    cfnStackName: string,
   ): Promise<void> {
-    // Destructure flags
-    const { profile, yes } = this.context;
+    const { yes } = this.context;
+
+    // Synthesize the cloud assembly
+    const assembly = app.synth();
+
+    // Write the cloud assembly to a temporary directory
+    const tempDir = temporaryDirectory();
+    const assemblyDir = path.join(tempDir, 'cdk.out');
+
+    // Create the output directory
+    await fs.mkdir(assemblyDir, { recursive: true });
+
+    // Write all assembly files
+    for (const [fileName, fileContent] of Object.entries(assembly.stacks)) {
+      if (typeof fileContent === 'object') {
+        const filePath = path.join(assemblyDir, fileName);
+        await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2));
+      }
+    }
+
+    // Write the manifest
+    const manifestPath = path.join(assemblyDir, 'manifest.json');
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify(assembly.manifest, null, 2),
+    );
+
+    // Write the tree.json if it exists
+    if (assembly.tree) {
+      const treePath = path.join(assemblyDir, 'tree.json');
+      await fs.writeFile(treePath, JSON.stringify(assembly.tree, null, 2));
+    }
+
+    // Write stack templates
+    for (const stackId of Object.keys(assembly.stacks)) {
+      const stack = assembly.getStackByName(stackId);
+      const templatePath = path.join(assemblyDir, `${stackId}.template.json`);
+      await fs.writeFile(templatePath, JSON.stringify(stack.template, null, 2));
+    }
+
+    // Use fromCdkApp with the temp directory as the CDK app
+    const cloudAssembly = await toolkit.fromCdkApp(assemblyDir);
+
+    // Define stack selection
+    const stackSelection = {
+      patterns: [cfnStackName],
+      strategy: StackSelectionStrategy.PATTERN_MUST_MATCH,
+    };
 
     // Execute the requested CDK operation
     switch (this.args.stackSubcommand) {
       case 'list': {
         const stacks = await toolkit.list(cloudAssembly, {
-          stacks: { strategy: StackSelectionStrategy.ALL_STACKS },
+          stacks: {
+            patterns: [],
+            strategy: StackSelectionStrategy.ALL_STACKS,
+          },
         });
         for (const stack of stacks) {
           this.log(stack.id);
@@ -180,15 +376,9 @@ export default class Stack extends BaseCommand<typeof Stack> {
       }
 
       case 'synth': {
-        // The synth already happened when we created the cloud assembly
         // Output the synthesized template
-        const stack = await toolkit.list(cloudAssembly, {
-          stacks: stackSelection,
-        });
-        if (stack[0]) {
-          this.log(JSON.stringify(stack[0], null, 2));
-        }
-
+        const stack = assembly.getStackByName(cfnStackName);
+        this.log(JSON.stringify(stack.template, null, 2));
         break;
       }
 
@@ -208,10 +398,6 @@ export default class Stack extends BaseCommand<typeof Stack> {
           stacks: stackSelection,
         };
 
-        if (profile) {
-          deployOptions.profile = profile;
-        }
-
         await toolkit.deploy(cloudAssembly, deployOptions);
         break;
       }
@@ -221,10 +407,6 @@ export default class Stack extends BaseCommand<typeof Stack> {
           force: yes,
           stacks: stackSelection,
         };
-
-        if (profile) {
-          destroyOptions.profile = profile;
-        }
 
         await toolkit.destroy(cloudAssembly, destroyOptions);
         break;
@@ -237,62 +419,34 @@ export default class Stack extends BaseCommand<typeof Stack> {
   }
 
   public async run(): Promise<void> {
-    // Destructure flags
-    const { profile, yes } = this.context;
+    const { profile } = this.context;
 
-    // get this without resolved secrets for passing to cdk
+    // Get deployment configuration
     const deployConfig = await this.getDeployConfig(profile, true);
-
-    // get it again with resolved secrets so we can make our hash
     const deployConfigHash = DeployConfig.toHash(
       await this.getDeployConfig(profile),
     );
 
-    /**
-     * Get the important ids/names from our infrastructure stack:
-     *   - id of the vpc
-     *   - name of the ECS cluster
-     *   - name of the S3 bucket where the load balancer will send logs
-     */
+    // Get stack information
     const cfnStackName = this.getCfnStackName();
     const stackExists = await cfnStackExists(cfnStackName, profile);
-    const { albLogBucketName, ecsClusterName, vpcId } =
-      await getCfnStackExports(deployConfig.infraStackName, profile);
 
-    /**
-     * Create an object structure with all the info
-     * the CDK stack operation will need
-     */
-    const awsAccountId = await getAccountId(profile);
-    const cdkStackProps: CacclDeployStackPropsData = {
-      albLogBucketName,
-      awsAccountId,
-      awsRegion: process.env.AWS_REGION || 'us-east-1',
-      cacclDeployVersion: CACCL_DEPLOY_VERSION,
+    // Build stack properties
+    const cdkStackProps = await this.buildStackPropsData({
+      cfnStackName,
       deployConfig,
       deployConfigHash,
-      ecsClusterName,
-      stackName: cfnStackName,
-      vpcId,
-    };
+      profile,
+    });
 
-    // Handle special commands that don't require CDK Toolkit
-    switch (this.args.stackSubcommand) {
-      case 'dump': {
-        this.exitWithSuccess(JSON.stringify(cdkStackProps, null, '  '));
-        return;
-      }
-
-      case 'info': {
-        if (!stackExists) {
-          this.exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
-        }
-
-        const stackExports = await getCfnStackExports(cfnStackName, profile);
-        this.exitWithSuccess(JSON.stringify(stackExports, null, '  '));
-        return;
-      }
-    }
+    // Handle special commands
+    const handled = await this.handleSpecialCommands({
+      cdkStackProps,
+      cfnStackName,
+      profile,
+      stackExists,
+    });
+    if (handled) return;
 
     // Set removal policy based on production account
     if (
@@ -306,25 +460,15 @@ export default class Stack extends BaseCommand<typeof Stack> {
         : 'DESTROY';
     }
 
-    // Check version and confirm production operations
-    if (
-      ['changeset', 'deploy', 'destroy'].includes(this.args.stackSubcommand)
-    ) {
-      // check that we're not using a wildly different version of the cli
-      if (
-        stackExists &&
-        !yes &&
-        !(await stackVersionDiffCheck(this.getCfnStackName(), profile))
-      ) {
-        this.exitWithSuccess();
-        return;
-      }
-
-      // production failsafe if we're actually changing anything
-      if (!(await confirmProductionOp(this.context))) {
-        this.exitWithSuccess();
-        return;
-      }
+    // Perform pre-deployment checks
+    const shouldContinue = await this.performPreDeploymentChecks(
+      stackExists,
+      cfnStackName,
+      profile,
+    );
+    if (!shouldContinue) {
+      this.exitWithSuccess();
+      return;
     }
 
     try {
@@ -332,20 +476,10 @@ export default class Stack extends BaseCommand<typeof Stack> {
       const toolkit = await this.initializeToolkit(profile);
 
       // Create the CDK app with our stack
-      const app = await this.createCdkApp(cdkStackProps);
+      const app = this.createCdkApp(cdkStackProps);
 
-      // Synthesize the cloud assembly
-      const cloudAssembly = await toolkit.fromAssemblyBuilder(async () => {
-        return app.synth();
-      });
-
-      // Define stack selection
-      const stackSelection = {
-        patterns: [cfnStackName],
-        strategy: StackSelectionStrategy.PATTERN_MUST_MATCH,
-      };
-
-      await this.executeCdkCommand(toolkit, cloudAssembly, stackSelection);
+      // Execute the CDK operation
+      await this.executeCdkOperation(toolkit, app, cfnStackName);
 
       this.exitWithSuccess('done!');
     } catch (error) {
