@@ -2,14 +2,12 @@
 /* eslint-disable camelcase */
 import {
   type IIoHost,
+  NonInteractiveIoHost,
   StackSelectionStrategy,
   Toolkit,
 } from '@aws-cdk/toolkit-lib';
 import { Args, Flags } from '@oclif/core';
 import { App, CfnOutput } from 'aws-cdk-lib';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { temporaryDirectory } from 'tempy';
 import yn from 'yn';
 
 import {
@@ -147,26 +145,7 @@ export default class Stack extends BaseCommand<typeof Stack> {
    * @returns IIoHost defines how the CDK toolkit will perform I/O for notifications/messages
    */
   private createIoHost(): IIoHost {
-    return {
-      notify: async (msg: any) => {
-        // Handle different message types
-        if (typeof msg === 'string') {
-          this.log(msg);
-        } else if (msg?.message) {
-          this.log(msg.message);
-        } else {
-          this.log(JSON.stringify(msg));
-        }
-      },
-      requestResponse: async (msg: any) => {
-        // Log the request and return the default response
-        if (msg?.message) {
-          this.log(msg.message);
-        }
-
-        return msg?.defaultResponse ?? {};
-      },
-    };
+    return new NonInteractiveIoHost();
   }
 
   /**
@@ -315,43 +294,10 @@ export default class Stack extends BaseCommand<typeof Stack> {
     // Synthesize the cloud assembly
     const assembly = app.synth();
 
-    // Write the cloud assembly to a temporary directory
-    const tempDir = temporaryDirectory();
-    const assemblyDir = path.join(tempDir, 'cdk.out');
-
-    // Create the output directory
-    await fs.mkdir(assemblyDir, { recursive: true });
-
-    // Write all assembly files
-    for (const [fileName, fileContent] of Object.entries(assembly.stacks)) {
-      if (typeof fileContent === 'object') {
-        const filePath = path.join(assemblyDir, fileName);
-        await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2));
-      }
-    }
-
-    // Write the manifest
-    const manifestPath = path.join(assemblyDir, 'manifest.json');
-    await fs.writeFile(
-      manifestPath,
-      JSON.stringify(assembly.manifest, null, 2),
-    );
-
-    // Write the tree.json if it exists
-    if (assembly.tree) {
-      const treePath = path.join(assemblyDir, 'tree.json');
-      await fs.writeFile(treePath, JSON.stringify(assembly.tree, null, 2));
-    }
-
-    // Write stack templates
-    for (const stackId of Object.keys(assembly.stacks)) {
-      const stack = assembly.getStackByName(stackId);
-      const templatePath = path.join(assemblyDir, `${stackId}.template.json`);
-      await fs.writeFile(templatePath, JSON.stringify(stack.template, null, 2));
-    }
-
     // Use fromCdkApp with the temp directory as the CDK app
-    const cloudAssembly = await toolkit.fromCdkApp(assemblyDir);
+    const cloudAssembly = await toolkit.fromAssemblyBuilder(async () => {
+      return assembly;
+    });
 
     // Define stack selection
     const stackSelection = {
