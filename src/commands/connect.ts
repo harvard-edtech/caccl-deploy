@@ -1,13 +1,8 @@
 import { Flags } from '@oclif/core';
-import untildify from 'untildify';
 import yn from 'yn';
 
-import {
-  EC2_INSTANCE_CONNECT_USER,
-  getCfnStackExports,
-  resolveSecret,
-  sendSSHPublicKey,
-} from '../aws/index.js';
+import SSM_PORT_FORWARDING_SESSION_DOCUMENT from '../aws/constants/SSM_PORT_FORWARDING_SESSION_DOCUMENT.js';
+import { getCfnStackExports, resolveSecret } from '../aws/index.js';
 import { BaseCommand } from '../base.js';
 
 // eslint-disable-next-line no-use-before-define
@@ -31,39 +26,17 @@ export default class Connect extends BaseCommand<typeof Connect> {
     'local-port': Flags.string({
       description: 'attach tunnel to a non-default local port',
     }),
-    'public-key': Flags.string({
-      char: 'k',
-      default: untildify('~/.ssh/id_rsa.pub'),
-      description: 'path to the ssh public key file to use',
-    }),
-    'quiet': Flags.boolean({
-      char: 'q',
-      default: false,
-      description: 'output only the ssh tunnel command',
-    }),
     'service': Flags.string({
       char: 's',
       description:
         'service to connect to; use `--list` to see what is available',
       required: true,
     }),
-    'sleep': Flags.string({
-      char: 'S',
-      default: '60',
-      description: 'keep the tunnel alive for this long without activity',
-    }),
   };
 
   public async run(): Promise<void> {
     // Destructure flags
-    const {
-      list,
-      'local-port': localPortFlag,
-      'public-key': publicKey,
-      quiet,
-      service,
-      sleep,
-    } = this.flags;
+    const { list, 'local-port': localPortFlag, service } = this.flags;
     const { profile } = this.context;
 
     if (!list && !service) {
@@ -103,77 +76,61 @@ export default class Connect extends BaseCommand<typeof Connect> {
     const cfnStackExports = await getCfnStackExports(cfnStackName, profile);
 
     const {
-      bastionHostAz,
       bastionHostId,
-      bastionHostIp,
       cacheEndpoint,
       dbClusterEndpoint,
       dbPasswordSecretArn,
     } = cfnStackExports;
 
-    if (bastionHostId === undefined || dbPasswordSecretArn === undefined) {
+    if (dbPasswordSecretArn === undefined) {
       this.exitWithError(
-        `Bastion host ID or database password secret ARN not found in CloudFormation stack exports for ${cfnStackName}`,
+        `database password secret ARN not found in CloudFormation stack exports for ${cfnStackName}`,
       );
-    }
-
-    try {
-      await sendSSHPublicKey({
-        instanceAz: bastionHostAz,
-        instanceId: bastionHostId,
-        profile,
-        sshKeyPath: publicKey,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : `Could not send SSH public key: ${error}`;
-      this.exitWithError(message);
     }
 
     let endpoint;
     let localPort;
+    let remotePort;
     let clientCommand;
 
     if (['docdb', 'mysql'].includes(service)) {
       endpoint = dbClusterEndpoint;
       const password = await resolveSecret(dbPasswordSecretArn!, profile);
       if (service === 'mysql') {
-        localPort = localPortFlag || '3306';
+        remotePort = '3306';
+        localPort = localPortFlag || remotePort;
         clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;
       } else {
-        localPort = localPortFlag || '27017';
+        remotePort = '27017';
+        localPort = localPortFlag || remotePort;
         const tlsOpts =
           '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
         clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
       }
     } else if (service === 'redis') {
       endpoint = cacheEndpoint;
-      localPort = localPortFlag || '6379';
+      remotePort = '6379';
+      localPort = localPortFlag || remotePort;
       clientCommand = `redis-cli -p ${localPort}`;
     } else {
       this.exitWithError(`not sure what to do with ${service}`);
     }
 
     const tunnelCommand = [
-      'ssh -f -L',
-      `${localPortFlag || localPort}:${endpoint}`,
-      '-o StrictHostKeyChecking=no',
-      `${EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
-      `sleep ${sleep}`,
+      'aws ssm start-session',
+      `--target ${bastionHostId}`,
+      `--document-name ${SSM_PORT_FORWARDING_SESSION_DOCUMENT}`,
+      `--parameters '{"portNumber":["${remotePort}"],"localPortNumber":["${localPort}"],"host":["${
+        endpoint?.split(':')[0]
+      }"]}'`,
     ].join(' ');
-
-    if (quiet) {
-      this.exitWithSuccess(tunnelCommand);
-    }
 
     this.exitWithSuccess(
       [
-        `Your public key, ${publicKey}, has temporarily been placed on the bastion instance`,
-        'You have ~60s to establish the ssh tunnel',
+        'A port-forwarding session can be created using the following tunnel command;',
+        `This will allow you to connect to the ${service} service using the client command below.`,
         '',
-        `# tunnel command:\n${tunnelCommand}`,
+        `# tunnel command:\n${tunnelCommand}\n`,
         `# ${service} client command:\n${clientCommand}`,
       ].join('\n'),
     );

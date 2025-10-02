@@ -1,0 +1,4 @@
+const SSM_PORT_FORWARDING_SESSION_DOCUMENT =
+  'AWS-StartPortForwardingSessionToRemoteHost';
+
+export default SSM_PORT_FORWARDING_SESSION_DOCUMENT;
