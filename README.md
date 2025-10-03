@@ -578,7 +578,6 @@ This command allows you to create a new app configuration in a few ways:
 
 * from scratch with prompts for the required options
 * import from a json file using the `-i` option, with prompts for any missing, required values
-* import from a URL (json response) using the `-i` option, with prompts for any missing, required values
 
 The required options (also described above in the section on "Config setting explanations") which will need to be provided via prompt or included in your imported json, are:
 
@@ -595,7 +594,7 @@ When finished the process stores the deployment configuration settings in Parame
 ##### options
 
 * `-a`/`--app` - the name of the app. You will be prompted for this value if not provided. This should be unique for the AWS account being used. Otherwise you will be prompted to first wipe any existing configuration for the specified app name.
-* `-i`/`--import` - use this option to import existing configuration settings (in json form) from a file or url.
+* `-i`/`--import` - use this option to import existing configuration settings (in json form) from a file.
 
 ***
 

@@ -1,6 +1,7 @@
 import { Flags } from '@oclif/core';
 import chalk from 'chalk';
 import figlet from 'figlet';
+import { existsSync } from 'node:fs';
 
 import { cfnStackExists, getAppList } from '../aws/index.js';
 import { BaseCommand } from '../base.js';
@@ -28,7 +29,14 @@ export default class New extends BaseCommand<typeof New> {
     }),
     import: Flags.string({
       char: 'i',
-      description: 'import new deploy config from a json file or URL',
+      description: 'import new deploy config from a json file',
+      async parse(input: string) {
+        if (existsSync(input)) {
+          return input;
+        }
+
+        throw new Error(`File does not exist ${input}`);
+      },
     }),
   };
 
@@ -78,9 +86,7 @@ export default class New extends BaseCommand<typeof New> {
      */
     let importedConfig: Partial<DeployConfigData> = {};
     if (importFlag !== undefined) {
-      importedConfig = /^http(s):\//.test(importFlag)
-        ? await DeployConfig.fromUrl(importFlag)
-        : DeployConfig.fromFile(importFlag);
+      importedConfig = DeployConfig.fromFile(importFlag);
     }
 
     let deployConfig;
