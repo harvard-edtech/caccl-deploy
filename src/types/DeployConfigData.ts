@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import appImageIsValid from '../shared/helpers/appImageIsValid.js';
 import CacclCacheOptions from './CacclCacheOptions.js';
 import CacclDbOptions from './CacclDbOptions.js';
 import CacclLoadBalancerExtraOptions from './CacclLoadBalancerExtraOptions.js';
@@ -13,7 +14,10 @@ import CacclScheduledTask from './CacclScheduledTask.js';
 const DeployConfigData = z.object({
   appEnvironment: z.object({}).catchall(z.string()).optional(),
   //
-  appImage: z.string(),
+  appImage: z.string().refine(appImageIsValid, {
+    message:
+      'appImage must be a full ECR image ARN; any "/" in the image name must be replaced with "-"',
+  }),
   cacheOptions: CacclCacheOptions.optional(),
   certificateArn: z.string().optional(),
   dbOptions: CacclDbOptions.optional(),
