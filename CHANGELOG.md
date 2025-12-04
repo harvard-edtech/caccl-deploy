@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `show-all-tasks.sh` - display a list of all running ECS tasks (even non-caccl-deploy ones)
 
+### Modified
+
+- bump bastion instance type to t3.micro to support falcon sensor
+
 ## [0.18.1] - 2025-09-12
 
 ### Modified

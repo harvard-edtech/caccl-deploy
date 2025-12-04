@@ -21,6 +21,10 @@ export class CacclSshBastion extends Construct {
 
     this.instance = new ec2.BastionHostLinux(this, 'SshBastionHost', {
       vpc,
+      instanceType: ec2.InstanceType.of(
+        ec2.InstanceClass.T3,
+        ec2.InstanceSize.MICRO,
+      ),
       subnetSelection: { subnetType: ec2.SubnetType.PUBLIC },
       instanceName: `${Stack.of(this).stackName}-bastion`,
       securityGroup: sg,
