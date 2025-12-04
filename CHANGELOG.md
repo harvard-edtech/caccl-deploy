@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `show-all-tasks.sh` - display a list of all running ECS tasks (even non-caccl-deploy ones)
+
 ## [0.18.1] - 2025-09-12
 
 ### Modified
