@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- script to output a configuration setting across all apps, e.g. to show what `proxyImage` is being used
+- script to allow connecting to v3.6 docdb clusters using a mongo 3.6 docker image. This is necessary for
+  some system's driver compatibility issues.
+
 ## [0.18.2] - 2025-12-05
 
 ### Added
