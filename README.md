@@ -383,6 +383,14 @@ The `caccl-deploy connect ...` command can be used for creating ssh port-forward
 
 `dbOptions.profiler` ("true|false") - Enable the DocDB cluster's slow query profiling option. The default threshold for what's considered a slow query is 500ms.
 
+`dbOptions.clusterEndpointOverride` (string) - Use a fixed DocumentDB endpoint (host:port) instead of the stack's cluster endpoint. This is intended for blue/green cutovers where the app should stay pointed at the blue cluster during a migration.
+
+`dbOptions.docdbUseVersionSuffix` ("true|false") - When true, suffixes DocDB cluster and parameter group logical ids with the engine version and also appends the engine version to the parameter group name. Defaults to "false".
+
+##### DocumentDb upgrade playbook
+
+See [README_docdb_upgrade.md](README_docdb_upgrade.md) for the blue/green upgrade steps using `dbOptions.clusterEndpointOverride` and AWS DMS.
+
 ##### Mysql only
 
 `dbOptions.databaseName` (string) - Set this if you want a database to be automatically created during provisioning.

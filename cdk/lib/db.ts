@@ -10,6 +10,7 @@ import {
   SecretValue,
   Duration,
   RemovalPolicy,
+  CfnResource,
 } from 'aws-cdk-lib';
 
 import { Construct } from 'constructs';
@@ -36,8 +37,14 @@ export interface CacclDbOptions {
   profiler?: boolean;
   // only used by mysql; provisioning will create the named database
   databaseName?: string;
-  // removal policy controls what happens to the db if it's replaced or otherwise stops being managed by CloudFormation
+  // removal policy controls what happens to the db if it's replaced or
+  // otherwise stops being managed by CloudFormation
   removalPolicy?: string;
+  // used for out-of-band, manual blue/green cutovers (with docdb only for now)
+  clusterEndpointOverride?: string;
+  // only used by docdb; when true, apply engineVersion suffixes for logical
+  // ids and parameter group name
+  docdbUseVersionSuffix?: boolean;
 }
 
 export interface CacclDbProps {
@@ -59,6 +66,9 @@ export abstract class CacclDbBase extends Construct implements ICacclDb {
 
   // cluster endpoint port
   port: string;
+
+  // full db host string (host:port), used for outputs/env
+  dbHost: string;
 
   // will get the generated master password for the db
   dbPasswordSecret: secretsmanager.Secret;
@@ -92,11 +102,15 @@ export abstract class CacclDbBase extends Construct implements ICacclDb {
   // the "etcetera" policy for the parameter group(s) and security group
   etcRemovalPolicy: RemovalPolicy;
 
+  // optional override for the cluster endpoint (for blue/green deployments)
+  clusterEndpointOverride: string | undefined;
+
   constructor(scope: Construct, id: string, props: CacclDbProps) {
     super(scope, id);
 
     const { vpc } = props;
-    const { removalPolicy = DEFAULT_REMOVAL_POLICY } = props.options;
+    const { removalPolicy = DEFAULT_REMOVAL_POLICY, clusterEndpointOverride } =
+      props.options;
 
     // removal policy for the cluster & instances
     this.removalPolicy = (<any>RemovalPolicy)[removalPolicy];
@@ -144,12 +158,27 @@ export abstract class CacclDbBase extends Construct implements ICacclDb {
      * not allowing IPv6 traffic so they had to add a warning?
      */
     this.dbSg.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.allTcp());
+
+    this.clusterEndpointOverride = clusterEndpointOverride;
+  }
+
+  getClusterEndpoint(): string {
+    return this.clusterEndpointOverride ?? `${this.host}:${this.port}`;
+  }
+
+  getStackClusterEndpoint(): string {
+    return `${this.host}:${this.port}`;
   }
 
   createOutputs() {
     new CfnOutput(this, 'DbClusterEndpoint', {
       exportName: `${Stack.of(this).stackName}-db-cluster-endpoint`,
-      value: `${this.host}:${this.port}`,
+      value: this.getStackClusterEndpoint(),
+    });
+
+    new CfnOutput(this, 'DbClusterEndpointOverride', {
+      exportName: `${Stack.of(this).stackName}-db-cluster-endpoint-override`,
+      value: this.clusterEndpointOverride ?? 'none',
     });
 
     new CfnOutput(this, 'DbSecretArn', {
@@ -182,8 +211,17 @@ export class CacclDocDb extends CacclDbBase {
       instanceType = DEFAULT_DB_INSTANCE_TYPE,
       engineVersion = DEFAULT_DOCDB_ENGINE_VERSION,
       parameterGroupFamily = DEFAULT_DOCDB_PARAM_GROUP_FAMILY,
+      docdbUseVersionSuffix = false,
       profiler = false,
     } = props.options;
+
+    // edge-case for blue/green deployments: adding a suffix to the logical ID
+    // gives us a means of forcing a replacement of the cluster and parameter group construct
+    // See README_docdb_upgrade.md for the associated playbook
+    const logicalIdSuffix = docdbUseVersionSuffix ? engineVersion : '';
+    const parameterGroupNameSuffix = docdbUseVersionSuffix
+      ? `-${engineVersion.replace(/\./g, '-')}`
+      : '';
 
     if (profiler) {
       this.clusterParameterGroupParams.profiler = 'enabled';
@@ -192,34 +230,54 @@ export class CacclDocDb extends CacclDbBase {
 
     const parameterGroup = new docdb.ClusterParameterGroup(
       this,
-      'ClusterParameterGroup',
+      `ClusterParameterGroup${logicalIdSuffix}`,
       {
-        dbClusterParameterGroupName: `${Stack.of(this).stackName}-param-group`,
+        dbClusterParameterGroupName: `${
+          Stack.of(this).stackName
+        }-param-group${parameterGroupNameSuffix}`,
         family: parameterGroupFamily,
         description: `Cluster parameter group for ${Stack.of(this).stackName}`,
         parameters: this.clusterParameterGroupParams,
       },
     );
 
-    this.dbCluster = new docdb.DatabaseCluster(this, 'DocDbCluster', {
-      masterUser: {
-        username: 'root',
-        password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
+    this.dbCluster = new docdb.DatabaseCluster(
+      this,
+      `DocDbCluster${logicalIdSuffix}`,
+      {
+        masterUser: {
+          username: 'root',
+          password: SecretValue.secretsManager(this.dbPasswordSecret.secretArn),
+        },
+        parameterGroup,
+        engineVersion,
+        instances: instanceCount,
+        vpc,
+        instanceType: new ec2.InstanceType(instanceType),
+        vpcSubnets: {
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
+        securityGroup: this.dbSg,
+        backup: {
+          retention: Duration.days(14),
+        },
+        removalPolicy: this.removalPolicy,
       },
-      parameterGroup,
-      engineVersion,
-      instances: instanceCount,
-      vpc,
-      instanceType: new ec2.InstanceType(instanceType),
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-      },
-      securityGroup: this.dbSg,
-      backup: {
-        retention: Duration.days(14),
-      },
-      removalPolicy: this.removalPolicy,
-    });
+    );
+
+    // Find the generated subnet group by resource type so we can apply the
+    // removal policy to it. Otherwise, deleting the cluster would try to
+    // delete the subnet group, which fails because subnets are shared.
+    const subnetGroup = this.dbCluster.node.findAll().find((child) => {
+      return (
+        child instanceof CfnResource &&
+        child.cfnResourceType === 'AWS::DocDB::DBSubnetGroup'
+      );
+    }) as docdb.CfnDBSubnetGroup | undefined;
+
+    if (subnetGroup) {
+      subnetGroup.applyRemovalPolicy(this.etcRemovalPolicy);
+    }
 
     // this needs to happen after the parameter group has been associated with the cluster
     parameterGroup.applyRemovalPolicy(this.etcRemovalPolicy);
@@ -228,7 +286,7 @@ export class CacclDocDb extends CacclDbBase {
     this.port = this.dbCluster.clusterEndpoint.portAsString();
 
     appEnv.addEnvironmentVar('MONGO_USER', 'root');
-    appEnv.addEnvironmentVar('MONGO_HOST', `${this.host}:${this.port}`);
+    appEnv.addEnvironmentVar('MONGO_HOST', this.getClusterEndpoint());
     appEnv.addEnvironmentVar(
       'MONGO_OPTIONS',
       'tls=true&tlsAllowInvalidCertificates=true&retryWrites=False',
@@ -369,8 +427,8 @@ export class CacclRdsDb extends CacclDbBase {
 
     /**
      * strangely the major version is not automatically derived from whatever
-     * version string is used here. This just pulls it off the engineVersion string
-     * e.g. '8.0.mysql_aurora.3.02.0' -> '8.0'
+     * version string is used here. This just pulls it off the engineVersion
+     * string e.g. '8.0.mysql_aurora.3.02.0' -> '8.0'
      */
     const majorVersion = engineVersion.substring(0, 3);
     const auroraMysqlEngineVersion = rds.DatabaseClusterEngine.auroraMysql({

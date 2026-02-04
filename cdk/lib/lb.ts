@@ -52,8 +52,9 @@ export class CacclLoadBalancer extends Construct {
       extraOptions,
     } = props;
 
-    const targetDeregistrationDelay =
-      extraOptions?.targetDeregistrationDelay ?? 30;
+    const targetDeregistrationDelay = Math.trunc(
+      extraOptions?.targetDeregistrationDelay ?? 30,
+    );
     const healthCheckPath = extraOptions?.healthCheckPath ?? '/';
 
     this.loadBalancer = new elb.ApplicationLoadBalancer(this, 'LoadBalancer', {
