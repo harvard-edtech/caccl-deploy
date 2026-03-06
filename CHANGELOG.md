@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- library update from 17 vulnerabilities (2 low, 7 moderate, 7 high, 1 critical) to 5 vulnerabilities (2 low, 3 high)
 - script to output a configuration setting across all apps, e.g. to show what `proxyImage` is being used
 - script to allow connecting to v3.6 docdb clusters using a mongo 3.6 docker image. This is necessary for
   some system's driver compatibility issues.
