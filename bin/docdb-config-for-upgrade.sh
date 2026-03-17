@@ -25,7 +25,7 @@ case "$UPGRADE_STEP" in
     caccl-deploy update --app "$APP_NAME" dbOptions/docdbUseVersionSuffix true
     caccl-deploy update --app "$APP_NAME" dbOptions/engineVersion 5.0.0
     caccl-deploy update --app "$APP_NAME" dbOptions/parameterGroupFamily docdb5.0
-    caccl-deploy update --app "$APP_NAME" lbOptions/targetDeregistrationDelay 0
+    caccl-deploy update --app "$APP_NAME" lbOptions/targetDeregistrationDelay 5
     ;;
   post)
     caccl-deploy update --app "$APP_NAME" -D dbOptions/clusterEndpointOverride

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.19.0] - 2026-03-17
+
+DocumentDB major version update functionality. This version introduces some changes that allow for a manual blue/green migration of docdb versions. See [[README_docdb_upgrade.md]].
+
 ### Added
 
 - library update from 17 vulnerabilities (2 low, 7 moderate, 7 high, 1 critical) to 5 vulnerabilities (2 low, 3 high)

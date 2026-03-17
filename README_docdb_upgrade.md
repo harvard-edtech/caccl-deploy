@@ -16,6 +16,8 @@ Keep the app pointed at the current (blue) DocumentDB endpoint while you deploy 
 
 The examples below use `caccl-deploy stack ... changeset` instead of `deploy` to prepare a change set for inspection in the CloudFormation console. This is a safer workflow than relying on `cdk diff` alone.
 
+If you prefer, you can use `./bin/docdb-config-for-upgrade.sh` for the update steps instead of running each `caccl-deploy update ...` command manually.
+
 ## Migration Steps
 
 ### 1. Preparation
@@ -49,6 +51,7 @@ caccl-deploy stack --app <app> changeset
 caccl-deploy update --app <app> dbOptions/engineVersion 5.0.0
 caccl-deploy update --app <app> dbOptions/parameterGroupFamily docdb5.0
 caccl-deploy update --app <app> dbOptions/docdbUseVersionSuffix true
+ caccl-deploy update --app <app> lbOptions/targetDeregistrationDelay 5
 ```
 
 2. Inspect the diff; you should see the blue resources marked as `orphan` and new green resources added.
@@ -120,7 +123,12 @@ This will update the task definition and roll the ECS service to the green clust
 
 1. QA/test the redeployed app.
 2. Stop and delete the DMS task and endpoints.
-3. Delete the old blue cluster when you are comfortable to do so (after a final snapshot if desired).
+3. Reset the load balancer deregistration delay:
+
+```bash
+caccl-deploy update --app <app> -D lbOptions/targetDeregistrationDelay
+```
+4. Delete the old blue cluster when you are comfortable to do so (after a final snapshot if desired).
 
 ### Final state
 
