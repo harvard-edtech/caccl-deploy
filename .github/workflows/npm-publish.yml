@@ -42,4 +42,4 @@ jobs:
         with:
           name: package
 
-      - run: npm publish *.tgz --access public --tag pubfix
+      - run: npm publish *.tgz --access public 
