@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.19.1] - 2026-03-18
+
+### Modified
+
+- Updated the npm-publish github workflow to use the Trusted Publisher model
+
 ## [0.19.0] - 2026-03-17
 
 DocumentDB major version update functionality. This version introduces some changes that allow for a manual blue/green migration of docdb versions. See [[README_docdb_upgrade.md]].
