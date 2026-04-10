@@ -11,11 +11,12 @@ LOCAL_PORT=27017
 SSM_PID=""
 
 function usage {
-  echo "usage: $(basename "$0") app_name"
+  echo "usage: $(basename "$0") app_name [db_endpoint:port]"
   exit 1
 }
 
 APP_NAME=${1:-}
+DB_ENDPOINT_OVERRIDE=${2:-}
 
 if [[ -z $APP_NAME ]]; then
   usage
@@ -50,9 +51,13 @@ if [[ -z $BASTION_INSTANCE_ID || $BASTION_INSTANCE_ID == "None" ]]; then
   exit 1
 fi
 
-DB_ENDPOINT_WITH_PORT=$(aws cloudformation list-exports \
-  --query "Exports[?Name=='${STACK_NAME}-db-cluster-endpoint'].Value" \
-  --output text)
+if [[ -n $DB_ENDPOINT_OVERRIDE ]]; then
+  DB_ENDPOINT_WITH_PORT=$DB_ENDPOINT_OVERRIDE
+else
+  DB_ENDPOINT_WITH_PORT=$(aws cloudformation list-exports \
+    --query "Exports[?Name=='${STACK_NAME}-db-cluster-endpoint'].Value" \
+    --output text)
+fi
 
 if [[ -z $DB_ENDPOINT_WITH_PORT || $DB_ENDPOINT_WITH_PORT == "None" ]]; then
   echo "Error: could not find db endpoint export for ${STACK_NAME}" >&2
