@@ -14,6 +14,15 @@ import { CacclGitRepoVolumeContainer } from './volumeContainer';
 
 const DEFAULT_PROXY_REPO_NAME = 'hdce/nginx-ssl-proxy';
 
+export interface CacclS3PermissionBucket {
+  bucketName: string;
+  actions: string[];
+}
+
+export interface CacclS3Permissions {
+  buckets: CacclS3PermissionBucket[];
+}
+
 export interface CacclTaskDefProps {
   appImage: string;
   proxyImage?: string;
@@ -23,6 +32,7 @@ export interface CacclTaskDefProps {
   taskMemory?: number;
   logRetentionDays?: number;
   gitRepoVolume?: { [key: string]: string };
+  s3Permissions?: CacclS3Permissions;
 }
 
 export class CacclTaskDef extends Construct {
@@ -71,6 +81,29 @@ export class CacclTaskDef extends Construct {
 
     this.taskDef.addToTaskRolePolicy(sendEmailPolicy);
     this.appOnlyTaskDef.addToTaskRolePolicy(sendEmailPolicy);
+
+    const s3Buckets = props.s3Permissions?.buckets ?? [];
+    s3Buckets.forEach((bucket, index) => {
+      if (!bucket.bucketName) {
+        throw new Error(
+          `deployConfig.s3Permissions.buckets[${index}].bucketName is required`,
+        );
+      }
+      if (!bucket.actions?.length) {
+        throw new Error(
+          `deployConfig.s3Permissions.buckets[${index}].actions must be a non-empty array`,
+        );
+      }
+
+      const bucketArn = `arn:aws:s3:::${bucket.bucketName}`;
+      const s3Policy = new iam.PolicyStatement({
+        actions: bucket.actions,
+        resources: [bucketArn, `${bucketArn}/*`],
+      });
+
+      this.taskDef.addToTaskRolePolicy(s3Policy);
+      this.appOnlyTaskDef.addToTaskRolePolicy(s3Policy);
+    });
 
     // params for the fargate service's app container
     const appContainerParams = {

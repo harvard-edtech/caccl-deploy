@@ -14,7 +14,7 @@ import {
 import { CacclNotifications, CacclNotificationsProps } from './notify';
 import { CacclScheduledTask, CacclScheduledTasks } from './scheduledTasks';
 import { CacclService } from './service';
-import { CacclTaskDef, CacclTaskDefProps } from './taskdef';
+import { CacclTaskDef, CacclTaskDefProps, CacclS3Permissions } from './taskdef';
 
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
@@ -32,6 +32,7 @@ export interface CacclDeployStackProps extends StackProps {
   lbOptions?: CacclLoadBalancerExtraOptions;
   firewallSgId?: string;
   enableExecuteCommand?: boolean;
+  s3Permissions?: CacclS3Permissions;
 }
 
 export class CacclDeployStack extends Stack {
@@ -97,6 +98,7 @@ export class CacclDeployStack extends Stack {
     const taskDef = new CacclTaskDef(this, 'TaskDef', {
       vpcCidrBlock: vpc.vpcCidrBlock,
       appEnvironment: appEnv,
+      s3Permissions: props.s3Permissions,
       ...props.taskDefProps,
     });
 

@@ -192,6 +192,14 @@ To view the JSON-serialized configuration you can use the `caccl-deploy show` su
     "appContainerPath": "/app/volume",
     "repoUrlSecretArn": "arn:aws:secretsmanager:us-east-1:123456789012:secret:/caccl-deploy/my-app/git-repo-url"
   },
+  "s3Permissions": {
+    "buckets": [
+      {
+        "bucketName": "my-app-bucket",
+        "actions": ["s3:GetObject", "s3:PutObject"]
+      }
+    ]
+  },
   "dbOptions": {
     "engine": "mysql",
     "instanceCount": 1,
@@ -268,6 +276,8 @@ _**Important**_: The configured address(es) will receive a confirmation message 
 `targetDeregistrationDelay` (number) - number of seconds between when the load balancer stops sending requests to a target (i.e. an app task instance) and when it actually deregisters the target. See [Deregistration Delay](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#deregistration-delay).
 
 `gitRepoVolume` (string) - You can ignore this unless you have the very edge case situation in which your app needs a private git repo to be checked out to an attached volume. In which case set the mount path with `appContainerPath` and the `repoUrlSecretArn` with the ARN of a SecretsManager entry containing the full url of the github repo, including username and password.
+
+`s3Permissions.buckets` ([{ bucketName: string, actions: string[] }]) - a list of S3 permission grants that will be added to the app task role. Each entry grants the provided actions on the bucket and all objects within it.
 
 **Database & cache options**
 

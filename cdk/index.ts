@@ -53,6 +53,7 @@ const stackProps: CacclDeployStackProps = {
     taskMemory: deployConfig.taskMemory,
     logRetentionDays: deployConfig.logRetentionDays,
     gitRepoVolume: deployConfig.gitRepoVolume,
+    s3Permissions: deployConfig.s3Permissions,
   },
   // how many concurrent tasks to run
   taskCount: +(deployConfig.taskCount ?? 1),
