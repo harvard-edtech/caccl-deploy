@@ -244,7 +244,7 @@ First the required values.
 
 Now the optional stuff.
 
-`firewallSgId` (string) - set this to import/re-use an existing security group that will be applied to the load balancer and bastion host. See "Security" below.
+`firewallSgId` (string) - set this to import/re-use an existing security group that will be applied to the load balancer. See "Security" below.
 
 `appEnvironment` ({ [string]: string }) - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--keep-secret-arns` flag to see the actual ARN values.
 
@@ -373,9 +373,7 @@ For apps that require a database you must set `dbOptions.engine` to either "mysq
 
 By default you will get a single instance of type "t3.medium". We turn slow query profiling on by default.
 
-Including either type of database in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the database.
-
-The `caccl-deploy connect ...` command can be used for creating ssh port-forwarding tunnels via the bastion host to the db instances. A shell script, `bin/docdb.sh` is also included. It might work out of the box or at least be useful as a starting point.
+The `caccl-deploy connect ...` command can be used to reach the db instances from outside the VPC. It provisions an ephemeral, on-demand bastion instance and establishes an SSM port-forwarding tunnel through it. See the `connect` command docs below.
 
 ##### Common db options
 
@@ -458,7 +456,7 @@ If your app needs an instance of Elasticache (redis flavor) you must set `cacheO
 
 By default you will get a single cache node instance of type "cache.t3.medium".
 
-Including a cache in your deploy configuration will result in a bastion host being added to the stack resources to facilitate ssh tunnelling connections to the cache instance.
+The `caccl-deploy connect ...` command can be used to reach the cache instance from outside the VPC via an ephemeral bastion and SSM port forwarding.
 
 ##### Cache options
 
@@ -475,13 +473,12 @@ Including a cache in your deploy configuration will result in a bastion host bei
 Some notes about app and resource security state.
 
 - by default caccl-deploy apps are open to the internet on ports 80 and 443
-- by default the bastion host, if the app has one, is open to the internet on port 22
 - all databases and/or Elasticache (redis) instances run on private subnets. They should be accessible through their respective ports only to traffic coming from internal (10.1.x.x) ips.
-- to access a database or cache instance from outside the vpc you must tunnel through the bastion host. The `connect` command helps facilitate this.
+- to access a database or cache instance from outside the vpc you must tunnel through a bastion host. The `connect` command handles this by provisioning an ephemeral bastion (no long-running bastion instances, no open ssh ports) and establishing an SSM port-forwarding session through it.
 
 ##### Importing a security group
 
-Should you wish to apply restrictions on where your app can be accessed from (e.g. office network or vpn), you can import an existing security group using the deployment configuration setting, `firewallSgId`. This security group will be used in place of the default for both the application load balancer and the bastion host. The security group will need to have ingress rules for at least ports 80, 443 and 22. Note that the imported security group does not become a member of the stack's resources; it continues to exist separately from the importing app's cloudformation stack and won't be updated or deleted by the app's stack update operations.
+Should you wish to apply restrictions on where your app can be accessed from (e.g. office network or vpn), you can import an existing security group using the deployment configuration setting, `firewallSgId`. This security group will be used in place of the default for the application load balancer. The security group will need to have ingress rules for at least ports 80 and 443. Note that the imported security group does not become a member of the stack's resources; it continues to exist separately from the importing app's cloudformation stack and won't be updated or deleted by the app's stack update operations.
 
 If an app imports a security group using the `firewallSgId` setting, and additional, empty security group will also be created and attached to the load balancer. This "miscellaneous" security group should be used for one-off ingress rules specific to the app. For instance, allowing an Opencast cluster admin node to push metadata updates to an instance of Porta.
 
@@ -750,41 +747,54 @@ caccl-deploy exec -a my-app -c 'python manage.py migrate' -e 'MY_EXTRA_ENV_VAR=1
 
 #### connect
 
-For connecting to peripheral services, like the DocumentDb or RDS/Mysql database via the app's ec2 ssh bastion host. It first uses the AWS API To copy your ssh public key to the bastion host using the [EC2 Instance Connect](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Connect-using-EC2-Instance-Connect.html) feature. Then it outputs the necessary shell commands to establish an ssh tunnel through the bastion host.
+For connecting to peripheral services, like the DocumentDb or RDS/Mysql database. The command provisions an ephemeral bastion instance by invoking the `PrivSecBastionLauncher` lambda (part of the `automated-privsec-agent-install` project), waits for the instance's SSM agent to come online, then establishes an SSM port-forwarding session through it to the service. The tunnel runs in the foreground; press Ctrl-C to close it.
+
+The bastion instance is temporary: it shuts itself down (and terminates) when its TTL expires. Each `connect` invocation launches a fresh instance, so expect the 1-2 minute startup wait on every connect.
+
+##### prerequisites
+
+- the `aws` cli and the [session-manager-plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) must be installed
+- your IAM user/role needs the `TempBastionUserAccess` managed policy (created by the `automated-privsec-agent-install` stack). Note: the policy's `ssm:TerminateSession` statement is scoped to sessions prefixed with `${aws:username}`; if you authenticate with assumed roles/SSO and session cleanup fails, that statement may need to be relaxed to `session/*`.
+- the app's deploy config must reference a shared infra stack (`infraStackName`) whose stack exports `<infraStackName>-private-subnet-id` and `<infraStackName>-common-security-group-id`
 
 ##### options
 
 - `-a`/`--app` (required) - the name of the app
 - `-l`/`--list` - list the services available to connect to
 - `-s` / `--service` - service to connect to; use `--list` to see what is available
-- `-k` / `--public-key` - path to the ssh public key file to use (default: "~/.ssh/id_rsa.pub")
-- `-q` / `--quiet` - restrict output to only the ssh tunnel command
-- `-S` / `--sleep` - sleep for this many seconds as the tunnel "keepalive" command (default: 60)
 - `--local-port` - attach tunnel to a non-default local port
+- `--ttl` - ephemeral bastion time-to-live in seconds; defaults to the launcher setting (3600)
+- `--print-only` - dry run; print the commands that would launch a bastion, wait for it, open the tunnel and connect a client, without running any of them. Nothing is created, so the instance id is shown as `<INSTANCE_ID>` for you to substitute from the output of the first command. The printed `lambda invoke` matches your local aws cli version (v2 needs `--cli-binary-format raw-in-base64-out`, which v1 doesn't accept)
 
 ##### example
 
-You want to see what services are available to connect to, and then connect to MySQL. You already have MySQL running locally, so for this example we will bind the tunnel to the local port, 3307 (instead of the default 3306). You also want to give yourself several minutes to establish a client connection, so bump the "sleep" value to 300 seconds.
+You want to see what services are available to connect to, and then connect to MySQL. You already have MySQL running locally, so for this example we will bind the tunnel to the local port, 3307 (instead of the default 3306).
 
 ```
 $ caccl-deploy connect -a my-app --list
 Valid `--service=` options:
   mysql
   redis
-$ caccl-deploy connect -a my-app -s mysql --local-port 3307 --sleep 300
+$ caccl-deploy connect -a my-app -s mysql --local-port 3307
 ```
 
 Output:
 
 ```
-Your public key, /home/foo/.ssh/id_rsa.pub, has temporarily been placed on the bastion instance
-You have ~60s to establish the ssh tunnel
+Requesting ephemeral bastion for my-app...
+Launched bastion i-0abc123def456
+waiting for the bastion's SSM agent to come online (0s elapsed); a new instance can take 1-2 minutes...
 
-# tunnel command:
-ssh -f -L 3307:my-app-db-cluster.cluster-cnrqypmjblyx.us-east-1.rds.amazonaws.com:3306 -o StrictHostKeyChecking=no ec2-user@12.34.56.78 sleep 300
+Tunnel is up!
+
 # mysql client command:
 mysql -uroot -pxxxxxxxxxx --port 3307 -h 127.0.0.1
+
+The bastion expires at 2026-01-01T13:00:00Z
+Press Ctrl-C to close the tunnel
 ```
+
+For DocumentDb note that the db clusters run mongo 3.6 or 5.0; if your locally-installed client is newer it may refuse the connection. A docker-based client works well, e.g.: `docker run --rm -it --net host mongo:3.6 mongo --ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates --username root --password xxxx --port 27017 127.0.0.1`.
 
 ---
 

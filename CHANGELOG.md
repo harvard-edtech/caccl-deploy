@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.21.0] - 2026-07-29
+
+### Changed
+
+- **Breaking:** the `connect` command now provisions an ephemeral bastion via the `PrivSecBastionLauncher` lambda and establishes a foreground SSM port-forwarding tunnel; ssh/EC2 Instance Connect tunneling is removed along with the `--public-key`, `--sleep` and `--quiet` options. New options: `--ttl` and `--print-only` (a dry run that prints the launch/wait/tunnel/client commands without running them). Requires the session-manager-plugin and the `TempBastionUserAccess` IAM policy.
+- **Breaking:** app stacks no longer create a `CacclSshBastion` bastion host or its security group; the `-bastion-host-ip/-id/-az` and `-bastion-security-group-id` stack exports are removed on the next `stack deploy`.
+
+### Removed
+
+- `bin/docdb.sh` and `bin/docdb-3.6-connect.sh` (superseded by `connect -s docdb`)
+- `aws.sendSSHPublicKey`, `aws.getBastionAmiId` helpers
+
 ## [0.20.0] - 2026-04-27
 
 ### Added

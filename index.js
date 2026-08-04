@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const chalk = require('chalk');
 const { Command } = require('commander');
 const figlet = require('figlet');
 const moment = require('moment');
 const { table } = require('table');
 const tempy = require('tempy');
-const untildify = require('untildify');
 const yn = require('yn');
 
 const aws = require('./lib/aws');
@@ -30,7 +29,63 @@ const {
   looksLikeSemver,
   validSSMParamName,
   warnAboutVersionDiff,
+  waitForLocalPortOpen,
+  localPortIsFree,
 } = require('./lib/helpers');
+
+const SSM_PORT_FORWARDING_DOCUMENT =
+  'AWS-StartPortForwardingSessionToRemoteHost';
+
+/**
+ * Shell variable holding the id of a bastion that doesn't exist yet; the
+ * --print-only recipe populates it from the launcher's response
+ */
+const INSTANCE_ID_VAR = '$INSTANCE_ID';
+
+// where the printed `lambda invoke` command writes the launcher's response
+const BASTION_RESPONSE_FILE = '/tmp/bastion.json';
+
+/**
+ * Single-quote a command argument unless it's made up entirely of characters
+ * the shell leaves alone, so that printed commands can be pasted as-is
+ * @param {string} arg
+ * @returns {string}
+ */
+const shellQuote = (arg) => {
+  if (/^[A-Za-z0-9_\-=:/.,]+$/.test(arg)) {
+    return arg;
+  }
+  // double quotes so that shell variables still expand when pasted
+  if (arg.includes(INSTANCE_ID_VAR)) {
+    return `"${arg}"`;
+  }
+  return `'${arg.replace(/'/g, "'\\''")}'`;
+};
+
+/**
+ * Render an argument list as a copy-pasteable `aws` command
+ * @param {string[]} args
+ * @returns {string}
+ */
+const printableAwsCommand = (args) => {
+  return `aws ${args.map(shellQuote).join(' ')}`;
+};
+
+/**
+ * Determine the major version of the local `aws` cli. v2 interprets a
+ * `--payload` as base64 unless told otherwise, while v1 has no
+ * `--cli-binary-format` option at all, so printed commands have to differ.
+ * @returns {number} the major version, or 1 if it can't be determined
+ */
+const getAwsCliMajorVersion = () => {
+  try {
+    const output = execSync('aws --version 2>&1').toString();
+    const match = output.match(/aws-cli\/(\d+)/);
+    return match ? Number(match[1]) : 1;
+  } catch (err) {
+    return 1;
+  }
+};
 const { description: packageDescription } = require('./package.json');
 
 /**
@@ -656,7 +711,6 @@ async function main() {
         deployConfigHash,
         stackName: cfnStackName,
         awsAccountId: await aws.getAccountId(),
-        bastionAmiId: await aws.getBastionAmiId(),
         awsRegion: process.env.AWS_REGION || 'us-east-1',
         deployConfig,
       };
@@ -963,28 +1017,21 @@ async function main() {
     .option('-l, --list', 'list the things to connect to')
     .option(
       '-s, --service <string>',
-      'service to connect to; use `--list` to see what is available',
-    )
-    .option(
-      '-k, --public-key <string>',
-      'path to the ssh public key file to use',
-      untildify('~/.ssh/id_rsa.pub'),
+      'service to connect to; defaults to the only one if the app has just one; use `--list` to see what is available',
     )
     .option(
       '--local-port <string>',
       'attach tunnel to a non-default local port',
     )
-    .option('-q, --quiet', 'output only the ssh tunnel command')
     .option(
-      '-S, --sleep <string>',
-      'keep the tunnel alive for this long without activity',
-      60,
+      '--ttl <number>',
+      'ephemeral bastion time-to-live in seconds; defaults to the launcher setting (3600, max 86400)',
+    )
+    .option(
+      '--print-only',
+      'dry run; print the commands that would launch a bastion and open the tunnel, without running them',
     )
     .action(async (cmd) => {
-      if (!cmd.list && !cmd.service) {
-        exitWithError('One of `--list` or `--service` is required');
-      }
-
       const deployConfig = await cmd.getDeployConfig();
 
       const services = new Set();
@@ -1008,38 +1055,38 @@ async function main() {
         );
       }
 
-      if (!services.has(cmd.service)) {
-        exitWithError(`'${cmd.service}' is not a valid option`);
+      let { service } = cmd;
+      if (!service) {
+        if (services.size !== 1) {
+          exitWithError(
+            services.size === 0
+              ? `${cmd.app} has no connectable services`
+              : 'One of `--list` or `--service` is required',
+          );
+        }
+        [service] = services;
+        console.log(`connecting to ${service}`);
+      } else if (!services.has(service)) {
+        exitWithError(`'${service}' is not a valid option`);
       }
 
       const cfnStackName = cmd.getCfnStackName();
       const cfnStackExports = await aws.getCfnStackExports(cfnStackName);
 
-      const {
-        bastionHostAz,
-        bastionHostId,
-        bastionHostIp,
-        dbPasswordSecretArn,
-      } = cfnStackExports;
-
-      try {
-        await aws.sendSSHPublicKey({
-          instanceAz: bastionHostAz,
-          instanceId: bastionHostId,
-          sshKeyPath: cmd.publicKey,
-        });
-      } catch (err) {
-        exitWithError(err.message);
-      }
-
       let endpoint;
       let localPort;
       let clientCommand;
 
-      if (['mysql', 'docdb'].includes(cmd.service)) {
+      if (['mysql', 'docdb'].includes(service)) {
         endpoint = cfnStackExports.dbClusterEndpoint;
+        const { dbPasswordSecretArn } = cfnStackExports;
+        if (endpoint === undefined || dbPasswordSecretArn === undefined) {
+          exitWithError(
+            `Stack ${cfnStackName} is missing its db exports; has it been deployed?`,
+          );
+        }
         const password = await aws.resolveSecret(dbPasswordSecretArn);
-        if (cmd.service === 'mysql') {
+        if (service === 'mysql') {
           localPort = cmd.localPort || '3306';
           clientCommand = `mysql -uroot -p${password} --port ${localPort} -h 127.0.0.1`;
         } else {
@@ -1048,35 +1095,247 @@ async function main() {
             '--ssl --sslAllowInvalidHostnames --sslAllowInvalidCertificates';
           clientCommand = `mongo ${tlsOpts} --username root --password ${password} --port ${localPort}`;
         }
-      } else if (cmd.service === 'redis') {
+      } else if (service === 'redis') {
         endpoint = cfnStackExports.cacheEndpoint;
+        if (endpoint === undefined) {
+          exitWithError(
+            `Stack ${cfnStackName} is missing its cache endpoint export; has it been deployed?`,
+          );
+        }
         localPort = cmd.localPort || '6379';
         clientCommand = `redis-cli -p ${localPort}`;
       } else {
-        exitWithError(`not sure what to do with ${cmd.service}`);
+        exitWithError(`not sure what to do with ${service}`);
       }
 
-      const tunnelCommand = [
-        'ssh -f -L',
-        `${cmd.localPort || localPort}:${endpoint}`,
-        '-o StrictHostKeyChecking=no',
-        `${aws.EC2_INSTANCE_CONNECT_USER}@${bastionHostIp}`,
-        `sleep ${cmd.sleep}`,
-      ].join(' ');
+      const [remoteHost, remotePort] = endpoint.split(':');
 
-      if (cmd.quiet) {
-        exitWithSuccess(tunnelCommand);
+      if (
+        !/^\d+$/.test(String(localPort)) ||
+        Number(localPort) < 1 ||
+        Number(localPort) > 65535
+      ) {
+        exitWithError(`'${localPort}' is not a valid local port`);
       }
 
-      exitWithSuccess(
+      if (!cmd.printOnly && !(await localPortIsFree(Number(localPort)))) {
+        exitWithError(
+          `local port ${localPort} is in use; choose another with --local-port`,
+        );
+      }
+
+      if (
+        cmd.ttl !== undefined &&
+        (!/^[1-9]\d*$/.test(String(cmd.ttl)) || Number(cmd.ttl) > 86400)
+      ) {
+        exitWithError(
+          `'${cmd.ttl}' is not a valid ttl; provide a positive number of seconds, up to 86400 (24 hours)`,
+        );
+      }
+
+      const buildSessionArgs = (instanceId) => {
+        const args = [
+          'ssm',
+          'start-session',
+          '--target',
+          instanceId,
+          '--document-name',
+          SSM_PORT_FORWARDING_DOCUMENT,
+          '--parameters',
+          JSON.stringify({
+            host: [remoteHost],
+            portNumber: [String(remotePort)],
+            localPortNumber: [String(localPort)],
+          }),
+        ];
+        if (cmd.profile !== undefined) {
+          args.push('--profile', cmd.profile);
+        }
+        return args;
+      };
+
+      if (cmd.printOnly) {
+        const invokeArgs = [
+          'lambda',
+          'invoke',
+          '--function-name',
+          aws.BASTION_LAUNCHER_FUNCTION_NAME,
+          '--payload',
+          JSON.stringify({
+            appName: cmd.app,
+            ...(cmd.ttl ? { ttlSeconds: Number(cmd.ttl) } : {}),
+          }),
+        ];
+        if (getAwsCliMajorVersion() >= 2) {
+          invokeArgs.push('--cli-binary-format', 'raw-in-base64-out');
+        }
+        const waitArgs = [
+          'ssm',
+          'describe-instance-information',
+          '--filters',
+          `Key=InstanceIds,Values=${INSTANCE_ID_VAR}`,
+          '--query',
+          'InstanceInformationList[0].PingStatus',
+          '--output',
+          'text',
+        ];
+        if (cmd.profile !== undefined) {
+          invokeArgs.push('--profile', cmd.profile);
+          waitArgs.push('--profile', cmd.profile);
+        }
+        invokeArgs.push(BASTION_RESPONSE_FILE);
+
+        exitWithSuccess(
+          [
+            'Nothing was launched. Run the following to connect by hand (requires jq):',
+            '',
+            '# 1. launch an ephemeral bastion and capture its instance id',
+            printableAwsCommand(invokeArgs),
+            `INSTANCE_ID=$(jq -r '.body | fromjson | .instanceId' ${BASTION_RESPONSE_FILE})`,
+            '',
+            '# 2. repeat until this prints "Online" (usually under a minute)',
+            printableAwsCommand(waitArgs),
+            '',
+            '# 3. open the tunnel; leave it running',
+            printableAwsCommand(buildSessionArgs(INSTANCE_ID_VAR)),
+            '',
+            `# 4. connect with a ${service} client`,
+            clientCommand,
+          ].join('\n'),
+        );
+      }
+
+      console.log(`Requesting ephemeral bastion for ${cmd.app}...`);
+      let bastion;
+      try {
+        bastion = await aws.invokeBastionLauncher({
+          appName: cmd.app,
+          ttlSeconds: cmd.ttl ? Number(cmd.ttl) : undefined,
+        });
+      } catch (err) {
+        exitWithError(err.message);
+      }
+      console.log(`Launched bastion ${bastion.instanceId}`);
+
+      try {
+        await aws.waitForInstanceSsmOnline(bastion.instanceId, {
+          onTick: (elapsed) => {
+            console.log(
+              `waiting for the bastion's SSM agent to come online (${elapsed}s elapsed); a new instance can take 1-2 minutes...`,
+            );
+          },
+        });
+      } catch (err) {
+        exitWithError(err.message);
+      }
+
+      const sessionArgs = buildSessionArgs(bastion.instanceId);
+
+      /**
+       * `detached: true` gives the aws cli its own process group so that
+       * killing the group also kills the session-manager-plugin process it
+       * spawns; killing just the aws process orphans the plugin and leaves
+       * the tunnel open
+       */
+      const child = spawn('aws', sessionArgs, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, AWS_REGION: aws.getCurrentRegion() },
+        detached: true,
+      });
+
+      const killTunnelProcessGroup = (signal) => {
+        try {
+          process.kill(-child.pid, signal);
+        } catch (err) {
+          // group already gone or not yet created; fall back to the child
+          child.kill(signal);
+        }
+      };
+
+      let childOutput = '';
+      child.stdout.on('data', (data) => {
+        childOutput += data;
+      });
+      child.stderr.on('data', (data) => {
+        childOutput += data;
+      });
+
+      child.on('error', (err) => {
+        if (err.code === 'ENOENT') {
+          exitWithError(
+            'The `aws` cli was not found; it (and the session-manager-plugin) are required for the port-forwarding session',
+          );
+        }
+        exitWithError(err.message);
+      });
+
+      let tunnelUp = false;
+      let userExit = false;
+
+      child.on('exit', () => {
+        if (userExit) return;
+        if (!tunnelUp) {
+          let hint = '';
+          if (childOutput.includes('SessionManagerPlugin is not found')) {
+            hint =
+              'The session-manager-plugin is required. See https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html';
+          } else if (childOutput.includes('TargetNotConnected')) {
+            hint =
+              'The bastion was not ready to accept a session; try re-running this command';
+          } else if (childOutput.includes('AccessDenied')) {
+            hint =
+              'You may need the TempBastionUserAccess IAM policy attached to your user/role';
+          }
+          exitWithError(
+            [
+              'The port-forwarding session failed to start:',
+              childOutput.trim(),
+              hint,
+            ]
+              .filter(Boolean)
+              .join('\n'),
+          );
+        }
+        console.log(
+          '\nThe tunnel closed unexpectedly; the bastion may have reached its TTL,\nor the SSM session hit the account idle-session timeout.\nRe-run `caccl-deploy connect` to establish a new tunnel.',
+        );
+        process.exit(1);
+      });
+
+      try {
+        await waitForLocalPortOpen(Number(localPort), { timeoutSeconds: 60 });
+      } catch (err) {
+        killTunnelProcessGroup('SIGTERM');
+        exitWithError(err.message);
+      }
+      tunnelUp = true;
+
+      console.log(
         [
-          `Your public key, ${cmd.publicKey}, has temporarily been placed on the bastion instance`,
-          'You have ~60s to establish the ssh tunnel',
           '',
-          `# tunnel command:\n${tunnelCommand}`,
-          `# ${cmd.service} client command:\n${clientCommand}`,
+          'Tunnel is up!',
+          '',
+          `# ${service} client command:\n${clientCommand}`,
+          '',
+          `The bastion expires at ${bastion.expiresAt}`,
+          'Press Ctrl-C to close the tunnel',
         ].join('\n'),
       );
+
+      const closeTunnel = () => {
+        userExit = true;
+        console.log('\nclosing tunnel...');
+        const forceKill = setTimeout(() => {
+          killTunnelProcessGroup('SIGKILL');
+        }, 5000);
+        child.once('exit', () => {
+          clearTimeout(forceKill);
+          process.exit(0);
+        });
+        killTunnelProcessGroup('SIGTERM');
+      };
+      process.on('SIGINT', closeTunnel);
+      process.on('SIGTERM', closeTunnel);
     });
 
   cli

@@ -6,3 +6,8 @@ node_modules
 cdk.out
 cdk.context.json
 .tmp
+
+.npmrc
+.zed/
+dist/
+tsconfig.tsbuildinfo

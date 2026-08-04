@@ -2,7 +2,6 @@ import { aws_ec2 as ec2, aws_ecs as ecs, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 
 import { CacclAppEnvironment } from './appEnvironment';
-import { CacclSshBastion } from './bastion';
 import { CacclCache, CacclCacheOptions } from './cache';
 import { CacclMonitoring } from './dashboard';
 import { CacclDbOptions, createDbConstruct } from './db';
@@ -19,7 +18,6 @@ import { CacclTaskDef, CacclTaskDefProps, CacclS3Permissions } from './taskdef';
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
   certificateArn: string;
-  bastionAmiId: string;
   ecsClusterName?: string;
   appEnvironment: { [key: string]: string };
   taskDefProps: CacclTaskDefProps;
@@ -42,9 +40,6 @@ export class CacclDeployStack extends Stack {
     let vpc;
     let cluster;
 
-    // should we create an ssh bastion for access to db/cache/etc
-    let createBastion = false;
-
     if (props.vpcId !== undefined) {
       vpc = ec2.Vpc.fromLookup(this, 'Vpc', {
         vpcId: props.vpcId,
@@ -64,7 +59,6 @@ export class CacclDeployStack extends Stack {
      */
     let db = null;
     if (props.dbOptions) {
-      createBastion = true;
       db = createDbConstruct(this, {
         vpc,
         options: props.dbOptions,
@@ -73,7 +67,6 @@ export class CacclDeployStack extends Stack {
     }
 
     if (props.cacheOptions) {
-      createBastion = true;
       new CacclCache(this, 'Cache', {
         vpc,
         options: props.cacheOptions,
@@ -176,24 +169,6 @@ export class CacclDeployStack extends Stack {
 
     if (db) {
       dashboard.addDbSection(db);
-    }
-
-    if (createBastion) {
-      let bastionSg;
-      if (props.firewallSgId) {
-        bastionSg = lbSecurityGroups.primary;
-      } else {
-        bastionSg = new ec2.SecurityGroup(this, 'BastionSecurityGroup', {
-          vpc,
-          description: 'security group for the ssh bastion host',
-        });
-        bastionSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(22));
-      }
-      new CacclSshBastion(this, 'SshBastion', {
-        vpc,
-        bastionAmiId: props.bastionAmiId,
-        sg: bastionSg,
-      });
     }
 
     if (props.scheduledTasks) {
