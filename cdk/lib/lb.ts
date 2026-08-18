@@ -67,6 +67,12 @@ export class CacclLoadBalancer extends Construct {
       this.loadBalancer.addSecurityGroup(securityGroups.misc);
     }
 
+    // protect against http request smuggling via malformed headers
+    this.loadBalancer.setAttribute(
+      'routing.http.drop_invalid_header_fields.enabled',
+      'true',
+    );
+
     if (albLogBucketName !== undefined) {
       const bucket = s3.Bucket.fromBucketName(
         this,
@@ -96,11 +102,12 @@ export class CacclLoadBalancer extends Construct {
       ],
     });
 
-    const httpsListener = new elb.ApplicationListener(this, 'HttpsListener', {
+    this.httpsListener = new elb.ApplicationListener(this, 'HttpsListener', {
       loadBalancer: this.loadBalancer,
       certificates: [{ certificateArn }],
       port: 443,
       protocol: elb.ApplicationProtocol.HTTPS,
+      sslPolicy: elb.SslPolicy.RECOMMENDED_TLS,
       /**
        * if we don't make this false the listener construct will add rules
        * to our security group that we don't want/need
@@ -138,7 +145,7 @@ export class CacclLoadBalancer extends Construct {
       atgProps,
     );
 
-    httpsListener.addTargetGroups('AppTargetGroup', {
+    this.httpsListener.addTargetGroups('AppTargetGroup', {
       targetGroups: [appTargetGroup],
     });
 
