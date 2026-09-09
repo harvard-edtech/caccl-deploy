@@ -870,35 +870,21 @@ async function main() {
       '-i --image-tag <string>',
       'the docker image version tag to release',
     )
-    .option(
-      '--no-deploy',
-      "Update the Fargate Task Definition but don't restart the service",
-    )
     .action(async (cmd) => {
       // see the README section on cross-account ECR access
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
 
-      const deployConfig = await cmd.getDeployConfig();
+      // get this without resolved secrets for passing to cdk
+      const deployConfig = await cmd.getDeployConfig(true);
+
+      // get it again with resolved secrets so we can make our hash
+      const resolvedDeployConfig = await cmd.getDeployConfig();
 
       const cfnStackName = cmd.getCfnStackName();
-      let cfnExports;
-      try {
-        cfnExports = await aws.getCfnStackExports(cfnStackName);
-        ['taskDefName', 'clusterName', 'serviceName'].forEach((exportValue) => {
-          if (cfnExports[exportValue] === undefined) {
-            throw new Error(`Incomplete app stack: missing ${exportValue}`);
-          }
-        });
-      } catch (err) {
-        if (
-          err instanceof CfnStackNotFound ||
-          err.message.includes('Incomplete')
-        ) {
-          exitWithError(err.message);
-        }
-        throw err;
+      if (!(await aws.cfnStackExists(cfnStackName))) {
+        exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
       }
 
       /**
@@ -939,17 +925,8 @@ async function main() {
         imageTag: cmd.imageTag,
       });
 
-      /**
-       * Note that the app's current in-use task def name has to be registered
-       * as a cloudformation stack output value because it's too painful to try
-       * to get/extract it via the api. `taskDefName` here is also known as the
-       * "family" and doesn't include the task def revision/version number
-       */
-      const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } =
-        cfnExports;
-
       // check that we're not using a wildly different version of the cli
-      if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
+      if (!cmd.yes && !(await cmd.stackVersionDiffCheck())) {
         exitWithSuccess();
       }
 
@@ -957,40 +934,56 @@ async function main() {
         exitWithSuccess();
       }
 
-      // create a new version of the taskdef with the updated image
-      console.log(`Updating ${cmd.app} task definitions to use ${newAppImage}`);
-      // the app's service task def
-      const newTaskDefArn = await aws.updateTaskDefAppImage(
-        taskDefName,
-        newAppImage,
-        'AppContainer',
+      /**
+       * update the appImage value on the in-memory deploy configs only;
+       * nothing is persisted until after the diff is confirmed
+       */
+      deployConfig.appImage = newAppImage;
+      resolvedDeployConfig.appImage = newAppImage;
+
+      const cdkStackProps = await getCdkStackProps(
+        cmd,
+        deployConfig,
+        resolvedDeployConfig.toHash(),
       );
-      // the app-only one-off task definition
-      await aws.updateTaskDefAppImage(
-        appOnlyTaskDefName,
-        newAppImage,
-        'AppOnlyContainer',
-      );
+
+      // show what the stack update will change
+      console.log(`Generating diff of the ${cfnStackName} stack update...`);
+      try {
+        await execCdk(['diff'], cdkStackProps, cmd.profile);
+      } catch (err) {
+        exitWithError(err.message);
+      }
+
+      if (!cmd.yes && !(await confirm('Proceed with deployment?'))) {
+        exitWithSuccess();
+      }
 
       // update the ssm parameter
       console.log('Updating stored deployment configuration');
       await deployConfig.update(cmd.getAppPrefix(), 'appImage', newAppImage);
 
-      // restart the service
-      if (cmd.deploy) {
-        console.log(`Restarting the ${serviceName} service...`);
-        await aws.restartEcsServcie(clusterName, serviceName, {
-          newTaskDefArn,
-          wait: true,
-        });
-        exitWithSuccess('done.');
+      /**
+       * deploy the stack update; the diff was already confirmed (or `--yes`
+       * was passed) so cdk's own approval prompt is bypassed
+       */
+      try {
+        await execCdk(
+          ['deploy', '--require-approval', 'never'],
+          cdkStackProps,
+          cmd.profile,
+        );
+      } catch (err) {
+        exitWithError(
+          [
+            err.message,
+            `WARNING: the ${cmd.app} deployment configuration has been updated`,
+            `to use ${newAppImage} but the stack update did not complete.`,
+            `Run 'caccl-deploy stack -a ${cmd.app} deploy' to retry.`,
+          ].join('\n'),
+        );
       }
-      exitWithSuccess(
-        [
-          'Redployment skipped',
-          'WARNING: service is out-of-sync with stored deployment configuration',
-        ].join('\n'),
-      );
+      exitWithSuccess('done.');
     });
 
   cli
