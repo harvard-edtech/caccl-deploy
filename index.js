@@ -141,6 +141,92 @@ const isProdAccount = async () => {
 };
 
 /**
+ * Assemble the object structure with all the info the CDK stack
+ * operations (diff, deploy, etc) will need
+ * @param {CacclDeployCommander} cmd
+ * @param {object} deployConfig - deploy config with unresolved secrets
+ *   (secretsmanager ARNs intact) for passing to cdk
+ * @param {string} deployConfigHash - hash of the resolved deploy config
+ */
+const getCdkStackProps = async (cmd, deployConfig, deployConfigHash) => {
+  /**
+   * Get the important ids/names from our infrastructure stack:
+   *   - id of the vpc
+   *   - name of the ECS cluster
+   *   - name of the S3 bucket where the load balancer will send logs
+   */
+  const { vpcId, ecsClusterName, albLogBucketName } =
+    await aws.getCfnStackExports(deployConfig.infraStackName);
+
+  const cdkStackProps = {
+    vpcId,
+    ecsClusterName,
+    albLogBucketName,
+    cacclDeployVersion,
+    deployConfigHash,
+    stackName: cmd.getCfnStackName(),
+    awsAccountId: await aws.getAccountId(),
+    awsRegion: process.env.AWS_REGION || 'us-east-1',
+    deployConfig,
+  };
+
+  // Set some default removal policy options depending on if this is a "prod" account
+  if (
+    cdkStackProps.deployConfig.dbOptions &&
+    !cdkStackProps.deployConfig.dbOptions.removalPolicy
+  ) {
+    cdkStackProps.deployConfig.dbOptions.removalPolicy = (await isProdAccount())
+      ? 'RETAIN'
+      : 'DESTROY';
+  }
+
+  return cdkStackProps;
+};
+
+/**
+ * Execute a cdk subprocess operation
+ * @param {string[]} cdkArgs - args/options for the cdk process
+ * @param {object} cdkStackProps
+ * @param {string} profile - aws config/credentials profile name
+ */
+const execCdk = async (cdkArgs, cdkStackProps, profile) => {
+  const args = [...cdkArgs];
+
+  const envAdditions = {
+    AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+    CDK_DISABLE_VERSION_CHECK: true,
+  };
+
+  // tell cdk to use the same profile
+  if (profile !== undefined) {
+    args.push('--profile', profile);
+    envAdditions.AWS_PROFILE = profile;
+  }
+
+  /**
+   * Write out the stack properties to a temp json file for
+   * the CDK subprocess to pick up
+   */
+  await tempy.write.task(
+    JSON.stringify(cdkStackProps, null, 2),
+    async (tempPath) => {
+      // tell the CDK subprocess where to find the stack properties file
+      envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
+
+      const execOpts = {
+        stdio: 'inherit',
+        // exec the cdk process in the cdk directory
+        cwd: __dirname, // path.join(__dirname, 'cdk'),
+        // inject our additional env vars
+        env: { ...process.env, ...envAdditions },
+      };
+
+      execSync(['node_modules/.bin/cdk', ...args].join(' '), execOpts);
+    },
+  );
+};
+
+/**
  * Extends the base commander.js class to add convenience methods
  * and some common options
  * @extends Command
@@ -688,37 +774,14 @@ async function main() {
       // get it again with resolved secrets so we can make our hash
       const deployConfigHash = (await cmd.getDeployConfig()).toHash();
 
-      /**
-       * Get the important ids/names from our infrastructure stack:
-       *   - id of the vpc
-       *   - name of the ECS cluster
-       *   - name of the S3 bucket where the load balancer will send logs
-       */
       const cfnStackName = cmd.getCfnStackName();
       const stackExists = await aws.cfnStackExists(cfnStackName);
-      const { vpcId, ecsClusterName, albLogBucketName } =
-        await aws.getCfnStackExports(deployConfig.infraStackName);
 
-      /**
-       * Create an object structure with all the info
-       * the CDK stack operation will need
-       */
-      const cdkStackProps = {
-        vpcId,
-        ecsClusterName,
-        albLogBucketName,
-        cacclDeployVersion,
-        deployConfigHash,
-        stackName: cfnStackName,
-        awsAccountId: await aws.getAccountId(),
-        awsRegion: process.env.AWS_REGION || 'us-east-1',
+      const cdkStackProps = await getCdkStackProps(
+        cmd,
         deployConfig,
-      };
-
-      const envAdditions = {
-        AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-        CDK_DISABLE_VERSION_CHECK: true,
-      };
+        deployConfigHash,
+      );
 
       // all args/options following the `stack` subcommand get passed to cdk
       const cdkArgs = [...cmd.args];
@@ -737,12 +800,6 @@ async function main() {
       } else if (cdkArgs[0] === 'changeset') {
         cdkArgs.shift();
         cdkArgs.unshift('deploy', '--no-execute');
-      }
-
-      // tell cdk to use the same profile
-      if (cmd.profile !== undefined) {
-        cdkArgs.push('--profile', cmd.profile);
-        envAdditions.AWS_PROFILE = cmd.profile;
       }
 
       // disable cdk prompting if user included `--yes` flag
@@ -768,41 +825,12 @@ async function main() {
         }
       }
 
-      // Set some default removal policy options depending on if this is a "prod" account
-      if (
-        cdkStackProps.deployConfig.dbOptions &&
-        !cdkStackProps.deployConfig.dbOptions.removalPolicy
-      ) {
-        cdkStackProps.deployConfig.dbOptions.removalPolicy =
-          (await isProdAccount()) ? 'RETAIN' : 'DESTROY';
+      try {
+        await execCdk(cdkArgs, cdkStackProps, cmd.profile);
+        exitWithSuccess('done!');
+      } catch (err) {
+        exitWithError(err.msg);
       }
-
-      /**
-       * Write out the stack properties to a temp json file for
-       * the CDK subprocess to pick up
-       */
-      await tempy.write.task(
-        JSON.stringify(cdkStackProps, null, 2),
-        async (tempPath) => {
-          // tell the CDK subprocess where to find the stack properties file
-          envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
-
-          const execOpts = {
-            stdio: 'inherit',
-            // exec the cdk process in the cdk directory
-            cwd: __dirname, // path.join(__dirname, 'cdk'),
-            // inject our additional env vars
-            env: { ...process.env, ...envAdditions },
-          };
-
-          try {
-            execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
-            exitWithSuccess('done!');
-          } catch (err) {
-            exitWithError(err.msg);
-          }
-        },
-      );
     });
 
   cli
