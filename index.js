@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync, spawn } = require('child_process');
+const { execSync, spawn, spawnSync } = require('child_process');
 const chalk = require('chalk');
 const { Command } = require('commander');
 const figlet = require('figlet');
@@ -221,7 +221,13 @@ const execCdk = async (cdkArgs, cdkStackProps, profile) => {
         env: { ...process.env, ...envAdditions },
       };
 
-      execSync(['node_modules/.bin/cdk', ...args].join(' '), execOpts);
+      const result = spawnSync('node_modules/.bin/cdk', args, execOpts);
+      if (result.error) {
+        throw result.error;
+      }
+      if (result.status !== 0) {
+        throw new Error(`cdk exited with status ${result.status}`);
+      }
     },
   );
 };
@@ -829,7 +835,7 @@ async function main() {
         await execCdk(cdkArgs, cdkStackProps, cmd.profile);
         exitWithSuccess('done!');
       } catch (err) {
-        exitWithError(err.msg);
+        exitWithError(err.message);
       }
     });
 
