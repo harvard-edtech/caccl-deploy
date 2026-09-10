@@ -81,7 +81,7 @@ These are all executed via the `caccl-deploy` cli. For example, `caccl-deploy ne
 
 `stack` - do stuff with the app's CDK-based CloudFormation stack
 
-`release` - update an app's Docker image and restart the Fargate service
+`release` - update an app's Docker image via a CloudFormation stack update
 
 `restart` - restart an app's Fargate service
 
@@ -708,13 +708,15 @@ _**IMPORTANT**_, any changes you have made to app environment variables or the a
 
 #### release
 
-This subcommand combines an change to the app's Docker image (i.e. switching to a new version tag) with a service restart.
+This subcommand releases a new version of an app's Docker image by updating the `appImage` deployment configuration value and executing a CloudFormation stack update (via CDK) to roll it out.
 
 For example, say your app's `appImage` was set to `arn:aws:ecr:us-east-1:123456789012:repository/hdce/tool-playground:1.0.0` and you wanted to release the image tagged `1.1.0`, you would do:
 
 `caccl-deploy release -a my-app -i 1.1.0`
 
 The `-i` input value is validated against the list of tags available in the repo indicated by your full image id. You will also be prompted to confirm if the tag is not for the most recent image available in the repository.
+
+Before anything is modified, the command shows a diff of the pending stack update and asks for confirmation. Only after confirming is the `appImage` config value updated and the stack deployment executed. If the stack update fails after the config value has been updated, run `caccl-deploy stack -a <app> deploy` to retry the rollout.
 
 ##### options
 

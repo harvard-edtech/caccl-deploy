@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- **Breaking:** the `release` command now updates the `appImage` deploy config value and performs a CloudFormation stack update (cdk diff, confirm, deploy) instead of registering new task definition revisions out-of-band. This eliminates the stack drift previously caused by releases. The `--no-deploy` option is removed.
+
+### Removed
+
+- `aws.updateTaskDefAppImage` helper (the out-of-band task definition update mechanism)
+
 ## [0.21.1] - 2026-09-03
 
 ### Changed

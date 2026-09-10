@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync, spawn } = require('child_process');
+const { execSync, spawn, spawnSync } = require('child_process');
 const chalk = require('chalk');
 const { Command } = require('commander');
 const figlet = require('figlet');
@@ -138,6 +138,98 @@ const isProdAccount = async () => {
   const prodAccounts = conf.get('productionAccounts');
   const accountId = await aws.getAccountId();
   return prodAccounts && prodAccounts.includes(accountId);
+};
+
+/**
+ * Assemble the object structure with all the info the CDK stack
+ * operations (diff, deploy, etc) will need
+ * @param {CacclDeployCommander} cmd
+ * @param {object} deployConfig - deploy config with unresolved secrets
+ *   (secretsmanager ARNs intact) for passing to cdk
+ * @param {string} deployConfigHash - hash of the resolved deploy config
+ */
+const getCdkStackProps = async (cmd, deployConfig, deployConfigHash) => {
+  /**
+   * Get the important ids/names from our infrastructure stack:
+   *   - id of the vpc
+   *   - name of the ECS cluster
+   *   - name of the S3 bucket where the load balancer will send logs
+   */
+  const { vpcId, ecsClusterName, albLogBucketName } =
+    await aws.getCfnStackExports(deployConfig.infraStackName);
+
+  const cdkStackProps = {
+    vpcId,
+    ecsClusterName,
+    albLogBucketName,
+    cacclDeployVersion,
+    deployConfigHash,
+    stackName: cmd.getCfnStackName(),
+    awsAccountId: await aws.getAccountId(),
+    awsRegion: process.env.AWS_REGION || 'us-east-1',
+    deployConfig,
+  };
+
+  // Set some default removal policy options depending on if this is a "prod" account
+  if (
+    cdkStackProps.deployConfig.dbOptions &&
+    !cdkStackProps.deployConfig.dbOptions.removalPolicy
+  ) {
+    cdkStackProps.deployConfig.dbOptions.removalPolicy = (await isProdAccount())
+      ? 'RETAIN'
+      : 'DESTROY';
+  }
+
+  return cdkStackProps;
+};
+
+/**
+ * Execute a cdk subprocess operation
+ * @param {string[]} cdkArgs - args/options for the cdk process
+ * @param {object} cdkStackProps
+ * @param {string} profile - aws config/credentials profile name
+ */
+const execCdk = async (cdkArgs, cdkStackProps, profile) => {
+  const args = [...cdkArgs];
+
+  const envAdditions = {
+    AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+    CDK_DISABLE_VERSION_CHECK: true,
+  };
+
+  // tell cdk to use the same profile
+  if (profile !== undefined) {
+    args.push('--profile', profile);
+    envAdditions.AWS_PROFILE = profile;
+  }
+
+  /**
+   * Write out the stack properties to a temp json file for
+   * the CDK subprocess to pick up
+   */
+  await tempy.write.task(
+    JSON.stringify(cdkStackProps, null, 2),
+    async (tempPath) => {
+      // tell the CDK subprocess where to find the stack properties file
+      envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
+
+      const execOpts = {
+        stdio: 'inherit',
+        // exec the cdk process in the cdk directory
+        cwd: __dirname, // path.join(__dirname, 'cdk'),
+        // inject our additional env vars
+        env: { ...process.env, ...envAdditions },
+      };
+
+      const result = spawnSync('node_modules/.bin/cdk', args, execOpts);
+      if (result.error) {
+        throw result.error;
+      }
+      if (result.status !== 0) {
+        throw new Error(`cdk exited with status ${result.status}`);
+      }
+    },
+  );
 };
 
 /**
@@ -688,37 +780,14 @@ async function main() {
       // get it again with resolved secrets so we can make our hash
       const deployConfigHash = (await cmd.getDeployConfig()).toHash();
 
-      /**
-       * Get the important ids/names from our infrastructure stack:
-       *   - id of the vpc
-       *   - name of the ECS cluster
-       *   - name of the S3 bucket where the load balancer will send logs
-       */
       const cfnStackName = cmd.getCfnStackName();
       const stackExists = await aws.cfnStackExists(cfnStackName);
-      const { vpcId, ecsClusterName, albLogBucketName } =
-        await aws.getCfnStackExports(deployConfig.infraStackName);
 
-      /**
-       * Create an object structure with all the info
-       * the CDK stack operation will need
-       */
-      const cdkStackProps = {
-        vpcId,
-        ecsClusterName,
-        albLogBucketName,
-        cacclDeployVersion,
-        deployConfigHash,
-        stackName: cfnStackName,
-        awsAccountId: await aws.getAccountId(),
-        awsRegion: process.env.AWS_REGION || 'us-east-1',
+      const cdkStackProps = await getCdkStackProps(
+        cmd,
         deployConfig,
-      };
-
-      const envAdditions = {
-        AWS_REGION: process.env.AWS_REGION || 'us-east-1',
-        CDK_DISABLE_VERSION_CHECK: true,
-      };
+        deployConfigHash,
+      );
 
       // all args/options following the `stack` subcommand get passed to cdk
       const cdkArgs = [...cmd.args];
@@ -737,12 +806,6 @@ async function main() {
       } else if (cdkArgs[0] === 'changeset') {
         cdkArgs.shift();
         cdkArgs.unshift('deploy', '--no-execute');
-      }
-
-      // tell cdk to use the same profile
-      if (cmd.profile !== undefined) {
-        cdkArgs.push('--profile', cmd.profile);
-        envAdditions.AWS_PROFILE = cmd.profile;
       }
 
       // disable cdk prompting if user included `--yes` flag
@@ -768,41 +831,12 @@ async function main() {
         }
       }
 
-      // Set some default removal policy options depending on if this is a "prod" account
-      if (
-        cdkStackProps.deployConfig.dbOptions &&
-        !cdkStackProps.deployConfig.dbOptions.removalPolicy
-      ) {
-        cdkStackProps.deployConfig.dbOptions.removalPolicy =
-          (await isProdAccount()) ? 'RETAIN' : 'DESTROY';
+      try {
+        await execCdk(cdkArgs, cdkStackProps, cmd.profile);
+        exitWithSuccess('done!');
+      } catch (err) {
+        exitWithError(err.message);
       }
-
-      /**
-       * Write out the stack properties to a temp json file for
-       * the CDK subprocess to pick up
-       */
-      await tempy.write.task(
-        JSON.stringify(cdkStackProps, null, 2),
-        async (tempPath) => {
-          // tell the CDK subprocess where to find the stack properties file
-          envAdditions.CDK_STACK_PROPS_FILE_PATH = tempPath;
-
-          const execOpts = {
-            stdio: 'inherit',
-            // exec the cdk process in the cdk directory
-            cwd: __dirname, // path.join(__dirname, 'cdk'),
-            // inject our additional env vars
-            env: { ...process.env, ...envAdditions },
-          };
-
-          try {
-            execSync(['node_modules/.bin/cdk', ...cdkArgs].join(' '), execOpts);
-            exitWithSuccess('done!');
-          } catch (err) {
-            exitWithError(err.msg);
-          }
-        },
-      );
     });
 
   cli
@@ -842,35 +876,21 @@ async function main() {
       '-i --image-tag <string>',
       'the docker image version tag to release',
     )
-    .option(
-      '--no-deploy',
-      "Update the Fargate Task Definition but don't restart the service",
-    )
     .action(async (cmd) => {
       // see the README section on cross-account ECR access
       if (cmd.ecrAccessRoleArn !== undefined) {
         aws.setAssumedRoleArn(cmd.ecrAccessRoleArn);
       }
 
-      const deployConfig = await cmd.getDeployConfig();
+      // get this without resolved secrets for passing to cdk
+      const deployConfig = await cmd.getDeployConfig(true);
+
+      // get it again with resolved secrets so we can make our hash
+      const resolvedDeployConfig = await cmd.getDeployConfig();
 
       const cfnStackName = cmd.getCfnStackName();
-      let cfnExports;
-      try {
-        cfnExports = await aws.getCfnStackExports(cfnStackName);
-        ['taskDefName', 'clusterName', 'serviceName'].forEach((exportValue) => {
-          if (cfnExports[exportValue] === undefined) {
-            throw new Error(`Incomplete app stack: missing ${exportValue}`);
-          }
-        });
-      } catch (err) {
-        if (
-          err instanceof CfnStackNotFound ||
-          err.message.includes('Incomplete')
-        ) {
-          exitWithError(err.message);
-        }
-        throw err;
+      if (!(await aws.cfnStackExists(cfnStackName))) {
+        exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
       }
 
       /**
@@ -911,17 +931,8 @@ async function main() {
         imageTag: cmd.imageTag,
       });
 
-      /**
-       * Note that the app's current in-use task def name has to be registered
-       * as a cloudformation stack output value because it's too painful to try
-       * to get/extract it via the api. `taskDefName` here is also known as the
-       * "family" and doesn't include the task def revision/version number
-       */
-      const { taskDefName, appOnlyTaskDefName, clusterName, serviceName } =
-        cfnExports;
-
       // check that we're not using a wildly different version of the cli
-      if (!this.yes && !(await cmd.stackVersionDiffCheck())) {
+      if (!cmd.yes && !(await cmd.stackVersionDiffCheck())) {
         exitWithSuccess();
       }
 
@@ -929,40 +940,56 @@ async function main() {
         exitWithSuccess();
       }
 
-      // create a new version of the taskdef with the updated image
-      console.log(`Updating ${cmd.app} task definitions to use ${newAppImage}`);
-      // the app's service task def
-      const newTaskDefArn = await aws.updateTaskDefAppImage(
-        taskDefName,
-        newAppImage,
-        'AppContainer',
+      /**
+       * update the appImage value on the in-memory deploy configs only;
+       * nothing is persisted until after the diff is confirmed
+       */
+      deployConfig.appImage = newAppImage;
+      resolvedDeployConfig.appImage = newAppImage;
+
+      const cdkStackProps = await getCdkStackProps(
+        cmd,
+        deployConfig,
+        resolvedDeployConfig.toHash(),
       );
-      // the app-only one-off task definition
-      await aws.updateTaskDefAppImage(
-        appOnlyTaskDefName,
-        newAppImage,
-        'AppOnlyContainer',
-      );
+
+      // show what the stack update will change
+      console.log(`Generating diff of the ${cfnStackName} stack update...`);
+      try {
+        await execCdk(['diff'], cdkStackProps, cmd.profile);
+      } catch (err) {
+        exitWithError(err.message);
+      }
+
+      if (!cmd.yes && !(await confirm('Proceed with deployment?'))) {
+        exitWithSuccess();
+      }
 
       // update the ssm parameter
       console.log('Updating stored deployment configuration');
       await deployConfig.update(cmd.getAppPrefix(), 'appImage', newAppImage);
 
-      // restart the service
-      if (cmd.deploy) {
-        console.log(`Restarting the ${serviceName} service...`);
-        await aws.restartEcsServcie(clusterName, serviceName, {
-          newTaskDefArn,
-          wait: true,
-        });
-        exitWithSuccess('done.');
+      /**
+       * deploy the stack update; the diff was already confirmed (or `--yes`
+       * was passed) so cdk's own approval prompt is bypassed
+       */
+      try {
+        await execCdk(
+          ['deploy', '--require-approval', 'never'],
+          cdkStackProps,
+          cmd.profile,
+        );
+      } catch (err) {
+        exitWithError(
+          [
+            err.message,
+            `WARNING: the ${cmd.app} deployment configuration has been updated`,
+            `to use ${newAppImage} but the stack update did not complete.`,
+            `Run 'caccl-deploy stack -a ${cmd.app} deploy' to retry.`,
+          ].join('\n'),
+        );
       }
-      exitWithSuccess(
-        [
-          'Redployment skipped',
-          'WARNING: service is out-of-sync with stored deployment configuration',
-        ].join('\n'),
-      );
+      exitWithSuccess('done.');
     });
 
   cli
