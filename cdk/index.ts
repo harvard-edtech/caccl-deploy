@@ -38,6 +38,8 @@ const stackProps: CacclDeployStackProps = {
   albLogBucketName,
   // ARN of the ssl certificate
   certificateArn: deployConfig.certificateArn,
+  // optional extra certs for the https listener (SNI)
+  additionalCertificateArns: deployConfig.additionalCertificateArns,
   // object that defines the environment variables that will be injected into the app container
   appEnvironment: deployConfig.appEnvironment ?? {},
   // email and slack endpoints
