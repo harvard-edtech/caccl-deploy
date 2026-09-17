@@ -246,6 +246,8 @@ Now the optional stuff.
 
 `firewallSgId` (string) - set this to import/re-use an existing security group that will be applied to the load balancer. See "Security" below.
 
+`additionalCertificateArns` (string[]) - a list of extra ACM certificate ARNs to attach to the load balancer's HTTPS listener. `certificateArn` remains the default certificate; these are served via SNI for clients requesting a matching hostname.
+
 `appEnvironment` ({ [string]: string }) - a set of key value pairs that will be injected into your app's runtime container environment. You'll probably have some of these. Note that the actual values of these are always stored as SecretsManager entries, and your ECS Fargate Task Definition will be created with the ARN values of those secrets. `caccl-deploy` manages the registering/resolving for you, so when you run `caccl-deploy show --app my-app` the output will contain the raw, dereferenced strings. You can add the `--keep-secret-arns` flag to see the actual ARN values.
 
 `notifications.slack` (string) - a slack webhook URL. If configured this will result in a Lambda function being added to your stack and subscribed to the stack's SNS topic for alert notifications.

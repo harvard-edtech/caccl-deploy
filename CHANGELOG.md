@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `stack info` output now includes the shared infrastructure stack's exports under an `infraStackExports` key (DEPLOY-70)
+- `additionalCertificateArns` deploy config setting for attaching extra ACM certificates (SNI) to the load balancer https listener
 
 ## [0.22.0] - 2026-10-15
 
