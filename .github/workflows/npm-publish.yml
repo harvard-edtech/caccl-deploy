@@ -42,4 +42,11 @@ jobs:
         with:
           name: package
 
-      - run: npm publish *.tgz --access public 
+      - name: Publish
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          case "$VERSION" in
+            *-*) TAG=rc ;;
+            *)   TAG=latest ;;
+          esac
+          npm publish *.tgz --access public --tag "$TAG"
