@@ -18,6 +18,7 @@ import { CacclTaskDef, CacclTaskDefProps, CacclS3Permissions } from './taskdef';
 export interface CacclDeployStackProps extends StackProps {
   vpcId?: string;
   certificateArn: string;
+  additionalCertificateArns?: string[];
   ecsClusterName?: string;
   appEnvironment: { [key: string]: string };
   taskDefProps: CacclTaskDefProps;
@@ -143,6 +144,7 @@ export class CacclDeployStack extends Stack {
 
     const loadBalancer = new CacclLoadBalancer(this, 'LoadBalancer', {
       certificateArn: props.certificateArn,
+      additionalCertificateArns: props.additionalCertificateArns,
       loadBalancerTarget: service.loadBalancerTarget,
       albLogBucketName: props.albLogBucketName,
       extraOptions: props.lbOptions,

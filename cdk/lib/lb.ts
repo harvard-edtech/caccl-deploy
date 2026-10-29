@@ -24,6 +24,7 @@ export interface CacclLoadBalancerProps {
   vpc: ec2.Vpc;
   securityGroups: LoadBalancerSecurityGoups;
   certificateArn: string;
+  additionalCertificateArns?: string[];
   loadBalancerTarget: ecs.IEcsLoadBalancerTarget;
   albLogBucketName?: string;
   extraOptions?: CacclLoadBalancerExtraOptions;
@@ -46,6 +47,7 @@ export class CacclLoadBalancer extends Construct {
       vpc,
       securityGroups,
       certificateArn,
+      additionalCertificateArns = [],
       loadBalancerTarget,
       albLogBucketName,
       // includes targetDeregistrationDelay & healthCheckPath which are applied to the ApplicationTargetGroup below
@@ -104,7 +106,12 @@ export class CacclLoadBalancer extends Construct {
 
     this.httpsListener = new elb.ApplicationListener(this, 'HttpsListener', {
       loadBalancer: this.loadBalancer,
-      certificates: [{ certificateArn }],
+      // first cert is the default; the rest are served via SNI
+      certificates: [certificateArn, ...additionalCertificateArns].map(
+        (arn) => {
+          return { certificateArn: arn };
+        },
+      ),
       port: 443,
       protocol: elb.ApplicationProtocol.HTTPS,
       sslPolicy: elb.SslPolicy.RECOMMENDED_TLS,
