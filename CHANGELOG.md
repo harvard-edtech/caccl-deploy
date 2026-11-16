@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [0.23.0] - 2026-11-16
+
 ### Added
 
 - `stack info` output now includes the shared infrastructure stack's exports under an `infraStackExports` key (DEPLOY-70)
