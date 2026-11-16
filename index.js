@@ -802,7 +802,13 @@ async function main() {
           exitWithError(`Stack ${cfnStackName} has not been deployed yet`);
         }
         const stackExports = await aws.getCfnStackExports(cfnStackName);
-        exitWithSuccess(JSON.stringify(stackExports, null, '  '));
+        // app stack exports stay top-level; the base infra stack's are nested
+        const infraStackExports = await aws.getCfnStackExports(
+          deployConfig.infraStackName,
+        );
+        exitWithSuccess(
+          JSON.stringify({ ...stackExports, infraStackExports }, null, '  '),
+        );
       } else if (cdkArgs[0] === 'changeset') {
         cdkArgs.shift();
         cdkArgs.unshift('deploy', '--no-execute');

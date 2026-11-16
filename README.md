@@ -685,7 +685,7 @@ This subcommand acts as a wrapper for the `cdk` program (part of the [aws-cdk](h
 - `deploy` - execute the stack update
 - `changeset` - like `deploy` but creates a CloudFormation changeset that must be manually approved via the aws cli or web console
 - `destroy` - delete everything; you must first disable deletion protection for the stack via the aws cli or web console
-- `info` - prints out the cloudformation stack's exported values
+- `info` - prints out the cloudformation stack's exported values, plus those of the shared infrastructure stack under an `infraStackExports` key
 - `dump` - debugging; dumps the deployment config plus other bits of data used to build the stack
 
 ##### options
