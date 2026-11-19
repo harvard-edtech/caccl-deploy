@@ -173,6 +173,12 @@ export class CacclLoadBalancer extends Construct {
           statistic: 'sum',
         })
         .with({ period: Duration.minutes(1) }),
+      Target5xxCount: this.loadBalancer
+        .metricHttpCodeTarget(elb.HttpCodeTarget.TARGET_5XX_COUNT, {
+          period: Duration.minutes(1),
+          statistic: 'sum',
+        })
+        .with({ period: Duration.minutes(1) }),
       UnHealthyHostCount: appTargetGroup
         .metricUnhealthyHostCount({
           period: Duration.minutes(1),
@@ -208,6 +214,19 @@ export class CacclLoadBalancer extends Construct {
         alarmDescription: `${
           Stack.of(this).stackName
         } target group unhealthy host count (UnHealthyHostCount)`,
+      }),
+      // any 5xx response from the app means something is broken
+      new cloudwatch.Alarm(this, 'Target5xxAlarm', {
+        metric: this.metrics.Target5xxCount,
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator:
+          cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        // no datapoint means no 5xx responses, so the alarm can reset
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+        alarmDescription: `${
+          Stack.of(this).stackName
+        } app returned a 5xx response (HTTPCode_Target_5XX_Count)`,
       }),
     ];
 

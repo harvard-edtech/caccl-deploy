@@ -144,26 +144,18 @@ export class CacclMonitoring extends Construct {
       }),
     );
 
-    const servcieAlarmWidget = [];
-
-    if (cacclService.alarms.length) {
-      servcieAlarmWidget.push(
-        new cloudwatch.AlarmStatusWidget({
-          alarms: cacclService.alarms,
-          width: 8,
-          height: 6,
-          title: 'ECS Service Alarm States',
-        }),
-      );
-    }
-
     this.dashboard.addWidgets(
-      ...servcieAlarmWidget,
+      new cloudwatch.AlarmStatusWidget({
+        alarms: cacclService.alarms,
+        width: 8,
+        height: 6,
+        title: 'ECS Service Alarm States',
+      }),
       new cloudwatch.GraphWidget({
         title: 'Storage Read/Write Bytes',
         left: [makeCIMetric('StorageReadBytes')],
         right: [makeCIMetric('StorageWriteBytes')],
-        width: 12,
+        width: 8,
         height: 6,
       }),
       new cloudwatch.GraphWidget({
@@ -174,7 +166,7 @@ export class CacclMonitoring extends Construct {
           makeCIMetric('RunningTaskCount'),
         ],
         right: [ecsService.metric('DeploymentCount')],
-        width: 12,
+        width: 8,
         height: 6,
       }),
     );
