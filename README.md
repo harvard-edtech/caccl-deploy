@@ -271,7 +271,7 @@ Notifications are sent when any of the stack's alarms go off:
 
 - the load balancer's target response time is high, connections are rejected, or a target is unhealthy
 - the app returns any 5xx response (`HTTPCode_Target_5XX_Count` >= 1 in a minute)
-- the app reports an alert: any single-line JSON object written to the app's stdout/stderr with `"cacclDeployAlert": true`, e.g. `{"cacclDeployAlert":true,"reason":"ClientFatalError","logId":"..."}`. Search the app log group for `cacclDeployAlert` to see what triggered it.
+- the app reports an alert: any single-line JSON object written to the app's stdout/stderr with `"cacclDeployAlert": true`, e.g. `{"cacclDeployAlert":true,"context":"Player","logId":"..."}` (dce-expresskit prints this for logs tagged `Alarm`). Search the app log group for `cacclDeployAlert` to see what triggered it.
 
 `tags` ({ [string]: string }) - a set of key value pairs. these will be assigned to the CloudFormation stack and by extension all the resources in the stack (for resource types that support this (which is most)).
 
