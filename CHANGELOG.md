@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- alarm on any 5xx response from the app (`HTTPCode_Target_5XX_Count` >= 1 in a minute)
+- alarm when the app writes a JSON log line with `"cacclDeployAlert": true`, so apps can trigger notifications for errors the load balancer can't see (e.g. a user seeing a fatal error screen in the browser)
+
 ## [0.23.0] - 2026-11-16
 
 ### Added

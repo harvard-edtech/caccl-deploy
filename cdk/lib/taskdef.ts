@@ -46,6 +46,8 @@ export class CacclTaskDef extends Construct {
 
   logGroup: logs.LogGroup;
 
+  appLogGroup: logs.LogGroup;
+
   constructor(scope: Construct, id: string, props: CacclTaskDefProps) {
     super(scope, id);
 
@@ -105,6 +107,13 @@ export class CacclTaskDef extends Construct {
       this.appOnlyTaskDef.addToTaskRolePolicy(s3Policy);
     });
 
+    // log group for the app container's output
+    this.appLogGroup = new logs.LogGroup(this, 'AppLogGroup', {
+      logGroupName: `/${Stack.of(this).stackName}/app`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retention: logRetentionDays,
+    });
+
     // params for the fargate service's app container
     const appContainerParams = {
       image: appContainerImage.image,
@@ -114,11 +123,7 @@ export class CacclTaskDef extends Construct {
       secrets: appEnvironment?.secrets,
       logging: ecs.LogDriver.awsLogs({
         streamPrefix: 'app',
-        logGroup: new logs.LogGroup(this, 'AppLogGroup', {
-          logGroupName: `/${Stack.of(this).stackName}/app`,
-          removalPolicy: RemovalPolicy.DESTROY,
-          retention: logRetentionDays,
-        }),
+        logGroup: this.appLogGroup,
       }),
     };
 
