@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `bin/bulk-deploy.sh` - run `stack diff`, create change sets, view them, or execute them across all (or a subset of) apps in an account
+
 ## [0.24.0] - 2026-11-19
 
 ### Added
